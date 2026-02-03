@@ -1,0 +1,7 @@
+{
+  "num_documents": 2127,
+  "num_queries": 11,
+  "num_relevance_judgments": 17,
+  "avg_relevant_docs_per_query": 1.5454545454545454,
+  "avg_query_length_chars": 1840.8181818181818
+}
