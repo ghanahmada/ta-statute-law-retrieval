@@ -1,0 +1,82 @@
+============================================================
+Stage 1 Evaluation (BGE-M3 + CatBoost)
+  (Re-ranker disabled for speed)
+  Evaluating on TEST split (unseen queries)
+============================================================
+Corpus: 2127 documents
+Evaluating: 212 queries
+Fetching 30 files: 100%|██████████████████████████████████████████████████████████████| 30/30 [00:00<00:00, 3163.20it/s]
+Encoding 212 test queries...
+Loaded 212 cached query embeddings from outputs/jnlp/stage1/query_embeddings.npy
+All 212 query embeddings loaded from cache
+Running retrieval...
+CatBoost retrieval: 100%|█████████████████████████████████████████████████████████████| 212/212 [00:02<00:00, 73.80it/s] 
+
+============================================================
+RESULTS (TEST split)
+============================================================
+MRR@10: 0.0000
+Recall@10: 0.0000
+Precision@10: 0.0000
+Queries with hits: 0/212 (0.0%)
+------------------------------------------------------------
+
+(TA) C:\Users\ghana\OneDrive\kuliah\Semester 8\TA>python src/evaluate_jnlp.py
+============================================================
+Stage 1 Evaluation (BGE-M3 + CatBoost)
+  (Re-ranker disabled for speed)
+  Evaluating on TEST split (unseen queries)
+============================================================
+Corpus: 2127 documents
+Evaluating: 212 queries
+
+No trained model found. Training Stage 1...
+Training on TRAIN split: 749 queries with qrels
+Feature type: product
+Encoding corpus...
+Fetching 30 files: 100%|██████████████████████████████████████████████████████████████| 30/30 [00:00<00:00, 5477.26it/s]
+pre tokenize: 100%|████████████████████████████████████████████████████████████████████| 34/34 [00:00<00:00, 156.00it/s]
+You're using a XLMRobertaTokenizerFast tokenizer. Please note that with a fast tokenizer, using the `__call__` method is faster than using a method to encode the text followed by a call to the `pad` method to get a padded encoding.
+Inference Embeddings: 100%|█████████████████████████████████████████████████████████████| 34/34 [05:30<00:00,  9.74s/it]
+Encoding training queries...
+pre tokenize: 100%|█████████████████████████████████████████████████████████████████████| 12/12 [00:00<00:00, 69.38it/s]
+Inference Embeddings: 100%|█████████████████████████████████████████████████████████████| 12/12 [08:16<00:00, 41.38s/it]
+Computing BM25 hard negatives...
+Fitting tf_idf vectorizer
+Finished tf_idf vectorizer, time : 0.236 sec
+Finished corpus transform, time : 0.115 sec
+Finished sparsifying, time: 0.007 sec
+
+Preparing training data...
+Preparing features: 100%|███████████████████████████████████████████████████████████| 749/749 [00:00<00:00, 2234.82it/s]
+Training pairs: 39533 (2083 positive, 37450 negative)
+After 10x oversampling: 58280 (20830 pos, 37450 neg)
+Training CatBoost classifier...
+0:      total: 361ms    remaining: 6m
+100:    total: 10.1s    remaining: 1m 30s
+200:    total: 19.5s    remaining: 1m 17s
+300:    total: 28.4s    remaining: 1m 6s
+400:    total: 37.3s    remaining: 55.7s
+500:    total: 45.9s    remaining: 45.7s
+600:    total: 54.4s    remaining: 36.1s
+700:    total: 1m 3s    remaining: 26.9s
+800:    total: 1m 11s   remaining: 17.8s
+900:    total: 1m 20s   remaining: 8.81s
+999:    total: 1m 28s   remaining: 0us
+Stage 1 model saved to outputs/jnlp/stage1
+Encoding 212 test queries...
+Encoding 212 queries...
+pre tokenize: 100%|███████████████████████████████████████████████████████████████████████| 4/4 [00:00<00:00, 59.73it/s] 
+Inference Embeddings: 100%|███████████████████████████████████████████████████████████████| 4/4 [02:55<00:00, 43.82s/it]
+Saved query embeddings to outputs/jnlp/stage1/query_embeddings.npy
+Running retrieval...
+CatBoost retrieval: 100%|█████████████████████████████████████████████████████████████| 212/212 [00:04<00:00, 47.47it/s] 
+
+============================================================
+RESULTS (TEST split)
+============================================================
+MRR@10: 0.4681
+Recall@10: 0.4352
+Precision@10: 0.1288
+Queries with hits: 148/212 (69.8%)
+------------------------------------------------------------

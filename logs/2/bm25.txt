@@ -1,0 +1,64 @@
+============================================================
+  KUHPERDATA (test split)
+============================================================
+  Corpus: 2127 docs, Queries: 212 queries
+Fitting tf_idf vectorizer
+Finished tf_idf vectorizer, time : 0.154 sec
+Finished corpus transform, time : 0.131 sec
+Finished sparsifying, time: 0.002 sec
+
+
+  MRR@10:       0.1467
+  Recall@10:    0.0858
+  Precision@10: 0.0316
+  Hit rate:       0.2406
+  N queries:      212
+
+============================================================
+  BSARD (test split)
+============================================================
+  Corpus: 22633 docs, Queries: 222 queries
+Fitting tf_idf vectorizer
+Finished tf_idf vectorizer, time : 4.231 sec
+Finished corpus transform, time : 4.464 sec
+Finished sparsifying, time: 0.037 sec
+
+
+  MRR@10:       0.2488
+  Recall@10:    0.2664
+  Precision@10: 0.0716
+  Hit rate:       0.4234
+  N queries:      222
+
+============================================================
+  ILPCSR (test split)
+============================================================
+  Corpus: 936 docs, Queries: 1254 queries
+Fitting tf_idf vectorizer
+Finished tf_idf vectorizer, time : 0.763 sec
+Finished corpus transform, time : 0.729 sec
+Finished sparsifying, time: 0.003 sec
+
+
+  MRR@10:       0.1558
+  Recall@10:    0.1017
+  Precision@10: 0.0332
+  Hit rate:       0.2504
+  N queries:      1254
+
+============================================================
+  STARD (test split)
+============================================================
+  Corpus: 55348 docs, Queries: 308 queries
+  Tokenizing Chinese text with jieba...
+Fitting tf_idf vectorizer
+Finished tf_idf vectorizer, time : 3.632 sec
+Finished corpus transform, time : 3.426 sec
+Finished sparsifying, time: 0.038 sec
+
+
+  MRR@10:       0.3382
+  Recall@10:    0.4272
+  Precision@10: 0.0643
+  Hit rate:       0.5325
+  N queries:      308

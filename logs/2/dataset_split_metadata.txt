@@ -1,0 +1,6 @@
+Unique doc_ids in train qrels: 229
+Unique doc_ids in test qrels:  169
+Doc_ids appearing in BOTH:     98
+Test doc_ids NOT in train:     71
+
+Test judgments pointing to shared docs: 723/861 (84.0%)

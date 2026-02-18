@@ -1,0 +1,58 @@
+============================================================
+PoC: BGE-M3 Raw Cosine Similarity vs CatBoost Histogram
+============================================================
+Corpus: 2127 documents
+Test queries: 212
+Avg query length: 2020 chars
+Avg doc length: 376 chars
+
+Loading BGE-M3 (BAAI/bge-m3)...
+Fetching 30 files: 100%|██████████████████████████████████████████████████████████████| 30/30 [00:00<00:00, 3657.93it/s]
+Encoding corpus...
+pre tokenize: 100%|████████████████████████████████████████████████████████████████████| 34/34 [00:00<00:00, 142.83it/s]
+You're using a XLMRobertaTokenizerFast tokenizer. Please note that with a fast tokenizer, using the `__call__` method is faster than using a method to encode the text followed by a call to the `pad` method to get a padded encoding.
+Inference Embeddings: 100%|█████████████████████████████████████████████████████████████| 34/34 [08:27<00:00, 14.91s/it]
+  (2127, 1024) in 634.7s
+Encoding test queries...
+pre tokenize: 100%|███████████████████████████████████████████████████████████████████████| 4/4 [00:00<00:00, 36.43it/s]
+Inference Embeddings: 100%|███████████████████████████████████████████████████████████████| 4/4 [04:30<00:00, 67.51s/it]
+  (212, 1024) in 392.7s
+
+Embedding norms (should be ~1.0 if L2-normalized):
+  Corpus: mean=1.0000, std=0.000000
+  Queries: mean=1.0000, std=0.000000
+
+L1 distance stats (sample query vs all docs):
+  min=0.0000, max=0.1664, mean=0.0245, std=0.0189
+  % values in (0, 0.5): 100.0%
+  % values in (0.5, 1): 0.0%
+  % values in (1, 2):   0.0%
+
+============================================================
+RESULTS: Raw Cosine Similarity Retrieval
+============================================================
+
+     K |    MRR@K |   Recall@K |  Precision@K |   Hit Rate
+------------------------------------------------------------
+    10 |   0.1625 |     0.1300 |       0.0500 |     27.8%
+    50 |   0.1703 |     0.2369 |       0.0206 |     46.2%
+   100 |   0.1714 |     0.3082 |       0.0135 |     54.2%
+
+============================================================
+COMPARISON (paste your numbers)
+============================================================
+  BGE-M3 cosine MRR@10:    0.1625
+  BGE-M3 cosine Recall@10: 0.1300
+  BGE-M3 cosine Recall@100:0.3082
+  ---
+  BM25 MRR@10 (previous run)           : 0.1180
+  CatBoost MRR@10 (Histogram)          : 0.0300
+  CatBoost+reranker MRR@10 (Histogram) : 0.0950
+
+Cosine similarity distribution (all query-doc pairs):
+  min=0.2702, max=0.7779, mean=0.4845, std=0.0589
+
+  Relevant pairs:     mean=0.5526, std=0.0767
+  Non-relevant pairs: mean=0.4851, std=0.0571
+  Score gap:          0.0675
+  Separability index: 0.5043 (higher = easier to rank)
