@@ -7,6 +7,7 @@ cloudscraper==1.2.71
 beautifulsoup4==4.14.3
 openai==2.16.0
 scikit-learn==1.8.0
+jieba>=0.42.1
 datasets==4.5.0
 ipywidgets==8.1.8
 

@@ -1,10 +1,12 @@
 import csv
 import json
 import re
-from pathlib import Path
-from typing import Tuple, List, Dict, Any
-
 import numpy as np
+from pathlib import Path
+from sklearn.cluster import KMeans
+from typing import Tuple, List, Dict, Any
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_distances
 
 
 def load_statute_documents(csv_path: str) -> Tuple[List[str], List[str]]:
@@ -37,7 +39,7 @@ def parse_kuhperdata_pasal(law_string: str) -> str | None:
     if not is_kuhperdata:
         return None
     
-    # Extract pasal number
+    # extract pasal number
     pasal_match = re.search(r'Pasal\s+(\d+[a-zA-Z]?)', law_string, re.IGNORECASE)
     if pasal_match:
         return pasal_match.group(1)
@@ -83,19 +85,6 @@ def embed_queries_for_splitting(
     queries: List[str],
     model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 ) -> np.ndarray:
-    """
-    Embed queries using a small multilingual sentence transformer.
-    Used for semantic train/test splitting.
-    
-    Args:
-        queries: List of query texts
-        model_name: HuggingFace model name (small multilingual model)
-        
-    Returns:
-        (N, D) numpy array of embeddings
-    """
-    from sentence_transformers import SentenceTransformer
-    
     print(f"Loading embedding model: {model_name}")
     model = SentenceTransformer(model_name)
     
@@ -114,48 +103,17 @@ def semantic_train_test_split(
     random_state: int = 42,
     model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 ) -> Tuple[List[int], List[int], Dict[str, Any]]:
-    """
-    Split queries into train/test sets using semantic clustering.
-    
-    Strategy:
-    1. Embed all queries using multilingual model
-    2. Cluster queries using KMeans
-    3. Compute cluster centroids
-    4. Select test clusters that are most distant from remaining train clusters
-    5. This ensures: train queries are semantically similar within train,
-       test queries are semantically similar within test,
-       but train and test are semantically distant (no data leakage)
-    
-    Args:
-        queries: List of query texts
-        ground_truths: List of ground truth doc lists
-        case_names: List of case names
-        test_ratio: Fraction of queries for test set
-        n_clusters: Number of clusters for KMeans
-        random_state: Random seed
-        model_name: Embedding model name
-        
-    Returns:
-        train_indices: List of indices for training
-        test_indices: List of indices for testing
-        split_info: Dict with split statistics
-    """
-    from sklearn.cluster import KMeans
-    from sklearn.metrics.pairwise import cosine_distances
-    
     n_queries = len(queries)
     n_test = int(n_queries * test_ratio)
-    n_clusters = min(n_clusters, n_queries // 5)  # Ensure enough samples per cluster
+    n_clusters = min(n_clusters, n_queries // 5)  # ensure enough samples per cluster
+    print(f"Total queries: {n_queries}, Test size: {n_test}, Clusters: {n_clusters}")
     
-    # Embed queries
     embeddings = embed_queries_for_splitting(queries, model_name)
     
-    # Cluster queries
     print(f"Clustering {n_queries} queries into {n_clusters} clusters...")
     kmeans = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
     cluster_labels = kmeans.fit_predict(embeddings)
     
-    # Get cluster info
     cluster_indices = {i: [] for i in range(n_clusters)}
     for idx, label in enumerate(cluster_labels):
         cluster_indices[label].append(idx)
@@ -163,7 +121,6 @@ def semantic_train_test_split(
     cluster_sizes = {i: len(indices) for i, indices in cluster_indices.items()}
     cluster_centroids = kmeans.cluster_centers_
     
-    # Compute pairwise distances between cluster centroids
     centroid_distances = cosine_distances(cluster_centroids)
     
     # Greedy selection: pick clusters for test that maximize distance to train
@@ -263,22 +220,6 @@ def export_ir_dataset(
     random_state: int = 42,
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 ) -> Dict[str, Path]:
-    """
-    Export IR dataset in BEIR format with semantic train/test split.
-    
-    Creates:
-    - corpus.jsonl: All documents
-    - queries.jsonl: All queries
-    - qrels.tsv: All relevance judgments (for reference)
-    - qrels_train.tsv: Train split relevance judgments
-    - qrels_test.tsv: Test split relevance judgments
-    - dataset_stats.json: Statistics including split info
-    
-    The train/test split is based on semantic clustering of queries:
-    - Queries in train are semantically similar to each other
-    - Queries in test are semantically similar to each other  
-    - But train and test queries are semantically distant (maximizes generalization)
-    """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     
@@ -397,7 +338,6 @@ def export_ir_dataset(
 
 
 def get_default_paths() -> Dict[str, Path]:
-    # assuming this file is in src/
     src_dir = Path(__file__).parent
     project_root = src_dir.parent
     

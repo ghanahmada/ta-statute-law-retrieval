@@ -1,12 +1,3 @@
-"""
-PoC: Raw BGE-M3 cosine similarity retrieval vs CatBoost L1 histogram.
-Diagnose whether the bottleneck is the embedding or the CatBoost layer.
-
-Usage:
-    python src/evaluate_dense_retrieval.py
-    python src/evaluate_dense_retrieval.py --top_k 100 --save_embeddings
-"""
-
 import argparse
 import time
 import numpy as np
@@ -69,9 +60,9 @@ def evaluate_cosine_retrieval(
 
 def main():
     parser = argparse.ArgumentParser(description="BGE-M3 cosine similarity retrieval PoC")
-    parser.add_argument("--corpus_path", default="data/ir_dataset/corpus.jsonl")
-    parser.add_argument("--queries_path", default="data/ir_dataset/queries.jsonl")
-    parser.add_argument("--qrels_test_path", default="data/ir_dataset/qrels_test.tsv")
+    parser.add_argument("--corpus_path", default="data/kuhperdata/corpus.jsonl")
+    parser.add_argument("--queries_path", default="data/kuhperdata/queries.jsonl")
+    parser.add_argument("--qrels_test_path", default="data/kuhperdata/qrels_test.tsv")
     parser.add_argument("--bge_model", default="BAAI/bge-m3")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--max_length", type=int, default=1024)
@@ -100,12 +91,19 @@ def main():
     query_emb_path = emb_dir / f"bge_m3_test_queries.npy"
     query_ids_path = emb_dir / f"bge_m3_test_query_ids.npy"
 
+    cache_valid = False
     if corpus_emb_path.exists() and query_emb_path.exists():
-        print("\nLoading cached embeddings...")
         corpus_embeddings = np.load(corpus_emb_path)
         query_embeddings = np.load(query_emb_path)
-        print(f"  Corpus: {corpus_embeddings.shape}, Queries: {query_embeddings.shape}")
-    else:
+        if corpus_embeddings.shape[0] == len(doc_ids) and query_embeddings.shape[0] == len(test_query_ids):
+            cache_valid = True
+            print(f"\nLoading cached embeddings...")
+            print(f"  Corpus: {corpus_embeddings.shape}, Queries: {query_embeddings.shape}")
+        else:
+            print(f"\nStale cache (corpus: {corpus_embeddings.shape[0]} vs {len(doc_ids)}, "
+                  f"queries: {query_embeddings.shape[0]} vs {len(test_query_ids)}). Re-encoding...")
+
+    if not cache_valid:
         print(f"\nLoading BGE-M3 ({args.bge_model})...")
         from FlagEmbedding import BGEM3FlagModel
         model = BGEM3FlagModel(args.bge_model, use_fp16=True)
@@ -148,7 +146,7 @@ def main():
     print("RESULTS: Raw Cosine Similarity Retrieval")
     print("=" * 60)
 
-    top_k_values = [10, 50, 100, 200, 500]
+    top_k_values = [10, 50, 100]
     results = evaluate_cosine_retrieval(
         corpus_embeddings, query_embeddings,
         doc_ids, test_query_ids, loader.qrels,
@@ -160,18 +158,6 @@ def main():
     for k in top_k_values:
         r = results[k]
         print(f"{k:>6} | {r['mrr']:>8.4f} | {r['recall']:>10.4f} | {r['precision']:>12.4f} | {r['hit_rate']:>9.1%}")
-
-    # --- Compare with known baselines ---
-    print("\n" + "=" * 60)
-    print("COMPARISON (paste your numbers)")
-    print("=" * 60)
-    print(f"  BGE-M3 cosine MRR@10:    {results[10]['mrr']:.4f}")
-    print(f"  BGE-M3 cosine Recall@10: {results[10]['recall']:.4f}")
-    print(f"  BGE-M3 cosine Recall@100:{results[100]['recall']:.4f}")
-    print(f"  ---")
-    print(f"  BM25 MRR@10 (your run):  0.1180")
-    print(f"  CatBoost MRR@10:         0.0300")
-    print(f"  CatBoost+reranker MRR@10:0.0950")
 
     # --- Cosine similarity score distribution ---
     sim_scores = query_embeddings @ corpus_embeddings.T

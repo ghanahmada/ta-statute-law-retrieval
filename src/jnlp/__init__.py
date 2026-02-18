@@ -38,11 +38,11 @@ class Config:
     """Pipeline configuration - dataset agnostic."""
     
     # Data paths (BEIR format)
-    corpus_path: str = "data/ir_dataset/corpus.jsonl"
-    queries_path: str = "data/ir_dataset/queries.jsonl"
-    qrels_path: str = "data/ir_dataset/qrels.tsv"  # All qrels (for reference)
-    qrels_train_path: str = "data/ir_dataset/qrels_train.tsv"  # Train split
-    qrels_test_path: str = "data/ir_dataset/qrels_test.tsv"  # Test split
+    corpus_path: str = "data/kuhperdata/corpus.jsonl"
+    queries_path: str = "data/kuhperdata/queries.jsonl"
+    qrels_path: str = "data/kuhperdata/qrels.tsv"  # All qrels (for reference)
+    qrels_train_path: str = "data/kuhperdata/qrels_train.tsv"  # Train split
+    qrels_test_path: str = "data/kuhperdata/qrels_test.tsv"  # Test split
     
     # Stage 1: Pre-retrieval
     bge_model_name: str = "BAAI/bge-m3"
@@ -50,7 +50,9 @@ class Config:
     bge_reranker_name: str = "BAAI/bge-reranker-v2-m3"
     rankllama_name: str = "castorini/rankllama-v1-7b-lora-passage"
     
-    # Paper Section 4.3: 76 bins for L1 distance histogram
+    # Stage 1 feature type: "histogram" (paper L1 bins) or "product" (element-wise q*d)
+    stage1_feature_type: str = "product"
+    # Paper Section 4.3: 76 bins for L1 distance histogram (only used when feature_type="histogram")
     n_histogram_bins: int = 76
     # Oversampling: reduced from 300x (paper) to 10x to reduce overfitting on small datasets
     stage1_oversample_ratio: int = 10

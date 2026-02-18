@@ -21,19 +21,28 @@ class Stage1Retriever:
     4. Re-ranking with cross-encoder
 
     Adjustments from original COLIEE 2025 paper:
-    - Histogram range: calibrated from data instead of fixed (0, 2)
-    - Oversampling: reduced from 300x (paper) to 10x to reduce overfitting
-    - Negatives: BM25 hard negatives instead of random sampling
+    1. Feature Extraction:
+      - Histogram range: calibrated from data instead of fixed (0, 2)
+      - Element-wise product features added as alternative to histograms (configurable via feature_type)
+    2. Oversampling: reduced from 300x (paper) to 10x to reduce overfitting
+    3. Negatives: BM25 top 100 non positive as hard negatives instead of random sampling
     """
+
+    FEATURE_TYPES = ("histogram", "product")
 
     def __init__(
         self,
         bge_model_name: str = "BAAI/bge-m3",
+        feature_type: str = "product",
         n_bins: int = 76,
         oversample_ratio: int = 10,
         device: str = None
     ):
+        if feature_type not in self.FEATURE_TYPES:
+            raise ValueError(f"feature_type must be one of {self.FEATURE_TYPES}, got '{feature_type}'")
+
         self.bge_model_name = bge_model_name
+        self.feature_type = feature_type
         self.n_bins = n_bins
         self.oversample_ratio = oversample_ratio
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -47,7 +56,7 @@ class Stage1Retriever:
         self.corpus_embeddings: Optional[np.ndarray] = None
         self.doc_ids: Optional[List[str]] = None
 
-        # L1 histogram range — calibrated from data (paper assumes fixed (0, 2))
+        # L1 histogram range — calibrated from data (only used for feature_type="histogram")
         self.l1_hist_range: Optional[Tuple[float, float]] = None
 
         # Query embedding cache for faster evaluation
@@ -188,7 +197,22 @@ class Stage1Retriever:
             histograms.append(hist)
 
         return np.array(histograms, dtype=np.float32)
-    
+
+    def compute_features(
+        self,
+        query_embedding: np.ndarray,
+        doc_embeddings: np.ndarray = None
+    ) -> np.ndarray:
+        """Compute pairwise features based on configured feature_type."""
+        if doc_embeddings is None:
+            doc_embeddings = self.corpus_embeddings
+
+        if self.feature_type == "histogram":
+            return self.compute_l1_histograms(query_embedding, doc_embeddings)
+        else:  # product
+            q = query_embedding.reshape(1, -1)
+            return (doc_embeddings * q).astype(np.float32)
+
     def prepare_training_data(
         self,
         data_loader: DataLoader,
@@ -229,8 +253,8 @@ class Stage1Retriever:
                 if doc_id not in doc_id_to_idx:
                     continue
                 idx = doc_id_to_idx[doc_id]
-                hist = self.compute_l1_histograms(embedding, self.corpus_embeddings[idx:idx+1])
-                X_list.append(hist[0])
+                feat = self.compute_features(embedding, self.corpus_embeddings[idx:idx+1])
+                X_list.append(feat[0])
                 y_list.append(1)
 
             # Negative sampling: hard negatives (BM25) or random fallback
@@ -251,8 +275,8 @@ class Stage1Retriever:
 
             for doc_id in sampled_negatives:
                 idx = doc_id_to_idx[doc_id]
-                hist = self.compute_l1_histograms(embedding, self.corpus_embeddings[idx:idx+1])
-                X_list.append(hist[0])
+                feat = self.compute_features(embedding, self.corpus_embeddings[idx:idx+1])
+                X_list.append(feat[0])
                 y_list.append(0)
 
         X = np.array(X_list)
@@ -318,8 +342,8 @@ class Stage1Retriever:
         if self.classifier is None:
             raise ValueError("Classifier not trained. Call train_classifier first.")
         
-        histograms = self.compute_l1_histograms(query_embedding)
-        scores = self.classifier.predict_proba(histograms)[:, 1]
+        features = self.compute_features(query_embedding)
+        scores = self.classifier.predict_proba(features)[:, 1]
         
         top_indices = np.argsort(scores)[::-1][:k]
         results = [(self.doc_ids[i], float(scores[i])) for i in top_indices]
@@ -516,13 +540,12 @@ class Stage1Retriever:
             with open(path / "doc_ids.json", "w", encoding="utf-8") as f:
                 json.dump(self.doc_ids, f)
 
-        # Persist calibrated histogram range
-        meta = {}
+        # Persist feature_type and calibrated histogram range
+        meta = {"feature_type": self.feature_type}
         if self.l1_hist_range is not None:
             meta["l1_hist_range"] = list(self.l1_hist_range)
-        if meta:
-            with open(path / "metadata.json", "w", encoding="utf-8") as f:
-                json.dump(meta, f)
+        with open(path / "metadata.json", "w", encoding="utf-8") as f:
+            json.dump(meta, f)
 
     def load(self, path: str):
         """Load classifier, embeddings, and calibration metadata."""
@@ -542,11 +565,13 @@ class Stage1Retriever:
             with open(ids_path, "r", encoding="utf-8") as f:
                 self.doc_ids = json.load(f)
 
-        # Restore calibrated histogram range
+        # Restore feature_type and calibrated histogram range
         meta_path = path / "metadata.json"
         if meta_path.exists():
             with open(meta_path, "r", encoding="utf-8") as f:
                 meta = json.load(f)
+            if "feature_type" in meta:
+                self.feature_type = meta["feature_type"]
             if "l1_hist_range" in meta:
                 self.l1_hist_range = tuple(meta["l1_hist_range"])
 

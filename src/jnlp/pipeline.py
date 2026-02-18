@@ -89,15 +89,17 @@ class PipelineOrchestrator:
         
         self.stage1 = Stage1Retriever(
             bge_model_name=self.config.bge_model_name,
+            feature_type=self.config.stage1_feature_type,
             n_bins=self.config.n_histogram_bins,
             oversample_ratio=self.config.stage1_oversample_ratio
         )
-        
+
         if verbose:
+            print(f"Feature type: {self.config.stage1_feature_type}")
             print("Encoding corpus...")
         doc_ids, doc_texts = training_loader.get_corpus_texts()
         self.stage1.encode_corpus(doc_ids, doc_texts, batch_size=encode_batch_size, max_length=max_length)
-        
+
         if verbose:
             print("Encoding training queries...")
         train_query_ids = list(training_loader.qrels.keys())
@@ -106,10 +108,11 @@ class PipelineOrchestrator:
         train_query_embeddings = {qid: emb for qid, emb in zip(train_query_ids, query_embs)}
         self.query_embeddings.update(train_query_embeddings)
 
-        # Calibrate L1 histogram range from actual data (adjustment from paper's fixed (0,2))
-        if verbose:
-            print("Calibrating L1 histogram range...")
-        self.stage1.calibrate_l1_range(train_query_embeddings)
+        # Calibrate L1 histogram range (only needed for histogram feature type)
+        if self.config.stage1_feature_type == "histogram":
+            if verbose:
+                print("Calibrating L1 histogram range...")
+            self.stage1.calibrate_l1_range(train_query_embeddings)
 
         # Compute BM25 hard negatives (adjustment from paper's random negatives)
         if verbose:
@@ -278,6 +281,7 @@ class PipelineOrchestrator:
             print("\nLoading Stage 1 (BGE-M3 + CatBoost)...")
         self.stage1 = Stage1Retriever(
             bge_model_name=self.config.bge_model_name,
+            feature_type=self.config.stage1_feature_type,
             n_bins=self.config.n_histogram_bins
         ).load(stage1_path)
         self.stage1.load_bge_model()
@@ -429,6 +433,7 @@ class PipelineOrchestrator:
         else:
             self.stage1 = Stage1Retriever(
                 bge_model_name=self.config.bge_model_name,
+                feature_type=self.config.stage1_feature_type,
                 n_bins=self.config.n_histogram_bins
             ).load(stage1_path)
             self.stage1.load_bge_model()
