@@ -1,33 +1,12 @@
 import argparse
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Set
 import numpy as np
+from pathlib import Path
 
 from dataset import load_statute_documents, load_queries, get_default_paths
 from util.bm25 import BM25
-
-
-def calculate_mrr(
-    ranked_doc_ids: List[str],
-    ground_truth_ids: List[str],
-    top_k: int
-) -> float:
-    for rank, doc_id in enumerate(ranked_doc_ids[:top_k], start=1):
-        if doc_id in ground_truth_ids:
-            return 1.0 / rank
-    return 0.0
-
-
-def calculate_recall_at_k(
-    ranked_doc_ids: List[str],
-    ground_truth_ids: List[str],
-    top_k: int
-) -> float:
-    if not ground_truth_ids:
-        return 0.0
-    
-    top_k_docs = set(ranked_doc_ids[:top_k])
-    relevant_found = len(top_k_docs.intersection(set(ground_truth_ids)))
-    return relevant_found / len(ground_truth_ids)
+from util.metrics import calculate_mrr, calculate_recall_at_k
+from util.dataloader import load_qrels
 
 
 def evaluate_bm25(
@@ -93,12 +72,27 @@ def main():
         '--verbose', action='store_true',
         help='Print detailed results per query'
     )
+    parser.add_argument(
+        '--use_test_split', action='store_true', default=True,
+        help='Evaluate only on test split (default: True)'
+    )
+    parser.add_argument(
+        '--use_all', action='store_true',
+        help='Evaluate on all queries (ignores train/test split)'
+    )
     
     args = parser.parse_args()
     paths = get_default_paths()
     
+    # Determine split mode
+    use_test_split = args.use_test_split and not args.use_all
+    
     print("=" * 60)
     print("BM25 Statute Law Retrieval Evaluation")
+    if use_test_split:
+        print("  (Evaluating on TEST split only)")
+    else:
+        print("  (Evaluating on ALL queries)")
     print("=" * 60)
     
     print("\nLoading statute documents...")
@@ -107,11 +101,41 @@ def main():
     
     print("\nLoading queries...")
     queries, ground_truths, case_names = load_queries(str(paths['queries']))
-    print(f"  Loaded {len(queries)} queries with KUHPerdata ground truth")
+    print(f"  Loaded {len(queries)} total queries with KUHPerdata ground truth")
     
     if not queries:
         print("\nNo queries with KUHPerdata references found!")
         return
+    
+    # Filter to test split if requested
+    if use_test_split:
+        ir_dataset_dir = paths['statute'].parent.parent / 'ir_dataset'
+        qrels_test_path = ir_dataset_dir / 'qrels_test.tsv'
+        
+        if not qrels_test_path.exists():
+            print(f"\nWarning: {qrels_test_path} not found. Run 'python src/dataset.py' first.")
+            print("Falling back to all queries.")
+        else:
+            test_qrels = load_qrels(str(qrels_test_path))
+            test_query_ids = set(test_qrels.keys())
+            
+            # Filter queries to only test set
+            # Query IDs are "q0", "q1", etc. matching the index
+            filtered_queries = []
+            filtered_ground_truths = []
+            filtered_case_names = []
+            
+            for i, (q, gt, cn) in enumerate(zip(queries, ground_truths, case_names)):
+                query_id = f"q{i}"
+                if query_id in test_query_ids:
+                    filtered_queries.append(q)
+                    filtered_ground_truths.append(gt)
+                    filtered_case_names.append(cn)
+            
+            print(f"  Filtered to {len(filtered_queries)} test queries")
+            queries = filtered_queries
+            ground_truths = filtered_ground_truths
+            case_names = filtered_case_names
     
     print("\n" + "-" * 60)
     mean_mrr, mean_recall, per_query_mrr, per_query_recall = evaluate_bm25(
@@ -126,7 +150,8 @@ def main():
     )
     
     print("\n" + "=" * 60)
-    print("RESULTS")
+    split_name = "TEST" if use_test_split else "ALL"
+    print(f"RESULTS ({split_name} split)")
     print("=" * 60)
     print(f"Top-K: {args.top_k}")
     print(f"BM25 Parameters: b={args.bm25_b}, k1={args.bm25_k1}, n_gram={args.n_gram}")
