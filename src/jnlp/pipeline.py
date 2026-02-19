@@ -567,6 +567,17 @@ class PipelineOrchestrator:
                     train_embs[qid], k=self.config.stage1_topk
                 )
 
+            # Free Stage 1 GPU memory before loading LLM
+            if self.stage1 is not None:
+                self.stage1.bge_model = None
+                self.stage1.classifier = None
+                self.stage1.corpus_embeddings = None
+            import gc; gc.collect()
+            torch.cuda.empty_cache()
+            if verbose:
+                free_gb = torch.cuda.mem_get_info()[0] / 1024**3
+                print(f"GPU memory freed. {free_gb:.1f} GiB available")
+
             self.stage2 = Stage2FineTuner(
                 model_name=self.config.llm_model_name,
                 max_seq_length=self.config.max_seq_length,
