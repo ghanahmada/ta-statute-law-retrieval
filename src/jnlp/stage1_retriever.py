@@ -15,7 +15,7 @@ from util.dataloader import DataLoader
 class Stage1Retriever:
     """
     Paper Section 4.3 - Pre-retrieval Stage:
-    1. BGE-M3 dense embeddings
+    1. BGE-M3 dense embeddings -> 1024 embed dims
     2. L1 distance histogram features (76 bins)
     3. CatBoost classifier with oversampling
     4. Re-ranking with cross-encoder
