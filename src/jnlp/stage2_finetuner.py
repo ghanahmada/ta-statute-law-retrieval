@@ -15,20 +15,10 @@ class QueryArticleDataset(Dataset):
     Paper Section 4.3: Format query + article into classification prompt.
     """
 
-    MAX_TEXT_LENGTH = 1500  # truncation limit per field to fit within max_seq_length
+    MAX_TEXT_LENGTH = 8192  # truncation limit per field to fit within max_seq_length
 
-    PROMPT_TEMPLATE = """<|system|>
-You are a legal expert. Determine if the given article is relevant to the query.
-<|user|>
-Query: {query}
-
-Article: {article}
-
-Is this article relevant to answering the query? Answer with only 'Yes' or 'No'.
-<|assistant|>
-{label}"""
-
-    PROMPT_TEMPLATE_QWEN3 = """<|im_start|>system
+    # ChatML format — used by all Qwen models (Qwen2, 2.5, 3)
+    PROMPT_TEMPLATE = """<|im_start|>system
 You are a legal expert. Determine if the given article is relevant to the query.
 <|im_end|>
 <|im_start|>user
@@ -47,25 +37,13 @@ Is this article relevant to answering the query? Answer with only 'Yes' or 'No'.
         articles: Dict[str, str],
         pairs: List[Tuple[str, str, int]],
         tokenizer,
-        max_length: int = 2048,
+        max_length: int = 8192,
         upsample_positive: int = 3,
-        model_type: str = "qwen2"
     ):
-        """
-        Args:
-            queries: Dict mapping query_id to query text
-            articles: Dict mapping article_id to article text
-            pairs: List of (query_id, article_id, label) tuples
-            tokenizer: HuggingFace tokenizer
-            max_length: Maximum sequence length
-            upsample_positive: Paper Section 4.3 - upsample positive examples (3x)
-            model_type: "qwen2" or "qwen3" for prompt template selection
-        """
         self.queries = queries
         self.articles = articles
         self.tokenizer = tokenizer
         self.max_length = max_length
-        self.model_type = model_type
         
         # Paper Section 4.3: upsample positive examples
         self.samples = []
@@ -85,9 +63,7 @@ Is this article relevant to answering the query? Answer with only 'Yes' or 'No'.
         article_text = self.articles[aid]
         label_text = "Yes" if label == 1 else "No"
         
-        template = self.PROMPT_TEMPLATE_QWEN3 if self.model_type == "qwen3" else self.PROMPT_TEMPLATE
-        
-        prompt = template.format(
+        prompt = self.PROMPT_TEMPLATE.format(
             query=query_text[:self.MAX_TEXT_LENGTH],
             article=article_text[:self.MAX_TEXT_LENGTH],
             label=label_text
@@ -114,7 +90,7 @@ class DataCollatorForCausalLM:
     Masks padding tokens in labels with -100.
     """
     tokenizer: Any
-    max_length: int = 2048
+    max_length: int = 8192
     
     def __call__(self, features: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
         # Find max length in batch
@@ -166,7 +142,7 @@ class Stage2FineTuner:
     def __init__(
         self,
         model_name: str = "Qwen/Qwen2-7B-Instruct",
-        max_seq_length: int = 2048,
+        max_seq_length: int = 8192,
         lora_r: int = 16,
         lora_alpha: int = 32,
         lora_dropout: float = 0.05,
@@ -191,9 +167,6 @@ class Stage2FineTuner:
         self.model = None
         self.tokenizer = None
         self.trainer = None
-        
-        # Detect model type from name
-        self.model_type = "qwen3" if "qwen3" in model_name.lower() else "qwen2"
     
     def setup_model(self):
         """Load model with QLoRA configuration."""
@@ -287,7 +260,6 @@ class Stage2FineTuner:
             pairs=pairs,
             tokenizer=self.tokenizer,
             upsample_positive=upsample_positive,
-            model_type=self.model_type
         )
     
     def train(
@@ -369,7 +341,7 @@ class Stage2FineTuner:
         
         self.model.eval()
         
-        template = QueryArticleDataset.PROMPT_TEMPLATE_QWEN3 if self.model_type == "qwen3" else QueryArticleDataset.PROMPT_TEMPLATE
+        template = QueryArticleDataset.PROMPT_TEMPLATE
         
         # Get token IDs for "Yes" and "No"
         yes_token = self.tokenizer.encode("Yes", add_special_tokens=False)[0]

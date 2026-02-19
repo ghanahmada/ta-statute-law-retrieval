@@ -9,11 +9,17 @@ DATASETS = {
     "stard": {"path": "data/stard", "max_length": 1024, "batch_size": 64},
 }
 
-parser = argparse.ArgumentParser(description="JNLP Stage 1 evaluation")
+LLM_MODELS = {
+    "qwen2": "Qwen/Qwen2-7B-Instruct",
+    "qwen2.5": "Qwen/Qwen2.5-7B-Instruct",
+    "qwen3": "Qwen/Qwen3-8B",
+}
+
+parser = argparse.ArgumentParser(description="JNLP pipeline evaluation")
 parser.add_argument("--dataset", type=str, default="kuhperdata", choices=[*DATASETS, "all"])
-parser.add_argument("--feature_type", type=str, default="product",
-                    choices=["histogram", "product"],
-                    help="CatBoost feature type: histogram (paper) or product (element-wise q*d)")
+parser.add_argument("--stage", type=int, default=1, choices=[1, 2])
+parser.add_argument("--feature_type", type=str, default="product", choices=["histogram", "product"])
+parser.add_argument("--llm_model", type=str, default="qwen2.5", choices=LLM_MODELS.keys())
 parser.add_argument("--reranker", action="store_true", help="Enable re-ranker (slow)")
 args = parser.parse_args()
 
@@ -21,10 +27,16 @@ datasets = DATASETS if args.dataset == "all" else {args.dataset: DATASETS[args.d
 
 for name, cfg in datasets.items():
     data_dir = cfg["path"]
+    llm_name = LLM_MODELS[args.llm_model]
 
     print(f"\n{'=' * 60}")
-    print(f"  {name.upper()} — JNLP Stage 1 ({args.feature_type}, max_len={cfg['max_length']})")
+    print(f"  {name.upper()} — JNLP Stage {args.stage} ({args.feature_type})")
+    if args.stage == 2:
+        print(f"  LLM: {llm_name}")
     print(f"{'=' * 60}")
+
+    # Stage 1 always in base dir; Stage 2 in LLM-specific subdir
+    base_dir = f"outputs/jnlp/{name}"
 
     config = Config(
         corpus_path=f"{data_dir}/corpus.jsonl",
@@ -35,12 +47,19 @@ for name, cfg in datasets.items():
         stage1_feature_type=args.feature_type,
         encode_max_length=cfg["max_length"],
         encode_batch_size=cfg["batch_size"],
-        output_dir=f"outputs/jnlp/{name}",
+        llm_model_name=llm_name,
+        output_dir=base_dir,
     )
     pipeline = PipelineOrchestrator(config)
 
-    metrics = pipeline.evaluate_stage1_only(
-        verbose=True,
-        use_reranker=args.reranker,
-        use_test_split=True,
-    )
+    if args.stage == 1:
+        pipeline.evaluate_stage1_only(
+            verbose=True,
+            use_reranker=args.reranker,
+            use_test_split=True,
+        )
+    else:
+        pipeline.evaluate_stage2_only(
+            verbose=True,
+            use_reranker=args.reranker,
+        )

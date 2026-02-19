@@ -492,3 +492,174 @@ class PipelineOrchestrator:
             print("-" * 60)
         
         return metrics
+
+    def evaluate_stage2_only(
+        self,
+        top_k: int = 10,
+        use_reranker: bool = False,
+        verbose: bool = True,
+        train_if_missing: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Evaluate Stage 1 + Stage 2 (QLoRA re-ranking) on test split.
+        Trains both stages if no saved model found.
+        """
+        seed_everything(self.config.seed)
+        stage1_path = f"{self.config.output_dir}/stage1"
+        # LLM-specific subdir so qwen2/qwen2.5/qwen3 don't overwrite each other
+        llm_short = self.config.llm_model_name.split("/")[-1].lower()
+        stage2_path = f"{self.config.output_dir}/stage2_{llm_short}"
+
+        if verbose:
+            print("=" * 60)
+            print(f"Stage 1 + 2 Evaluation (CatBoost → {self.config.llm_model_name})")
+            print("=" * 60)
+
+        # Load data
+        if self.data_loader is None:
+            self.load_data()
+        if self.train_data_loader is None:
+            self.load_train_data()
+        if self.test_data_loader is None:
+            self.load_test_data()
+
+        if verbose:
+            print(f"Corpus: {len(self.data_loader.corpus)} docs")
+            print(f"Train: {len(self.train_data_loader.qrels)} queries")
+            print(f"Test:  {len(self.test_data_loader.qrels)} queries")
+
+        # --- Ensure Stage 1 is trained ---
+        s1_exists = Path(stage1_path).exists() and (Path(stage1_path) / "catboost_model.cbm").exists()
+        if not s1_exists and train_if_missing:
+            if verbose:
+                print("\nTraining Stage 1...")
+            self.run_stage1_training(use_train_split=True)
+        elif not s1_exists:
+            raise ValueError(f"No Stage 1 model at {stage1_path}")
+        else:
+            if self.stage1 is None:
+                self.stage1 = Stage1Retriever(
+                    bge_model_name=self.config.bge_model_name,
+                    feature_type=self.config.stage1_feature_type,
+                    n_bins=self.config.n_histogram_bins
+                ).load(stage1_path)
+                self.stage1.load_bge_model()
+
+        # --- Ensure Stage 2 is trained ---
+        s2_exists = Path(stage2_path).exists()
+        if not s2_exists and train_if_missing:
+            if verbose:
+                print("\nTraining Stage 2...")
+
+            # Run Stage 1 on train queries to build Stage 2 training data
+            train_qids = list(self.train_data_loader.qrels.keys())
+            train_texts = [self.data_loader.queries[qid]["text"] for qid in train_qids]
+
+            if verbose:
+                print(f"Running Stage 1 on {len(train_qids)} train queries...")
+            train_embs = self.stage1.encode_queries_batch(
+                train_qids, train_texts,
+                max_length=self.config.encode_max_length,
+            )
+            train_s1_results = {}
+            for qid in tqdm(train_qids, desc="Stage 1 on train"):
+                train_s1_results[qid] = self.stage1.predict_topk(
+                    train_embs[qid], k=self.config.stage1_topk
+                )
+
+            self.stage2 = Stage2FineTuner(
+                model_name=self.config.llm_model_name,
+                max_seq_length=self.config.max_seq_length,
+                lora_r=self.config.lora_r,
+                lora_alpha=self.config.lora_alpha,
+                lora_dropout=self.config.lora_dropout,
+                lora_target_modules=self.config.lora_target_modules,
+                use_4bit=self.config.use_4bit,
+                bnb_4bit_compute_dtype=self.config.bnb_4bit_compute_dtype,
+                bnb_4bit_quant_type=self.config.bnb_4bit_quant_type,
+            )
+            self.stage2.setup_model()
+
+            train_dataset = self.stage2.prepare_data(
+                self.train_data_loader,
+                train_s1_results,
+                upsample_positive=self.config.stage2_upsample_ratio,
+            )
+            if verbose:
+                print(f"Stage 2 training pairs: {len(train_dataset)}")
+
+            self.stage2.train(
+                train_dataset=train_dataset,
+                output_dir=stage2_path,
+                batch_size=self.config.batch_size,
+                gradient_accumulation_steps=self.config.gradient_accumulation_steps,
+                learning_rate=self.config.learning_rate,
+                num_epochs=self.config.num_epochs,
+                warmup_ratio=self.config.warmup_ratio,
+            )
+        elif not s2_exists:
+            raise ValueError(f"No Stage 2 model at {stage2_path}")
+
+        # Load Stage 2 for inference (if not already in memory from training)
+        if self.stage2 is None:
+            self.stage2 = Stage2FineTuner(
+                model_name=self.config.llm_model_name,
+                max_seq_length=self.config.max_seq_length,
+                use_4bit=self.config.use_4bit,
+                bnb_4bit_compute_dtype=self.config.bnb_4bit_compute_dtype,
+                bnb_4bit_quant_type=self.config.bnb_4bit_quant_type,
+            )
+            self.stage2.load_adapter(stage2_path, self.config.llm_model_name)
+
+        # --- Evaluate on test split ---
+        test_qids = list(self.test_data_loader.qrels.keys())
+        test_texts = [self.data_loader.queries[qid]["text"] for qid in test_qids]
+
+        if verbose:
+            print(f"\nEncoding {len(test_qids)} test queries...")
+        test_embs = self.stage1.encode_queries_batch(
+            test_qids, test_texts,
+            max_length=self.config.encode_max_length,
+            cache_path=f"{self.config.output_dir}/stage1/query_embeddings.npy",
+        )
+
+        stage1_rankings = {}
+        stage2_rankings = {}
+
+        for qid in tqdm(test_qids, desc="Stage 1+2 inference"):
+            # Stage 1
+            s1_results = self.stage1.predict_topk(test_embs[qid], k=self.config.stage1_topk)
+            stage1_rankings[qid] = [did for did, _ in s1_results]
+
+            # Stage 2: re-rank stage1 candidates
+            articles = [
+                (did, self.data_loader.corpus[did]["text"])
+                for did, _ in s1_results if did in self.data_loader.corpus
+            ]
+            s2_scores = self.stage2.predict(self.data_loader.queries[qid]["text"], articles)
+            s2_scores.sort(key=lambda x: x[1], reverse=True)
+            stage2_rankings[qid] = [did for did, _ in s2_scores]
+
+        ground_truth = {
+            qid: list(docs.keys())
+            for qid, docs in self.test_data_loader.qrels.items()
+        }
+
+        s1_metrics = evaluate_ranking(stage1_rankings, ground_truth, top_k=top_k)
+        s2_metrics = evaluate_ranking(stage2_rankings, ground_truth, top_k=top_k)
+
+        if verbose:
+            print("\n" + "=" * 60)
+            print("RESULTS (TEST split)")
+            print("=" * 60)
+            print(f"Stage 1 (CatBoost):")
+            print(f"  MRR@{top_k}: {s1_metrics[f'mrr@{top_k}']:.4f}")
+            print(f"  Recall@{top_k}: {s1_metrics[f'recall@{top_k}']:.4f}")
+            print(f"Stage 2 ({self.config.llm_model_name}):")
+            print(f"  MRR@{top_k}: {s2_metrics[f'mrr@{top_k}']:.4f}")
+            print(f"  Recall@{top_k}: {s2_metrics[f'recall@{top_k}']:.4f}")
+            print(f"  Precision@{top_k}: {s2_metrics[f'precision@{top_k}']:.4f}")
+            print(f"  Queries with hits: {int(s2_metrics['hit_rate'] * s2_metrics['n_queries'])}/{s2_metrics['n_queries']} ({s2_metrics['hit_rate']:.1%})")
+            print("-" * 60)
+
+        return {"stage1": s1_metrics, "stage2": s2_metrics}
