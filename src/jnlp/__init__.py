@@ -58,6 +58,8 @@ class Config:
     stage1_oversample_ratio: int = 10
     stage1_topk: int = 100  # after CatBoost
     stage1_rerank_topk: int = 50  # after re-ranking
+    encode_max_length: int = 1024  # BGE-M3 supports up to 8192
+    encode_batch_size: int = 64
     
     # Stage 2: QLoRA Fine-tuning
     llm_model_name: str = "Qwen/Qwen2-7B-Instruct"  # or "Qwen/Qwen3-8B"

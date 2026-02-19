@@ -61,8 +61,6 @@ class PipelineOrchestrator:
     
     def run_stage1_training(
         self,
-        encode_batch_size: int = 64,
-        max_length: int = 1024,
         classifier_iterations: int = 1000,
         verbose: bool = True,
         use_train_split: bool = True
@@ -98,13 +96,13 @@ class PipelineOrchestrator:
             print(f"Feature type: {self.config.stage1_feature_type}")
             print("Encoding corpus...")
         doc_ids, doc_texts = training_loader.get_corpus_texts()
-        self.stage1.encode_corpus(doc_ids, doc_texts, batch_size=encode_batch_size, max_length=max_length)
+        self.stage1.encode_corpus(doc_ids, doc_texts, batch_size=self.config.encode_batch_size, max_length=self.config.encode_max_length)
 
         if verbose:
             print("Encoding training queries...")
         train_query_ids = list(training_loader.qrels.keys())
         train_query_texts = [training_loader.queries[qid]["text"] for qid in train_query_ids]
-        query_embs = self.stage1.encode_bge(train_query_texts, batch_size=encode_batch_size, max_length=max_length)
+        query_embs = self.stage1.encode_bge(train_query_texts, batch_size=self.config.encode_batch_size, max_length=self.config.encode_max_length)
         train_query_embeddings = {qid: emb for qid, emb in zip(train_query_ids, query_embs)}
         self.query_embeddings.update(train_query_embeddings)
 
@@ -158,7 +156,7 @@ class PipelineOrchestrator:
         
         for qid, query_data in tqdm(self.data_loader.queries.items(), desc="Stage 1 Inference"):
             if qid not in self.query_embeddings:
-                emb = self.stage1.encode_bge([query_data["text"]])[0]
+                emb = self.stage1.encode_bge([query_data["text"]], max_length=self.config.encode_max_length)[0]
                 self.query_embeddings[qid] = emb
             
             results = self.stage1.retrieve(
@@ -316,7 +314,7 @@ class PipelineOrchestrator:
         for qid, query_data in iterator:
             query_text = query_data["text"]
             
-            query_emb = self.stage1.encode_bge([query_text])[0]
+            query_emb = self.stage1.encode_bge([query_text], max_length=self.config.encode_max_length)[0]
             
             stage1_results = self.stage1.retrieve(
                 query_text=query_text,
@@ -451,7 +449,9 @@ class PipelineOrchestrator:
             print(f"Encoding {len(test_query_ids)} test queries...")
         query_cache_path = f"{self.config.output_dir}/stage1/query_embeddings.npy"
         query_embeddings = self.stage1.encode_queries_batch(
-            test_query_ids, test_query_texts, cache_path=query_cache_path
+            test_query_ids, test_query_texts,
+            max_length=self.config.encode_max_length,
+            cache_path=query_cache_path,
         )
         
         queries_batch = {

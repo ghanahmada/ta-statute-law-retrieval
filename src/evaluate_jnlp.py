@@ -3,10 +3,10 @@ import argparse
 from jnlp import Config, PipelineOrchestrator
 
 DATASETS = {
-    "kuhperdata": "data/kuhperdata",
-    "bsard": "data/bsard",
-    "ilpcsr": "data/ilpcsr",
-    "stard": "data/stard",
+    "kuhperdata": {"path": "data/kuhperdata", "max_length": 1024, "batch_size": 64},
+    "bsard": {"path": "data/bsard", "max_length": 1024, "batch_size": 64},
+    "ilpcsr": {"path": "data/ilpcsr", "max_length": 8192, "batch_size": 8},
+    "stard": {"path": "data/stard", "max_length": 1024, "batch_size": 64},
 }
 
 parser = argparse.ArgumentParser(description="JNLP Stage 1 evaluation")
@@ -19,9 +19,11 @@ args = parser.parse_args()
 
 datasets = DATASETS if args.dataset == "all" else {args.dataset: DATASETS[args.dataset]}
 
-for name, data_dir in datasets.items():
+for name, cfg in datasets.items():
+    data_dir = cfg["path"]
+
     print(f"\n{'=' * 60}")
-    print(f"  {name.upper()} — JNLP Stage 1 ({args.feature_type})")
+    print(f"  {name.upper()} — JNLP Stage 1 ({args.feature_type}, max_len={cfg['max_length']})")
     print(f"{'=' * 60}")
 
     config = Config(
@@ -31,6 +33,8 @@ for name, data_dir in datasets.items():
         qrels_train_path=f"{data_dir}/qrels_train.tsv",
         qrels_test_path=f"{data_dir}/qrels_test.tsv",
         stage1_feature_type=args.feature_type,
+        encode_max_length=cfg["max_length"],
+        encode_batch_size=cfg["batch_size"],
         output_dir=f"outputs/jnlp/{name}",
     )
     pipeline = PipelineOrchestrator(config)
