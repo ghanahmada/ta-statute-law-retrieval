@@ -18,7 +18,7 @@ else
     echo "SAILER repo already exists at ${SAILER_DIR}"
 fi
 
-# --- SAILER venv (Python 3.10) ---
+# --- SAILER venv (Python 3.12) ---
 echo "Setting up SAILER virtual environment (Python 3.10)..."
 uv venv .venv-sailer --python 3.10
 source .venv-sailer/bin/activate

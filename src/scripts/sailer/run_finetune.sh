@@ -4,7 +4,7 @@ set -euo pipefail
 # SAILER finetuning on kuhperdata
 # Run from TA project root: bash src/scripts/sailer/run_finetune.sh
 
-SAILER_ROOT="$(cd "$(dirname "$0")/../../../../SAILER" && pwd)"
+SAILER_ROOT="$(cd "$(dirname "$0")/../../../SAILER" && pwd)"
 export PYTHONPATH="${SAILER_ROOT}/src:${PYTHONPATH:-}"
 
 echo "SAILER root: ${SAILER_ROOT}"

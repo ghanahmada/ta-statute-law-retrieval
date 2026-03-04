@@ -4,7 +4,7 @@ set -euo pipefail
 # Encode corpus + queries with finetuned SAILER model for retrieval evaluation
 # Run from TA project root: bash src/scripts/sailer/run_encode.sh
 
-SAILER_ROOT="$(cd "$(dirname "$0")/../../../../SAILER" && pwd)"
+SAILER_ROOT="$(cd "$(dirname "$0")/../../../SAILER" && pwd)"
 export PYTHONPATH="${SAILER_ROOT}/src:${PYTHONPATH:-}"
 
 MODEL_DIR="./outputs/sailer_kuhperdata"
