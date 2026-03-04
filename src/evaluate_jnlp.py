@@ -13,6 +13,7 @@ LLM_MODELS = {
     "qwen2": "Qwen/Qwen2-7B-Instruct",
     "qwen2.5": "Qwen/Qwen2.5-7B-Instruct",
     "qwen3": "Qwen/Qwen3-8B",
+    "qwen3.5": "Qwen/Qwen3.5-4B",
 }
 
 parser = argparse.ArgumentParser(description="JNLP pipeline evaluation")

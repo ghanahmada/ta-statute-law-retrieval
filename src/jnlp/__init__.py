@@ -65,7 +65,7 @@ class Config:
     llm_model_name: str = "Qwen/Qwen2-7B-Instruct"  # or "Qwen/Qwen3-8B"
     lora_r: int = 16
     lora_alpha: int = 32
-    lora_dropout: float = 0.05
+    lora_dropout: float = 0
     lora_target_modules: List[str] = field(default_factory=lambda: [
         "q_proj", "k_proj", "v_proj", "o_proj", 
         "gate_proj", "up_proj", "down_proj"
@@ -74,17 +74,15 @@ class Config:
     stage2_upsample_ratio: int = 3
     
     # Training
-    batch_size: int = 4
-    gradient_accumulation_steps: int = 4
+    batch_size: int = 2
+    gradient_accumulation_steps: int = 8
     learning_rate: float = 2e-4
     num_epochs: int = 3
     max_seq_length: int = 2048
     warmup_ratio: float = 0.1
     
-    # Quantization (QLoRA)
-    use_4bit: bool = True
-    bnb_4bit_compute_dtype: str = "bfloat16"
-    bnb_4bit_quant_type: str = "nf4"
+    # Quantization (QLoRA via Unsloth)
+    load_in_4bit: bool = True
     
     # Stage 3: Ensemble
     ensemble_metric: str = "f2"  # F2 prioritizes recall (legal retrieval)

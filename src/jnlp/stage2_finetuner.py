@@ -136,20 +136,18 @@ class DataCollatorForCausalLM:
 class Stage2FineTuner:
     """
     Paper Section 4.3: Fine-tune LLM with QLoRA for binary classification.
-    Uses 4-bit quantization via bitsandbytes and PEFT adapters.
+    Uses Unsloth for optimized 4-bit quantization and LoRA training.
     """
-    
+
     def __init__(
         self,
         model_name: str = "Qwen/Qwen2-7B-Instruct",
         max_seq_length: int = 8192,
         lora_r: int = 16,
         lora_alpha: int = 32,
-        lora_dropout: float = 0.05,
+        lora_dropout: float = 0,
         lora_target_modules: List[str] = None,
-        use_4bit: bool = True,
-        bnb_4bit_compute_dtype: str = "bfloat16",
-        bnb_4bit_quant_type: str = "nf4"
+        load_in_4bit: bool = True,
     ):
         self.model_name = model_name
         self.max_seq_length = max_seq_length
@@ -160,65 +158,38 @@ class Stage2FineTuner:
             "q_proj", "k_proj", "v_proj", "o_proj",
             "gate_proj", "up_proj", "down_proj"
         ]
-        self.use_4bit = use_4bit
-        self.bnb_4bit_compute_dtype = bnb_4bit_compute_dtype
-        self.bnb_4bit_quant_type = bnb_4bit_quant_type
-        
+        self.load_in_4bit = load_in_4bit
+
         self.model = None
         self.tokenizer = None
         self.trainer = None
     
     def setup_model(self):
-        """Load model with QLoRA configuration."""
-        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-        from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-        
-        # Quantization config
-        if self.use_4bit:
-            compute_dtype = getattr(torch, self.bnb_4bit_compute_dtype)
-            bnb_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_quant_type=self.bnb_4bit_quant_type,
-                bnb_4bit_compute_dtype=compute_dtype,
-                bnb_4bit_use_double_quant=True
-            )
-        else:
-            bnb_config = None
-        
-        # Load tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_name,
-            trust_remote_code=True,
-            padding_side="right"
+        """Load model with QLoRA configuration via Unsloth."""
+        from unsloth import FastLanguageModel
+
+        self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+            model_name=self.model_name,
+            max_seq_length=self.max_seq_length,
+            dtype=None,  # auto-detect
+            load_in_4bit=self.load_in_4bit,
         )
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
-        
-        # Load model
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            quantization_config=bnb_config,
-            device_map="auto",
-            trust_remote_code=True,
-            torch_dtype=torch.bfloat16 if not self.use_4bit else None
-        )
-        
-        if self.use_4bit:
-            self.model = prepare_model_for_kbit_training(self.model)
-        
-        # LoRA config
-        lora_config = LoraConfig(
+
+        self.model = FastLanguageModel.get_peft_model(
+            self.model,
             r=self.lora_r,
-            lora_alpha=self.lora_alpha,
             target_modules=self.lora_target_modules,
+            lora_alpha=self.lora_alpha,
             lora_dropout=self.lora_dropout,
             bias="none",
-            task_type="CAUSAL_LM"
+            use_gradient_checkpointing="unsloth",  # 4x longer context
+            random_state=42,
+            max_seq_length=self.max_seq_length,
         )
-        
-        self.model = get_peft_model(self.model, lora_config)
         self.model.print_trainable_parameters()
-        
+
         return self
     
     def prepare_data(
@@ -290,13 +261,11 @@ class Stage2FineTuner:
             save_total_limit=2,
             fp16=False,
             bf16=True,
-            optim="paged_adamw_32bit",
+            optim="adamw_8bit",
             lr_scheduler_type="cosine",
             report_to="none",
             remove_unused_columns=False,
             dataloader_num_workers=0,
-            gradient_checkpointing=True,
-            gradient_checkpointing_kwargs={"use_reentrant": False}
         )
         
         data_collator = DataCollatorForCausalLM(
@@ -338,9 +307,10 @@ class Stage2FineTuner:
         """
         if self.model is None:
             raise ValueError("Model not loaded. Call setup_model or load first.")
-        
-        self.model.eval()
-        
+
+        from unsloth import FastLanguageModel
+        FastLanguageModel.for_inference(self.model)
+
         template = QueryArticleDataset.PROMPT_TEMPLATE
         
         # Get token IDs for "Yes" and "No"
@@ -354,12 +324,15 @@ class Stage2FineTuner:
             
             prompts = []
             for _, article_text in batch:
-                # Remove the label part for inference
+                # Build inference prompt: strip trailing <|im_end|> so the
+                # last token is the newline after "assistant\n", exactly where
+                # the model learned to predict Yes/No during training.
                 prompt = template.format(
                     query=query[:QueryArticleDataset.MAX_TEXT_LENGTH],
                     article=article_text[:QueryArticleDataset.MAX_TEXT_LENGTH],
                     label=""
-                ).rstrip()
+                )
+                prompt = prompt.rsplit("<|im_end|>", 1)[0]
                 prompts.append(prompt)
             
             inputs = self.tokenizer(
@@ -390,36 +363,14 @@ class Stage2FineTuner:
             self.tokenizer.save_pretrained(path)
     
     def load_adapter(self, adapter_path: str, base_model_name: str = None):
-        """Load LoRA adapter and merge with base model."""
-        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-        from peft import PeftModel
-        
-        base_model_name = base_model_name or self.model_name
-        
-        if self.use_4bit:
-            compute_dtype = getattr(torch, self.bnb_4bit_compute_dtype)
-            bnb_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_quant_type=self.bnb_4bit_quant_type,
-                bnb_4bit_compute_dtype=compute_dtype,
-                bnb_4bit_use_double_quant=True
-            )
-        else:
-            bnb_config = None
-        
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            adapter_path,
-            trust_remote_code=True,
-            padding_side="right"
+        """Load LoRA adapter via Unsloth (auto-detects adapter_config.json)."""
+        from unsloth import FastLanguageModel
+
+        self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+            model_name=adapter_path,
+            max_seq_length=self.max_seq_length,
+            dtype=None,
+            load_in_4bit=self.load_in_4bit,
         )
-        
-        base_model = AutoModelForCausalLM.from_pretrained(
-            base_model_name,
-            quantization_config=bnb_config,
-            device_map="auto",
-            trust_remote_code=True
-        )
-        
-        self.model = PeftModel.from_pretrained(base_model, adapter_path)
-        
+
         return self

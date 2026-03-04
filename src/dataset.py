@@ -367,7 +367,7 @@ if __name__ == '__main__':
     print("\n" + "=" * 60)
     print("Exporting IR dataset with Semantic Train/Test Split...")
     print("=" * 60)
-    output_dir = paths['statute'].parent.parent / 'ir_dataset'
+    output_dir = paths['statute'].parent.parent / 'kuhperdata'
     created_files = export_ir_dataset(
         str(output_dir),
         documents, doc_ids,

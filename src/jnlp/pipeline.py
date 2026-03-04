@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from tqdm import tqdm
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
@@ -178,13 +179,11 @@ class PipelineOrchestrator:
             lora_alpha=self.config.lora_alpha,
             lora_dropout=self.config.lora_dropout,
             lora_target_modules=self.config.lora_target_modules,
-            use_4bit=self.config.use_4bit,
-            bnb_4bit_compute_dtype=self.config.bnb_4bit_compute_dtype,
-            bnb_4bit_quant_type=self.config.bnb_4bit_quant_type
+            load_in_4bit=self.config.load_in_4bit,
         )
 
         self.stage2.setup_model()
-        
+
         train_dataset = self.stage2.prepare_data(
             self.data_loader,
             self.stage1_results,
@@ -295,9 +294,7 @@ class PipelineOrchestrator:
         self.stage2 = Stage2FineTuner(
             model_name=self.config.llm_model_name,
             max_seq_length=self.config.max_seq_length,
-            use_4bit=self.config.use_4bit,
-            bnb_4bit_compute_dtype=self.config.bnb_4bit_compute_dtype,
-            bnb_4bit_quant_type=self.config.bnb_4bit_quant_type
+            load_in_4bit=self.config.load_in_4bit,
         )
         self.stage2.load_adapter(stage2_path, self.config.llm_model_name)
         
@@ -585,9 +582,7 @@ class PipelineOrchestrator:
                 lora_alpha=self.config.lora_alpha,
                 lora_dropout=self.config.lora_dropout,
                 lora_target_modules=self.config.lora_target_modules,
-                use_4bit=self.config.use_4bit,
-                bnb_4bit_compute_dtype=self.config.bnb_4bit_compute_dtype,
-                bnb_4bit_quant_type=self.config.bnb_4bit_quant_type,
+                load_in_4bit=self.config.load_in_4bit,
             )
             self.stage2.setup_model()
 
@@ -608,6 +603,16 @@ class PipelineOrchestrator:
                 num_epochs=self.config.num_epochs,
                 warmup_ratio=self.config.warmup_ratio,
             )
+
+            # Reload Stage 1 for test evaluation (was freed above for GPU memory)
+            if verbose:
+                print("\nReloading Stage 1 for test evaluation...")
+            self.stage1 = Stage1Retriever(
+                bge_model_name=self.config.bge_model_name,
+                feature_type=self.config.stage1_feature_type,
+                n_bins=self.config.n_histogram_bins
+            ).load(stage1_path)
+            self.stage1.load_bge_model()
         elif not s2_exists:
             raise ValueError(f"No Stage 2 model at {stage2_path}")
 
@@ -616,9 +621,7 @@ class PipelineOrchestrator:
             self.stage2 = Stage2FineTuner(
                 model_name=self.config.llm_model_name,
                 max_seq_length=self.config.max_seq_length,
-                use_4bit=self.config.use_4bit,
-                bnb_4bit_compute_dtype=self.config.bnb_4bit_compute_dtype,
-                bnb_4bit_quant_type=self.config.bnb_4bit_quant_type,
+                load_in_4bit=self.config.load_in_4bit,
             )
             self.stage2.load_adapter(stage2_path, self.config.llm_model_name)
 
