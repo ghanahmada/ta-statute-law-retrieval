@@ -24,6 +24,7 @@ data/ir_dataset/
 data/bsard/
 data/ilpcsr/
 data/stard/
+data/sailer/
 
 # Training outputs
 outputs/
