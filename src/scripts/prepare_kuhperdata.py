@@ -2,11 +2,19 @@ import json
 import os
 import re
 
-from datasets import load_dataset
-from huggingface_hub import login
+import pandas as pd
+from huggingface_hub import hf_hub_download, login
 
 HF_DATASET_ID = "ghanahmada/kuhperdata"
 OUTPUT_DIR = os.path.join("data", "kuhperdata")
+
+# Parquet file paths in the HuggingFace repo
+PARQUET_FILES = {
+    "corpus": "data/corpus-00000-of-00001.parquet",
+    "queries": "data/queries-00000-of-00001.parquet",
+    "qrels_train": "data/qrels_train-00000-of-00001.parquet",
+    "qrels_test": "data/qrels_test-00000-of-00001.parquet",
+}
 
 
 def strip_statute_references(text: str) -> str:
@@ -43,56 +51,65 @@ def main():
 
     login()
 
-    ds = load_dataset(HF_DATASET_ID)
+    # Download parquet files directly to avoid schema unification issues
+    def load_parquet(split_name: str) -> pd.DataFrame:
+        local_path = hf_hub_download(
+            repo_id=HF_DATASET_ID,
+            filename=PARQUET_FILES[split_name],
+            repo_type="dataset",
+        )
+        return pd.read_parquet(local_path)
+
+    corpus_df = load_parquet("corpus")
+    queries_df = load_parquet("queries")
+    qrels_train_df = load_parquet("qrels_train")
+    qrels_test_df = load_parquet("qrels_test")
 
     # --- corpus.jsonl ---
-    corpus = ds["corpus"]
     corpus_path = os.path.join(OUTPUT_DIR, "corpus.jsonl")
     with open(corpus_path, "w", encoding="utf-8") as f:
-        for doc in corpus:
+        for _, doc in corpus_df.iterrows():
             entry = {
                 "_id": str(doc["_id"]),
                 "title": doc["title"],
                 "text": doc["text"],
             }
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    print(f"Wrote {len(corpus)} documents to {corpus_path}")
+    print(f"Wrote {len(corpus_df)} documents to {corpus_path}")
 
     # --- queries.jsonl (with statute reference stripping) ---
-    queries = ds["queries"]
     queries_path = os.path.join(OUTPUT_DIR, "queries.jsonl")
     with open(queries_path, "w", encoding="utf-8") as f:
-        for q in queries:
+        for _, q in queries_df.iterrows():
             entry = {
                 "_id": str(q["_id"]),
                 "text": strip_statute_references(q["text"]),
                 "metadata": {"case_name": q.get("case_name", "")},
             }
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    print(f"Wrote {len(queries)} queries to {queries_path}")
+    print(f"Wrote {len(queries_df)} queries to {queries_path}")
 
     # --- qrels_train.tsv / qrels_test.tsv ---
-    for split in ("train", "test"):
-        qrels = ds[f"qrels_{split}"]
+    for split, qrels_df in [("train", qrels_train_df), ("test", qrels_test_df)]:
         qrels_path = os.path.join(OUTPUT_DIR, f"qrels_{split}.tsv")
         with open(qrels_path, "w", encoding="utf-8") as f:
             f.write("query_id\tdoc_id\tscore\n")
-            for row in qrels:
+            for _, row in qrels_df.iterrows():
                 f.write(f"{row['query_id']}\t{row['doc_id']}\t{row['score']}\n")
-        print(f"Wrote {len(qrels)} judgments to {qrels_path}")
+        print(f"Wrote {len(qrels_df)} judgments to {qrels_path}")
 
     # --- dataset_stats.json ---
-    n_train = len(ds["qrels_train"])
-    n_test = len(ds["qrels_test"])
+    n_train = len(qrels_train_df)
+    n_test = len(qrels_test_df)
     stats = {
         "dataset": "kuhperdata",
         "language": "id",
-        "num_documents": len(corpus),
-        "num_queries": len(queries),
+        "num_documents": len(corpus_df),
+        "num_queries": len(queries_df),
         "num_relevance_judgments": n_train + n_test,
         "num_train_judgments": n_train,
         "num_test_judgments": n_test,
-        "avg_relevant_docs_per_query": (n_train + n_test) / len(queries) if len(queries) > 0 else 0,
+        "avg_relevant_docs_per_query": (n_train + n_test) / len(queries_df) if len(queries_df) > 0 else 0,
     }
     stats_path = os.path.join(OUTPUT_DIR, "dataset_stats.json")
     with open(stats_path, "w", encoding="utf-8") as f:
