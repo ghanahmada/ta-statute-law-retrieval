@@ -1,7 +1,7 @@
 """Convert kuhperdata to SAILER finetuning format with BM25 hard negatives.
 
 Input:  data/kuhperdata/{corpus.jsonl, queries.jsonl, qrels_train.tsv}
-Output: data/sailer/finetune/train.jsonl
+Output: data/sailer/finetune/train.json
 
 Each output line: {"query": "...", "positives": ["...", ...], "negatives": ["...", ...]}
 """
@@ -111,7 +111,7 @@ def main():
     bm25, doc_ids = build_bm25_index(corpus)
     all_doc_ids = set(doc_ids)
 
-    output_path = os.path.join(OUTPUT_DIR, "train.jsonl")
+    output_path = os.path.join(OUTPUT_DIR, "train.json")
     skipped = 0
 
     print("Mining hard negatives and building training data...")
