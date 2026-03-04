@@ -1,0 +1,16 @@
+SAILER Model Comparison on kuhperdata test set (279 queries)
+============================================================
+
+Model                          NDCG@10   Recall@10   MAP     MRR@10
+------------------------------------------------------------
+SAILER_en base (zero-shot)     ~0.001    ~0.001     ~0.001   ~0.001
+SAILER extended + finetuned     0.0045    0.0058     0.0036   0.0104
+multilingual-e5-base finetuned  0.1490    0.2660     0.1123   0.1603
+
+Notes:
+- SAILER_en: English-only legal BERT, collapses to constant embeddings on Indonesian input
+- SAILER extended: vocab expanded with 2,232 Indonesian tokens (mean subword init),
+  then finetuned 5 epochs on kuhperdata train set with --add_pooler
+- me5 finetuned: intfloat/multilingual-e5-base finetuned 5 epochs via SAILER bi-encoder framework
+- me5 outperforms SAILER extended ~33x on NDCG@10; root cause is SAILER's English pre-training
+  weights, not tokenization alone

@@ -1,15 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-# Encode corpus + queries with finetuned SAILER model for retrieval evaluation
-# Run from TA project root: bash src/scripts/sailer/run_encode.sh
+# Encode corpus + queries with finetuned multilingual-e5 model
+# Run from TA project root: bash src/scripts/sailer/run_encode_me5.sh
 
 SAILER_ROOT="$(cd "$(dirname "$0")/../../../SAILER" && pwd)"
 export PYTHONPATH="${SAILER_ROOT}/src:${PYTHONPATH:-}"
 
-MODEL_DIR="./outputs/sailer_extended_kuhperdata"
+MODEL_DIR="./outputs/me5_kuhperdata"
 ENCODE_DIR="./data/sailer/encode"
-OUTPUT_DIR="./outputs/sailer_extended_kuhperdata/embeddings"
+OUTPUT_DIR="./outputs/me5_kuhperdata/embeddings"
+
+mkdir -p "${OUTPUT_DIR}"
 
 echo "SAILER root: ${SAILER_ROOT}"
 echo "Model: ${MODEL_DIR}"
@@ -38,4 +40,4 @@ python -m dense.driver.encode \
   --encode_is_qry
 
 echo "Encoding complete. Embeddings saved to ${OUTPUT_DIR}"
-echo "Run: python src/scripts/sailer/evaluate_retrieval.py"
+echo "Run: python src/scripts/sailer/evaluate_retrieval.py --embeddings_dir ${OUTPUT_DIR}"
