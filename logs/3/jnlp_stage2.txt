@@ -1,0 +1,24 @@
+JNLP Stage 2 Results (QLoRA Qwen2.5-7B-Instruct re-ranking on Stage 1 candidates)
+Dataset: all 4 datasets, TEST split
+Date: 2026-03-05
+============================================================
+
+Training config:
+- Model: Qwen/Qwen2.5-7B-Instruct (4-bit QLoRA via Unsloth)
+- LoRA: r=16, alpha=32, target all q/k/v/o/gate/up/down projections
+- Hard Negative Mining: 4 hard negs (ranks 1-14) + 1 random neg (ranks 50-99) per query
+- Upsample positives: 3x
+- Batch size: 8 | Grad accum: 2 | Effective batch: 16
+- Epochs: 1 | Max seq length: 1536 | LR: 2e-4 (cosine)
+- Stage 1 candidates used for training: top-100 (HNM selects ~5 per query)
+
+Dataset       Language  N Queries  S1 MRR@10  S2 MRR@10  S1 Recall  S2 Recall  Hit Rate  Train Steps  Train Time
+------------------------------------------------------------------------------------------------------------------
+KUHPerdata    id        279        0.3997     0.3945     0.3939     0.4151     64.5%     988          2h 19m
+
+Notes:
+- KUHPerdata: MRR@10 slightly dropped (-0.005) but Recall@10 improved +5.4% and hit rate +2.5%
+  Stage 2 trades top-1 precision for broader recall, which is correct for legal retrieval (F2 metric)
+- Training took 2h 19m (8.47s/step) due to max_seq_length=1536; longer than expected 30 min
+- Inference took ~77 min for 279 queries (16.5s/query over 50 candidates each)
+- Remaining datasets (BSARD, IL-PCSR, STARD): pending
