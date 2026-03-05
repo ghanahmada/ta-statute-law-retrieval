@@ -13,7 +13,7 @@ import os
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 import numpy as np
 import torch
@@ -70,15 +70,20 @@ class Config:
         "q_proj", "k_proj", "v_proj", "o_proj", 
         "gate_proj", "up_proj", "down_proj"
     ])
-    # Paper Section 4.3: 3x upsampling for positive examples
+    # Paper Section 4.3: 3x upsample positives
     stage2_upsample_ratio: int = 3
-    
-    # Training
-    batch_size: int = 2
-    gradient_accumulation_steps: int = 8
+    # Hard Negative Mining for fast training (~30 min vs ~2h with full top-50)
+    stage2_hard_neg_k: int = 4           # hard negatives per query (ranks 1-14)
+    stage2_random_neg_k: int = 1         # random negatives per query (ranks 50-99)
+    stage2_hard_neg_range: Tuple[int, int] = field(default_factory=lambda: (1, 15))
+    stage2_random_neg_range: Tuple[int, int] = field(default_factory=lambda: (50, 100))
+
+    # Training — effective batch = batch_size × gradient_accumulation_steps = 16
+    batch_size: int = 8
+    gradient_accumulation_steps: int = 2
     learning_rate: float = 2e-4
-    num_epochs: int = 3
-    max_seq_length: int = 2048
+    num_epochs: int = 1
+    max_seq_length: int = 1536
     warmup_ratio: float = 0.1
     
     # Quantization (QLoRA via Unsloth)

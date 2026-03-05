@@ -8,6 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+.venv-*/
+
+# Unsloth compiled Triton kernels (auto-regenerated)
+unsloth_compiled_cache/
 
 .env
 .claude

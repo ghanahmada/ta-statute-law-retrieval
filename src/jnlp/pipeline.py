@@ -187,7 +187,11 @@ class PipelineOrchestrator:
         train_dataset = self.stage2.prepare_data(
             self.data_loader,
             self.stage1_results,
-            upsample_positive=self.config.stage2_upsample_ratio
+            upsample_positive=self.config.stage2_upsample_ratio,
+            hard_neg_k=self.config.stage2_hard_neg_k,
+            random_neg_k=self.config.stage2_random_neg_k,
+            hard_neg_range=self.config.stage2_hard_neg_range,
+            random_neg_range=self.config.stage2_random_neg_range,
         )
         
         self.stage2.train(
@@ -590,6 +594,10 @@ class PipelineOrchestrator:
                 self.train_data_loader,
                 train_s1_results,
                 upsample_positive=self.config.stage2_upsample_ratio,
+                hard_neg_k=self.config.stage2_hard_neg_k,
+                random_neg_k=self.config.stage2_random_neg_k,
+                hard_neg_range=self.config.stage2_hard_neg_range,
+                random_neg_range=self.config.stage2_random_neg_range,
             )
             if verbose:
                 print(f"Stage 2 training pairs: {len(train_dataset)}")

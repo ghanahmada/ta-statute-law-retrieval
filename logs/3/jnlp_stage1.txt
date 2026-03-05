@@ -1,0 +1,24 @@
+JNLP Stage 1 Results (BGE-M3 + CatBoost, product features, no re-ranker)
+Dataset: all 4 datasets, TEST split
+Date: 2026-03-04
+============================================================
+
+Comparison vs BM25 baseline (logs/2/bm25.txt)
+
+Dataset       Language  N Queries  MRR@10   Recall@10  Precision@10  Hit Rate  BM25 MRR@10  Delta MRR
+------------------------------------------------------------------------------------------------------------
+KUHPerdata    id        279        0.3997   0.3939     0.0939        62.0%     0.1467       +0.2530
+BSARD         fr        222        0.3284   0.3047     0.1270        44.6%     0.2488       +0.0796
+IL-PCSR       en        1254       0.0493   0.0323     0.0149        12.9%     0.1558       -0.1065
+STARD         zh        308        0.2705   0.3895     0.0578        49.4%     0.3382       -0.0677
+
+Notes:
+- KUHPerdata: 2.7x improvement over BM25; previous result was 0.4681 (old dataset, logs/2)
+- BSARD: moderate improvement over BM25
+- IL-PCSR: regression vs BM25; root cause: extreme query/doc length (avg query 3396 words,
+  avg doc 716 words, max 43600 words) causes BGE-M3 embeddings to compress into
+  generic vectors with near-zero separability; BM25 benefits from raw token overlap
+  on long text; also 5017 train queries / 936 docs = BM25 top-100 negatives cover
+  10.7% of entire corpus, reducing hard negative informativeness
+- STARD: regression vs BM25; Chinese corpus is large (55348 docs) and BGE-M3
+  product features may not discriminate well across such a large corpus

@@ -1,4 +1,5 @@
 import json
+import random as _random
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
@@ -167,11 +168,24 @@ class Stage2FineTuner:
     def setup_model(self):
         """Load model with QLoRA configuration via Unsloth."""
         from unsloth import FastLanguageModel
+        from transformers import PretrainedConfig
+
+        # transformers>=4.51 no longer includes torch_dtype in to_dict(), but
+        # unsloth reads config.to_dict()["torch_dtype"] for bnb_4bit_compute_dtype.
+        # Patch to_dict() to re-include it when present as an attribute.
+        _orig_to_dict = PretrainedConfig.to_dict
+        def _to_dict_with_dtype(self_cfg):
+            d = _orig_to_dict(self_cfg)
+            if "torch_dtype" not in d and hasattr(self_cfg, "torch_dtype"):
+                dtype = self_cfg.torch_dtype
+                d["torch_dtype"] = str(dtype).replace("torch.", "") if isinstance(dtype, torch.dtype) else dtype
+            return d
+        PretrainedConfig.to_dict = _to_dict_with_dtype
 
         self.model, self.tokenizer = FastLanguageModel.from_pretrained(
             model_name=self.model_name,
             max_seq_length=self.max_seq_length,
-            dtype=None,  # auto-detect
+            dtype=torch.bfloat16,
             load_in_4bit=self.load_in_4bit,
         )
         if self.tokenizer.pad_token is None:
@@ -196,40 +210,70 @@ class Stage2FineTuner:
         self,
         data_loader: "DataLoader",
         stage1_results: Dict[str, List[Tuple[str, float]]],
-        upsample_positive: int = 3
+        upsample_positive: int = 3,
+        hard_neg_k: int = 4,
+        random_neg_k: int = 1,
+        hard_neg_range: Tuple[int, int] = (1, 15),
+        random_neg_range: Tuple[int, int] = (50, 100),
     ) -> QueryArticleDataset:
         """
-        Prepare training data from Stage 1 retrieval results.
-        Paper Section 4.3: Use top-50 from Stage 1, upsample positives 3x.
-        
+        Prepare training data using Hard Negative Mining for fast, high-quality training.
+
+        Per query:
+          - All ground-truth positives (incl. Stage-1 misses), upsampled 3x.
+          - hard_neg_k hard negatives from ranks hard_neg_range: docs that almost
+            fooled Stage 1, forcing the LLM to learn fine-grained legal distinctions.
+          - random_neg_k random negatives from ranks random_neg_range: general contrast.
+
+        Result: ~11 samples/query vs ~50 (paper) → ~5x fewer steps, ~30 min training.
+
         Args:
             data_loader: DataLoader with corpus, queries, qrels
             stage1_results: Dict mapping query_id to [(doc_id, score), ...]
-            upsample_positive: Upsampling ratio for positive examples
+            upsample_positive: Upsampling ratio for positive examples (paper: 3)
+            hard_neg_k: Hard negatives per query (default 4, from ranks 1-14)
+            random_neg_k: Random negatives per query (default 1, from ranks 50-99)
+            hard_neg_range: (start, end) slice into ranked candidates for hard negs
+            random_neg_range: (start, end) slice into ranked candidates for random negs
         """
         queries = {qid: q["text"] for qid, q in data_loader.queries.items()}
         articles = {did: d["text"] for did, d in data_loader.corpus.items()}
-        
+
         pairs = []
         for qid, candidates in stage1_results.items():
             relevant_docs = set(data_loader.qrels.get(qid, {}).keys())
-            candidate_ids = set()
+            candidate_ids = set(doc_id for doc_id, _ in candidates)
 
-            for doc_id, _ in candidates:
-                label = 1 if doc_id in relevant_docs else 0
-                pairs.append((qid, doc_id, label))
-                candidate_ids.add(doc_id)
-
-            # Paper Section 4.3: add back ground-truth articles missed by Stage 1
-            for doc_id in relevant_docs - candidate_ids:
+            # Positives — all ground-truth docs, including Stage-1 misses
+            for doc_id in relevant_docs:
                 if doc_id in data_loader.corpus:
                     pairs.append((qid, doc_id, 1))
-        
+
+            # Hard negatives from ranks hard_neg_range
+            hard_pool = [
+                doc_id
+                for doc_id, _ in candidates[hard_neg_range[0]:hard_neg_range[1]]
+                if doc_id not in relevant_docs
+            ]
+            for doc_id in hard_pool[:hard_neg_k]:
+                pairs.append((qid, doc_id, 0))
+
+            # Random negatives from ranks random_neg_range
+            rand_pool = [
+                doc_id
+                for doc_id, _ in candidates[random_neg_range[0]:random_neg_range[1]]
+                if doc_id not in relevant_docs
+            ]
+            chosen = _random.sample(rand_pool, min(random_neg_k, len(rand_pool)))
+            for doc_id in chosen:
+                pairs.append((qid, doc_id, 0))
+
         return QueryArticleDataset(
             queries=queries,
             articles=articles,
             pairs=pairs,
             tokenizer=self.tokenizer,
+            max_length=self.max_seq_length,
             upsample_positive=upsample_positive,
         )
     
@@ -369,7 +413,7 @@ class Stage2FineTuner:
         self.model, self.tokenizer = FastLanguageModel.from_pretrained(
             model_name=adapter_path,
             max_seq_length=self.max_seq_length,
-            dtype=None,
+            dtype=torch.bfloat16,
             load_in_4bit=self.load_in_4bit,
         )
 
