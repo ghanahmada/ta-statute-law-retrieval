@@ -75,6 +75,8 @@ class CorpusGraph:
         k1: float = 1.5,
         n_gram: int = 1,
         lang: str = "en",
+        use_stemmer: bool = False,
+        use_stopwords: bool = False,
         verbose: bool = True,
     ) -> "CorpusGraph":
         """
@@ -88,7 +90,9 @@ class CorpusGraph:
             doc_texts: corresponding document texts
             k: number of nearest neighbors per document
             b, k1, n_gram: BM25 parameters
-            lang: language code ("zh" triggers jieba tokenization)
+            lang: language code ("zh" triggers jieba; "id" enables PySastrawi)
+            use_stemmer: enable Indonesian stemmer (PySastrawi, lang="id" only)
+            use_stopwords: remove Indonesian stopwords (PySastrawi, lang="id" only)
             verbose: print progress
         """
         from util.bm25 import BM25
@@ -106,7 +110,8 @@ class CorpusGraph:
         if verbose:
             print(f"  Building BM25 corpus graph: {n_docs} docs, k={k}")
 
-        bm25 = BM25(b=b, k1=k1, n_gram=n_gram)
+        bm25 = BM25(b=b, k1=k1, n_gram=n_gram, lang=lang,
+                    use_stemmer=use_stemmer, use_stopwords=use_stopwords)
         bm25.fit(texts)
 
         for i in range(n_docs):
