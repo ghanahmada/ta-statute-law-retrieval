@@ -29,6 +29,14 @@ data/bsard/
 data/ilpcsr/
 data/stard/
 data/sailer/
+experiment/claude-assistance/
+experiment/kuhperdata_pdfs/
+experiment/mkri_pdfs/
+experiment/putusan_kuhperdata_pdfs/
+paper/
+include/
+bin/
+
 
 # Training outputs
 outputs/

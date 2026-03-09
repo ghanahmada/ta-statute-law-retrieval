@@ -4,8 +4,8 @@
 |-------|-------|
 | **Author** | Ghana Ahmada |
 | **Repository** | [ghanahmada/kuhperdata](https://huggingface.co/datasets/ghanahmada/kuhperdata) |
-| **Version** | 1.0 |
-| **Date** | 2026-03-04 |
+| **Version** | 2.0 |
+| **Date** | 2026-03-08 |
 | **Language** | Python 3.13 |
 | **Package Manager** | uv |
 
@@ -17,7 +17,7 @@ Statute law retrieval — the task of finding relevant legal articles given a na
 
 This project makes two contributions. **First**, we construct **KUHPerdata**, a novel Indonesian statute law retrieval dataset derived from the *Kitab Undang-Undang Hukum Perdata* (Indonesian Civil Code) and real Supreme Court decisions. It comprises 2,127 statute articles, 1,368 queries, and 4,372 relevance judgments in BEIR format. **Second**, we propose a **language-agnostic retrieval methodology** benchmarked across four datasets spanning Indonesian, French, English, and Chinese legal systems. Our approach adapts the JNLP COLIEE 2025 pipeline — combining BGE-M3 embeddings, CatBoost classification, QLoRA-finetuned LLMs, and Optuna-optimized ensembles — and evaluates whether techniques designed for English/Japanese legal text transfer to typologically diverse languages.
 
-Early results show the JNLP Stage 1 pipeline achieves a 3× improvement over dense retrieval baselines (MRR@10: 0.47 vs. 0.16), suggesting that learned feature interactions over multilingual embeddings can substantially close the gap for low-resource legal languages.
+Results show the JNLP pipeline is effective but language-dependent. Stage 1 (BGE-M3 + CatBoost) achieves a 2.7× improvement over BM25 on KUHPerdata (MRR@10: 0.40 vs. 0.15) and 1.3× on BSARD, while Stage 2 (QLoRA-finetuned Qwen2.5-7B) further improves recall (+5.4%). However, the pipeline regresses on IL-PCSR and STARD, revealing sensitivity to query length and corpus scale. SAILER, an English structure-aware legal encoder, proves unsuitable for non-English retrieval even with vocabulary extension — multilingual-e5-base outperforms it by 33× on Indonesian text.
 
 ---
 
@@ -44,13 +44,18 @@ Reproduce and extend state-of-the-art retrieval methods across four multilingual
 4. Evaluate SAILER (structure-aware pre-trained legal encoder) as an alternative
 5. Identify which techniques transfer across languages and which are language-specific
 
-### 2.3 Future Work: Query Humanization
+### 2.3 Query Humanization (Planned)
 
-Current queries average ~1,900 characters (LLM-generated summaries of full court decisions). Real judges and lawyers type much shorter queries. Future work will investigate:
+Current queries average ~1,900 characters (LLM-generated summaries of full court decisions). Real judges and lawyers type much shorter queries. A detailed planning document exists at `documentation/PLANNING-HumanizeQuery.md` with a 4-step pipeline:
 
-- Shortening queries to realistic lengths while preserving retrieval quality
-- Impact of query length on different retrieval methods
-- Whether methods robust to short queries differ from those optimized for long queries
+1. **Fact Extraction** — LLM extracts discrete legal facts guided by relevant articles
+2. **Alignment Verification** — Ensure each relevant article has supporting facts
+3. **Query Synthesis** — Generate short (~100–200 char) queries in non-professional language
+4. **Coverage Check** — Verify all relevant articles still have retrieval signals
+
+Research questions: (RQ1) How much does shortening degrade retrieval? (RQ2) Which methods are robust to short queries? (RQ3) Does fact-aware shortening preserve more quality than naive summarization?
+
+**Status**: Planning complete, implementation pending (~3,000 LLM calls estimated).
 
 ---
 
@@ -203,7 +208,7 @@ flowchart TB
         DENSE --> METRICS
         JNLP --> METRICS
         SAILER --> PYTREC["pytrec_eval<br/>(NDCG, MAP)"]
-        METRICS --> LOGS["logs/2/*.txt"]
+        METRICS --> LOGS["logs/{2,3}/*.txt"]
         PYTREC --> LOGS
     end
 ```
@@ -219,6 +224,10 @@ TA/
 │   ├── stard/                     # Chinese statute retrieval
 │   ├── statute/                   # Raw KUH Perdata PDF + parsed CSV
 │   └── judgement/                 # Court decision JSON
+├── documentation/                 # Design and planning documents
+│   ├── HLD.md                     # This document
+│   ├── benchmark-implementation-guide.md
+│   └── PLANNING-HumanizeQuery.md  # Query humanization strategy
 ├── experiment/                    # Jupyter notebooks (data collection pipeline)
 │   ├── 1_statute_parser.ipynb
 │   ├── 2_judgement_parser.ipynb
@@ -227,7 +236,8 @@ TA/
 │   ├── 5_ilpcsr_dataset.ipynb
 │   ├── 6_stard_dataset.ipynb
 │   ├── 7_split_visualization.ipynb
-│   └── judgement_scraper.py
+│   ├── judgement_scraper.py
+│   └── claude-assistance/         # Auxiliary scraping scripts
 ├── src/
 │   ├── dataset.py                 # KUHPerdata dataset builder
 │   ├── evaluate_bm25.py           # BM25 evaluation (all datasets)
@@ -248,6 +258,7 @@ TA/
 │   │   └── sailer/                # SAILER fine-tuning + evaluation
 │   │       ├── build_finetune_data.py
 │   │       ├── build_encode_data.py
+│   │       ├── extend_vocab.py    # Indonesian vocab extension for SAILER
 │   │       ├── run_finetune.sh
 │   │       ├── run_encode.sh
 │   │       └── evaluate_retrieval.py
@@ -256,11 +267,17 @@ TA/
 │       ├── dataloader.py          # BEIR format loader
 │       └── metrics.py             # MRR, Recall, Precision, Hit Rate
 ├── logs/                          # Evaluation results
+│   ├── 2/                         # BM25, dense retrieval, initial Stage 1
+│   └── 3/                         # Cross-dataset Stage 1, Stage 2, SAILER
 ├── outputs/                       # Model outputs (.gitignored)
 ├── setup_vm.sh                    # GPU VM one-time setup
 ├── requirements.txt               # Full dependencies
+├── requirements-jnlp.txt         # JNLP-specific deps (Python 3.13)
+├── requirements-sailer.txt       # SAILER-specific deps (Python 3.10)
 └── pyproject.toml                 # Minimal dependencies (data collection)
 ```
+
+**Sibling directory**: `../SAILER/` — Full SAILER repository (converted from git submodule to plain code for easier modification).
 
 ### 5.2 Key Design Decisions
 
@@ -274,6 +291,8 @@ TA/
 | **Product features over histogram** | Element-wise product preserves embedding geometry better than binned L1 histograms |
 | **BM25 hard negatives** | More informative than random negatives; teaches classifier to distinguish hard cases |
 | **Strip statute references** | Prevents data leakage from explicit article citations in court decision text |
+| **Dual virtual environments** | SAILER requires Python 3.10; JNLP requires Python 3.13 — separate venvs avoid conflicts |
+| **SAILER as plain code** | Converted from git submodule for easier modification (vocab extension, custom fine-tuning) |
 
 ---
 
@@ -364,16 +383,19 @@ Trains a CatBoost binary classifier on query-document pair features:
 
 #### 6.3.2 Stage 2 — QLoRA Fine-tuned LLM
 
-**File**: `src/jnlp/stage2_finetuner.py` (377 lines)
+**File**: `src/jnlp/stage2_finetuner.py`
 
 Binary relevance classification via fine-tuned LLM:
 
-- **Base Models**: Qwen2-7B-Instruct (default), Qwen2.5, Qwen3, Qwen3.5
+- **Base Models**: Qwen2-7B-Instruct, Qwen2.5-7B-Instruct (default), Qwen3-8B, Qwen3.5-4B
 - **Quantization**: 4-bit via Unsloth `FastLanguageModel`
 - **LoRA Config**: r=16, alpha=32, target modules: q/k/v/o/gate/up/down projections
 - **Prompt Format**: ChatML with system="Legal expert", user="Query: {q}\nArticle: {a}", assistant="Yes"/"No"
-- **Training**: 3× positive upsampling, gradient checkpointing, HuggingFace Trainer
+- **Hard Negative Mining**: Per query, 4 hard negatives (Stage 1 ranks 1–14) + 1 random negative (ranks 50–99)
+- **Training**: 3× positive upsampling, batch_size=8, grad_accum=2 (effective 16), max_seq_length=1536, 1 epoch, lr=2e-4 (cosine)
 - **Inference**: Softmax over Yes/No token logits → relevance probability
+- **Training time**: ~2h 19m for 988 steps on KUHPerdata (8.47s/step)
+- **Inference time**: ~77 min for 279 test queries
 
 #### 6.3.3 Stage 3 — Optuna Weighted Ensemble
 
@@ -410,12 +432,21 @@ SAILER (Structure-Aware pre-trained language model for legal text retrieval) is 
 
 **Pipeline**:
 1. `build_finetune_data.py` — Converts KUHPerdata to SAILER format with BM25 hard negatives (30 per query via `rank_bm25.BM25Okapi`)
-2. `run_finetune.sh` — Fine-tunes `CSHaitao/SAILER_en` with: q_max_len=512, p_max_len=256, batch_size=4, lr=5e-6, 3 epochs
-3. `build_encode_data.py` — Converts corpus and queries to SAILER encoding format
-4. `run_encode.sh` — Encodes all texts with fine-tuned model → pickle embeddings
-5. `evaluate_retrieval.py` — FAISS IndexFlatIP retrieval (L2-normalized cosine) with `pytrec_eval` metrics (NDCG@10, Recall@10, MAP)
+2. `extend_vocab.py` — Extends SAILER_en tokenizer with 2,232 Indonesian tokens (mean subword initialization)
+3. `run_finetune.sh` — Fine-tunes `CSHaitao/SAILER_en` with: q_max_len=512, p_max_len=256, batch_size=4, lr=5e-6, 3 epochs
+4. `build_encode_data.py` — Converts corpus and queries to SAILER encoding format
+5. `run_encode.sh` — Encodes all texts with fine-tuned model → pickle embeddings
+6. `evaluate_retrieval.py` — FAISS IndexFlatIP retrieval (L2-normalized cosine) with `pytrec_eval` metrics (NDCG@10, Recall@10, MAP)
 
-**Note**: SAILER_en is an English pre-trained model. Fine-tuning on Indonesian legal text tests cross-lingual transfer of structure-aware representations.
+**Results** (KUHPerdata, source: `logs/3/sailer_comparison.txt`):
+
+| Model | NDCG@10 | Recall@10 | MAP | MRR@10 |
+|-------|---------|-----------|-----|--------|
+| SAILER_en (zero-shot) | ~0.001 | ~0.001 | ~0.001 | ~0.001 |
+| SAILER_en + vocab ext. + fine-tune | 0.0045 | 0.0058 | 0.0036 | 0.0104 |
+| multilingual-e5-base (fine-tuned) | **0.1490** | **0.2660** | **0.1123** | **0.1603** |
+
+**Conclusion**: SAILER_en is unsuitable for non-English statute retrieval. Vocabulary extension alone cannot overcome English-only pre-training weights. Multilingual-e5-base outperforms by **33×** (NDCG@10: 0.149 vs. 0.0045), confirming that multilingual pre-training is essential for cross-lingual legal IR.
 
 ---
 
@@ -446,19 +477,38 @@ SAILER (Structure-Aware pre-trained language model for legal text retrieval) is 
 
 ### 7.3 KUHPerdata Method Comparison
 
-> Sources: `logs/2/bm25.txt`, `logs/2/dense_bge_fulldim_cossim.txt`, `logs/2/stage1_bge_catboost_fulldim_product.txt`
+> Sources: `logs/2/`, `logs/3/jnlp_stage1.txt`, `logs/3/jnlp_stage2.txt`, `logs/3/sailer_comparison.txt`
 
 | Method | MRR@10 | Recall@10 | Precision@10 | Hit Rate | Status |
 |--------|--------|-----------|--------------|----------|--------|
 | BM25 (b=0.7, k1=1.6) | 0.1467 | 0.0858 | 0.0316 | 24.06% | Done |
 | BGE-M3 Dense (cosine) | 0.1625 | 0.1300 | 0.0500 | 27.83% | Done |
-| JNLP Stage 1 (product) | **0.4681** | **0.4352** | **0.1288** | **69.81%** | Done |
+| me5-base (fine-tuned) | 0.1603 | 0.2660 | — | — | Done |
+| SAILER_en + vocab ext. + fine-tune | 0.0104 | 0.0058 | — | — | Done |
+| JNLP Stage 1 (product) | **0.3997** | 0.3939 | — | 62.0% | Done |
+| JNLP Stage 2 (QLoRA Qwen2.5-7B) | 0.3945 | **0.4151** | — | **64.5%** | Done |
 | JNLP Stage 1 + Re-ranker | — | — | — | — | TBD |
-| JNLP Stage 2 (QLoRA) | — | — | — | — | TBD |
 | JNLP Stage 3 (Ensemble) | — | — | — | — | TBD |
-| SAILER (fine-tuned) | — | — | — | — | TBD |
 
-### 7.4 Dense Retrieval Detailed Results (KUHPerdata)
+**Note**: Stage 1 MRR@10 differs between `logs/2/` (0.4681, 212 queries) and `logs/3/` (0.3997, 279 queries) due to different test query counts. The `logs/3/` run uses the full 279 test queries and is the canonical result.
+
+### 7.4 JNLP Stage 1 Cross-Dataset Results
+
+> Source: `logs/3/jnlp_stage1.txt`
+
+| Dataset | Language | N Queries | MRR@10 | Recall@10 | Hit Rate | vs BM25 MRR |
+|---------|----------|-----------|--------|-----------|----------|-------------|
+| **KUHPerdata** | id | 279 | **0.3997** | 0.3939 | 62.0% | **+173%** |
+| **BSARD** | fr | 222 | **0.3284** | 0.3047 | 44.6% | **+32%** |
+| **IL-PCSR** | en | 1,254 | 0.0493 | 0.0323 | 12.9% | -68% |
+| **STARD** | zh | 308 | 0.2705 | 0.3895 | 49.4% | -20% |
+
+**Key finding**: JNLP Stage 1 excels on small-to-medium corpora (KUHPerdata: 2,127 docs, BSARD: 22,633 docs) but **regresses** on IL-PCSR and STARD. Root causes:
+
+- **IL-PCSR**: Extremely long queries (avg ~3,396 words) cause BGE-M3 to produce generic vectors with near-zero separability. BM25 benefits from raw token overlap. Also, 5,017 train queries over only 936 docs means BM25 top-100 negatives cover 10.7% of the entire corpus, reducing hard negative informativeness.
+- **STARD**: Large Chinese corpus (55,348 docs) where BGE-M3 product features don't discriminate well at scale.
+
+### 7.5 Dense Retrieval Detailed Results (KUHPerdata)
 
 > Source: `logs/2/dense_bge_fulldim_cossim.txt`
 
@@ -473,7 +523,21 @@ SAILER (Structure-Aware pre-trained language model for legal text retrieval) is 
 - Non-relevant pair mean cosine: 0.4851
 - Separability index: 0.5043 (barely above chance)
 
-### 7.5 Evaluation Protocol
+### 7.6 Stage 2 Detailed Results (KUHPerdata)
+
+> Source: `logs/3/jnlp_stage2.txt`
+
+| Metric | Stage 1 Only | Stage 1 + Stage 2 | Change |
+|--------|-------------|-------------------|--------|
+| MRR@10 | 0.3997 | 0.3945 | -0.005 (-0.1%) |
+| Recall@10 | 0.3939 | 0.4151 | +0.021 (+5.4%) |
+| Hit Rate | 62.0% | 64.5% | +2.5% |
+
+**Configuration**: Qwen2.5-7B-Instruct, 4-bit QLoRA via Unsloth, hard negative mining (4 hard + 1 random per query), 1 epoch, 988 training steps.
+
+**Interpretation**: MRR@10 slightly drops but Recall@10 improves significantly. Stage 2 trades top-1 precision for broader recall — appropriate for legal retrieval where missing a relevant article is more costly than imprecise ranking.
+
+### 7.7 Evaluation Protocol
 
 | Protocol | Detail |
 |----------|--------|
@@ -485,7 +549,7 @@ SAILER (Structure-Aware pre-trained language model for legal text retrieval) is 
 
 ---
 
-## 8. Research Gaps and Observations
+## 8. Research Findings and Open Questions
 
 ### 8.1 BM25 Struggles with Legal Text
 
@@ -497,21 +561,38 @@ STARD performs notably better (MRR@10 = 0.34), possibly because Chinese statute 
 
 Raw BGE-M3 cosine retrieval improves only marginally over BM25 on KUHPerdata (+0.016 MRR, +0.044 Recall@10). The separability index of 0.50 suggests embeddings alone cannot distinguish relevant from non-relevant pairs — the cosine similarity distributions overlap almost entirely.
 
-### 8.3 JNLP Stage 1 Provides Dramatic Improvement
+### 8.3 JNLP Stage 1: Effective but Language-Dependent
 
-The CatBoost classifier over product features achieves MRR@10 = 0.47, a **3× improvement** over dense retrieval and **3.2× over BM25**. This suggests that:
+The CatBoost classifier over product features achieves MRR@10 = 0.40 on KUHPerdata, a **2.7× improvement over BM25**. However, cross-dataset evaluation reveals this is **not universal**:
 
-- Element-wise product captures interaction patterns between query and document embeddings that cosine similarity misses
-- BM25 hard negatives are effective training signals
-- Even modest oversampling (10×) suffices when negatives are informative
+- **Works well**: KUHPerdata (+173% vs BM25), BSARD (+32%)
+- **Regresses**: IL-PCSR (-68%), STARD (-20%)
 
-### 8.4 Open Questions
+This suggests element-wise product features and BM25 hard negatives are most effective when: (a) queries are moderate length, (b) corpus is small-to-medium, and (c) BGE-M3 embeddings have sufficient separability. When queries are extremely long (IL-PCSR) or the corpus is very large (STARD), the approach breaks down.
 
-- **Cross-dataset JNLP performance**: Does Stage 1's dramatic improvement on KUHPerdata transfer to BSARD, IL-PCSR, and STARD?
-- **Stage 2 impact**: Can QLoRA-finetuned Qwen further improve upon Stage 1's already strong results?
-- **SAILER complementarity**: Does structure-aware pre-training capture different information than BGE-M3 + CatBoost?
+### 8.4 Stage 2 Improves Recall at Cost of MRR
+
+QLoRA-finetuned Qwen2.5-7B on KUHPerdata shows a recall-precision tradeoff: MRR@10 drops marginally (-0.1%) while Recall@10 improves meaningfully (+5.4%). This is desirable for legal retrieval where coverage matters more than top-1 precision.
+
+### 8.5 SAILER Fails Cross-Lingually
+
+SAILER_en with vocabulary extension (2,232 Indonesian tokens) and fine-tuning achieves only NDCG@10 = 0.0045 on KUHPerdata — **33× worse** than multilingual-e5-base. English pre-training weights dominate despite tokenization extension, confirming that multilingual pre-training (not just multilingual tokenization) is essential for cross-lingual legal IR.
+
+### 8.6 Answered Questions
+
+| Question | Answer |
+|----------|--------|
+| Does Stage 1 transfer across datasets? | Partially — works on KUHPerdata and BSARD, regresses on IL-PCSR and STARD |
+| Can Stage 2 improve Stage 1? | Yes, +5.4% Recall@10 on KUHPerdata (minor MRR trade-off) |
+| Does SAILER complement BGE-M3? | No — SAILER is unsuitable for non-English legal text |
+
+### 8.7 Open Questions
+
+- **IL-PCSR/STARD remediation**: Can query truncation, corpus chunking, or alternative negative sampling fix the regressions?
+- **Stage 2 on other datasets**: Will QLoRA improve recall on BSARD, IL-PCSR, STARD similarly?
+- **Stage 3 ensemble**: Can combining multiple Stage 2 models (Qwen2, Qwen2.5, Qwen3) push F2 further?
 - **Feature type ablation**: How does product feature performance compare to histogram across languages?
-- **Scaling behavior**: How do methods perform as corpus size varies (936 articles in IL-PCSR vs. 55,348 in STARD)?
+- **Query humanization impact**: Does shortening queries to realistic lengths change which methods are best?
 
 ---
 
@@ -521,7 +602,8 @@ The CatBoost classifier over product features achieves MRR@10 = 0.47, a **3× im
 
 | Component | Version/Tool |
 |-----------|-------------|
-| **Python** | 3.13 |
+| **Python (JNLP)** | 3.13 (`.venv-jnlp`) |
+| **Python (SAILER)** | 3.10 (`.venv-sailer`) |
 | **Package Manager** | uv |
 | **GPU Setup** | `setup_vm.sh` (one-time VM provisioning) |
 | **Random Seed** | 42 |
@@ -539,17 +621,18 @@ The CatBoost classifier over product features achieves MRR@10 = 0.47, a **3× im
 
 ### 9.3 VM Setup and Data Regeneration
 
-The `setup_vm.sh` script performs complete environment setup:
+The `setup_vm.sh` script performs complete environment setup with **two separate virtual environments**:
 
-1. Clones the SAILER repository as a sibling directory
-2. Creates virtual environment with Python 3.13 via `uv`
-3. Installs all dependencies from `requirements.txt`
-4. Regenerates all 4 datasets via prepare scripts:
+1. Clones the SAILER repository as a sibling directory (`../SAILER/`)
+2. Creates `.venv-sailer` (Python 3.10) — data preparation + SAILER fine-tuning
+3. Creates `.venv-jnlp` (Python 3.13) — JNLP pipeline evaluation
+4. Installs dependencies from `requirements-sailer.txt` and `requirements-jnlp.txt` respectively
+5. Regenerates all 4 datasets via prepare scripts:
    - `python src/scripts/prepare_kuhperdata.py`
    - `python src/scripts/prepare_bsard.py`
    - `python src/scripts/prepare_ilpcsr.py`
    - `python src/scripts/prepare_stard.py`
-5. Builds SAILER fine-tuning and encoding data
+6. Builds SAILER fine-tuning and encoding data
 
 All data can be regenerated from scratch — no data files need to be committed to git.
 
@@ -564,11 +647,12 @@ All data can be regenerated from scratch — no data files need to be committed 
 | `python src/evaluate_bm25.py --dataset <name> --top_k 10` | Run BM25 evaluation |
 | `python src/evaluate_dense_retrieval.py` | Run BGE-M3 dense retrieval on KUHPerdata |
 | `python src/evaluate_jnlp.py --dataset <name> --stage 1 --feature_type product` | JNLP Stage 1 only |
-| `python src/evaluate_jnlp.py --dataset <name> --stage 2 --llm_model <model>` | JNLP Stage 1+2 |
+| `python src/evaluate_jnlp.py --dataset <name> --stage 2 --llm_model qwen2.5` | JNLP Stage 1+2 |
 | `python src/scripts/prepare_kuhperdata.py` | Regenerate KUHPerdata from HuggingFace |
 | `python src/scripts/prepare_bsard.py` | Regenerate BSARD |
 | `python src/scripts/prepare_ilpcsr.py` | Regenerate IL-PCSR |
 | `python src/scripts/prepare_stard.py` | Regenerate STARD |
+| `python src/scripts/sailer/extend_vocab.py` | Extend SAILER tokenizer with Indonesian tokens |
 | `python src/scripts/sailer/build_finetune_data.py` | Build SAILER fine-tuning data |
 | `python src/scripts/sailer/build_encode_data.py` | Build SAILER encoding data |
 | `bash src/scripts/sailer/run_finetune.sh` | Fine-tune SAILER model |
@@ -596,7 +680,7 @@ All data can be regenerated from scratch — no data files need to be committed 
 | `--dataset` | `kuhperdata` | Dataset name |
 | `--stage` | `1` | Pipeline stage (1, 2, or 3) |
 | `--feature_type` | `product` | Feature extraction (`product` or `histogram`) |
-| `--llm_model` | `Qwen/Qwen2-7B-Instruct` | LLM for Stage 2 |
+| `--llm_model` | `qwen2.5` | LLM shorthand: `qwen2`, `qwen2.5`, `qwen3`, `qwen3.5` |
 | `--no-reranker` | `False` | Disable re-ranker in Stage 1 |
 
 ### 10.4 Model Cards
@@ -606,6 +690,10 @@ All data can be regenerated from scratch — no data files need to be committed 
 | **BGE-M3** | `BAAI/bge-m3` | Multilingual embeddings (1024-dim) for JNLP Stage 1 and dense retrieval |
 | **BGE Reranker v2 M3** | `BAAI/bge-reranker-v2-m3` | Optional re-ranker in JNLP Stage 1 |
 | **RankLLaMA** | `castorini/rankllama-v1-7b-lora-passage` | Alternative re-ranker |
-| **Qwen2-7B-Instruct** | `Qwen/Qwen2-7B-Instruct` | Default LLM for JNLP Stage 2 |
-| **SAILER_en** | `CSHaitao/SAILER_en` | Structure-aware legal encoder (base for fine-tuning) |
+| **Qwen2-7B-Instruct** | `Qwen/Qwen2-7B-Instruct` | LLM for JNLP Stage 2 |
+| **Qwen2.5-7B-Instruct** | `Qwen/Qwen2.5-7B-Instruct` | Default LLM for JNLP Stage 2 |
+| **Qwen3-8B** | `Qwen/Qwen3-8B` | Alternative LLM for Stage 2 |
+| **Qwen3.5-4B** | `Qwen/Qwen3.5-4B` | Lightweight alternative LLM for Stage 2 |
+| **multilingual-e5-base** | `intfloat/multilingual-e5-base` | Multilingual dense retrieval (SAILER comparison baseline) |
+| **SAILER_en** | `CSHaitao/SAILER_en` | Structure-aware legal encoder (unsuitable for non-English) |
 | **MiniLM** | `paraphrase-multilingual-MiniLM-L12-v2` | Query embedding for semantic splitting |
