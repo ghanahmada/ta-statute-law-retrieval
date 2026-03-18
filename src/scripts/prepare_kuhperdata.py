@@ -1,9 +1,10 @@
 import json
 import os
 import re
+import shutil
 
 import pandas as pd
-from huggingface_hub import hf_hub_download, login
+from huggingface_hub import hf_hub_download, list_repo_files, login
 
 HF_DATASET_ID = "ghanahmada/kuhperdata"
 OUTPUT_DIR = os.path.join("data", "kuhperdata")
@@ -15,6 +16,8 @@ PARQUET_FILES = {
     "qrels_train": "data/qrels_train-00000-of-00001.parquet",
     "qrels_test": "data/qrels_test-00000-of-00001.parquet",
 }
+
+RAW_DOWNLOADS_PREFIX = "cleaned_downloads/"
 
 
 def strip_statute_references(text: str) -> str:
@@ -46,6 +49,33 @@ def strip_statute_references(text: str) -> str:
     return text
 
 
+def download_raw_pdfs(output_dir: str) -> int:
+    """Download raw PDF files from the HuggingFace dataset downloads/ folder."""
+    repo_files = list_repo_files(repo_id=HF_DATASET_ID, repo_type="dataset")
+    raw_pdf_files = [
+        remote_path
+        for remote_path in repo_files
+        if remote_path.startswith(RAW_DOWNLOADS_PREFIX) and remote_path.lower().endswith(".pdf")
+    ]
+
+    if not raw_pdf_files:
+        print("No raw PDFs found under downloads/ in dataset repository.")
+        return 0
+
+    for remote_path in raw_pdf_files:
+        cached_path = hf_hub_download(
+            repo_id=HF_DATASET_ID,
+            filename=remote_path,
+            repo_type="dataset",
+        )
+        local_path = os.path.join(output_dir, remote_path.replace("/", os.sep))
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        shutil.copy2(cached_path, local_path)
+
+    print(f"Wrote {len(raw_pdf_files)} raw PDFs to {os.path.join(output_dir, 'downloads')}")
+    return len(raw_pdf_files)
+
+
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -64,6 +94,9 @@ def main():
     queries_df = load_parquet("queries")
     qrels_train_df = load_parquet("qrels_train")
     qrels_test_df = load_parquet("qrels_test")
+
+    # --- downloads/*.pdf (raw source files) ---
+    num_raw_pdfs = download_raw_pdfs(OUTPUT_DIR)
 
     # --- corpus.jsonl ---
     corpus_path = os.path.join(OUTPUT_DIR, "corpus.jsonl")
@@ -109,6 +142,7 @@ def main():
         "num_relevance_judgments": n_train + n_test,
         "num_train_judgments": n_train,
         "num_test_judgments": n_test,
+        "num_raw_pdfs": num_raw_pdfs,
         "avg_relevant_docs_per_query": (n_train + n_test) / len(queries_df) if len(queries_df) > 0 else 0,
     }
     stats_path = os.path.join(OUTPUT_DIR, "dataset_stats.json")

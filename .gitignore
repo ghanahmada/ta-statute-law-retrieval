@@ -16,6 +16,7 @@ unsloth_compiled_cache/
 .env
 .claude
 experiment/downloads/
+experiment/cleaned_downloads/
 
 # Raw data (downloaded by prepare scripts)
 data/statute/

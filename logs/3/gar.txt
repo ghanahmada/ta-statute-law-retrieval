@@ -1,0 +1,36 @@
+GAR Results (BM25 + Cross-Encoder Reranker + Corpus Graph Expansion)
+Method: MacAvaney et al., "Adaptive Re-Ranking with a Corpus Graph" (CIKM 2022)
+Pipeline: BM25 top-200 pool → GAR iterative re-ranking with BM25 corpus graph
+Config: pool=200, budget=150, batch=10, graph_k=16, no pre-scoring
+Dataset: all 4 datasets, TEST split
+Date: 2026-03-10
+============================================================
+
+Dataset       Scorer  Language  N Queries  MRR@10   Recall@10  Precision@10  Hit Rate  Avg Expanded  Time
+---------------------------------------------------------------------------------------------------------------
+KUHPerdata    bge     id        279        0.1909   0.2450     0.0566        37.3%     2.9 docs/q    983.1s
+BSARD         mt5     fr        222        0.1938   0.2058     0.0568        36.5%     3.2 docs/q    316.9s
+STARD         mt5     zh        308        0.3728   0.4562     0.0682        55.2%     2.7 docs/q    183.7s
+IL-PCSR       mt5     en        1254       0.1558   0.1017     0.0332        25.0%     0.0 docs/q    3001.5s
+
+Scorer models:
+  bge = BAAI/bge-reranker-v2-m3 (568M params, XLM-RoBERTa cross-encoder, 100+ languages)
+  mt5 = unicamp-dl/mt5-base-mmarco-v2 (223M params, mT5 seq2seq, 14 languages)
+
+Comparison vs BM25 baseline (logs/2/bm25.txt):
+  KUHPerdata: 0.1909 vs 0.1467 (+0.0442) — reranker helps, graph expands ~3 docs/q
+  BSARD:      0.1938 vs 0.2488 (-0.0550) — regression; graph may introduce noise
+  STARD:      0.3728 vs 0.3382 (+0.0346) — best gain; large corpus (55K docs) benefits from graph
+  IL-PCSR:    0.1558 vs 0.1558 (+0.0000) — no change; graph expanded 0 docs (corpus too small)
+
+Notes:
+- KUHPerdata uses bge (dataset default); others use mt5 (global default)
+- No pre-scoring: all scoring done iteratively per query (prescore_batch_size=0)
+- IL-PCSR: avg_expanded=0.0 means GAR never used graph neighbors. With only 936 docs
+  in corpus, budget=150 already covers ~16% of corpus from pool alone. Graph neighbors
+  are likely already in the pool, making expansion redundant.
+- BSARD: regression vs BM25 suggests graph-discovered candidates are noisy. Need
+  BM25+Reranker baseline (evaluate_rerank.py) to isolate if this is a graph problem
+  or a mt5 scorer problem.
+- STARD: strongest result. Large corpus means BM25 pool misses more relevant docs,
+  giving graph expansion room to help.
