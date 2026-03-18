@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import re
@@ -49,35 +50,87 @@ def strip_statute_references(text: str) -> str:
     return text
 
 
-def download_raw_pdfs(output_dir: str) -> int:
-    """Download raw PDF files from the HuggingFace dataset downloads/ folder."""
+def download_raw_pdfs(
+    output_dir: str,
+    *,
+    skip_existing: bool = False,
+    clean_local_first: bool = False,
+) -> tuple[int, int, int]:
+    """Download raw PDF files from HuggingFace dataset cleaned_downloads/ folder.
+
+    Returns:
+        downloaded_count, skipped_existing_count, remote_pdf_count
+    """
     repo_files = list_repo_files(repo_id=HF_DATASET_ID, repo_type="dataset")
-    raw_pdf_files = [
+    raw_pdf_files = sorted(
+        {
         remote_path
         for remote_path in repo_files
         if remote_path.startswith(RAW_DOWNLOADS_PREFIX) and remote_path.lower().endswith(".pdf")
-    ]
+        }
+    )
+
+    local_raw_root = os.path.join(
+        output_dir,
+        RAW_DOWNLOADS_PREFIX.replace("/", os.sep).rstrip(os.sep),
+    )
+
+    if clean_local_first:
+        if os.path.exists(local_raw_root):
+            shutil.rmtree(local_raw_root)
+        os.makedirs(local_raw_root, exist_ok=True)
+        print(f"Cleared local folder: {local_raw_root}")
 
     if not raw_pdf_files:
-        print("No raw PDFs found under downloads/ in dataset repository.")
-        return 0
+        print("No raw PDFs found under cleaned_downloads/ in dataset repository.")
+        return 0, 0, 0
+
+    downloaded_count = 0
+    skipped_existing_count = 0
 
     for remote_path in raw_pdf_files:
+        local_path = os.path.join(output_dir, remote_path.replace("/", os.sep))
+        if skip_existing and os.path.exists(local_path):
+            skipped_existing_count += 1
+            continue
+
         cached_path = hf_hub_download(
             repo_id=HF_DATASET_ID,
             filename=remote_path,
             repo_type="dataset",
         )
-        local_path = os.path.join(output_dir, remote_path.replace("/", os.sep))
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
         shutil.copy2(cached_path, local_path)
+        downloaded_count += 1
 
-    print(f"Wrote {len(raw_pdf_files)} raw PDFs to {os.path.join(output_dir, 'downloads')}")
-    return len(raw_pdf_files)
+    print(f"Remote raw PDFs found: {len(raw_pdf_files)}")
+    print(f"Downloaded raw PDFs: {downloaded_count}")
+    if skip_existing:
+        print(f"Skipped existing local PDFs: {skipped_existing_count}")
+    print(f"Synced raw PDFs under: {local_raw_root}")
+    return downloaded_count, skipped_existing_count, len(raw_pdf_files)
 
 
 def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    parser = argparse.ArgumentParser(description="Prepare KUHPerdata dataset files")
+    parser.add_argument(
+        "--output_dir",
+        default=OUTPUT_DIR,
+        help=f"Output directory (default: {OUTPUT_DIR})",
+    )
+    parser.add_argument(
+        "--skip_existing_raw_pdfs",
+        action="store_true",
+        help="Skip downloading PDF files already present locally in cleaned_downloads/",
+    )
+    parser.add_argument(
+        "--clean_local_raw_pdfs",
+        action="store_true",
+        help="Delete local cleaned_downloads/ before syncing raw PDFs",
+    )
+    args = parser.parse_args()
+
+    os.makedirs(args.output_dir, exist_ok=True)
 
     login()
 
@@ -96,10 +149,14 @@ def main():
     qrels_test_df = load_parquet("qrels_test")
 
     # --- downloads/*.pdf (raw source files) ---
-    num_raw_pdfs = download_raw_pdfs(OUTPUT_DIR)
+    num_raw_pdfs_downloaded, num_raw_pdfs_skipped_existing, num_raw_pdfs_remote = download_raw_pdfs(
+        args.output_dir,
+        skip_existing=args.skip_existing_raw_pdfs,
+        clean_local_first=args.clean_local_raw_pdfs,
+    )
 
     # --- corpus.jsonl ---
-    corpus_path = os.path.join(OUTPUT_DIR, "corpus.jsonl")
+    corpus_path = os.path.join(args.output_dir, "corpus.jsonl")
     with open(corpus_path, "w", encoding="utf-8") as f:
         for _, doc in corpus_df.iterrows():
             entry = {
@@ -111,7 +168,7 @@ def main():
     print(f"Wrote {len(corpus_df)} documents to {corpus_path}")
 
     # --- queries.jsonl (with statute reference stripping) ---
-    queries_path = os.path.join(OUTPUT_DIR, "queries.jsonl")
+    queries_path = os.path.join(args.output_dir, "queries.jsonl")
     with open(queries_path, "w", encoding="utf-8") as f:
         for _, q in queries_df.iterrows():
             entry = {
@@ -124,7 +181,7 @@ def main():
 
     # --- qrels_train.tsv / qrels_test.tsv ---
     for split, qrels_df in [("train", qrels_train_df), ("test", qrels_test_df)]:
-        qrels_path = os.path.join(OUTPUT_DIR, f"qrels_{split}.tsv")
+        qrels_path = os.path.join(args.output_dir, f"qrels_{split}.tsv")
         with open(qrels_path, "w", encoding="utf-8") as f:
             f.write("query_id\tdoc_id\tscore\n")
             for _, row in qrels_df.iterrows():
@@ -142,10 +199,12 @@ def main():
         "num_relevance_judgments": n_train + n_test,
         "num_train_judgments": n_train,
         "num_test_judgments": n_test,
-        "num_raw_pdfs": num_raw_pdfs,
+        "num_raw_pdfs": num_raw_pdfs_remote,
+        "num_raw_pdfs_downloaded": num_raw_pdfs_downloaded,
+        "num_raw_pdfs_skipped_existing": num_raw_pdfs_skipped_existing,
         "avg_relevant_docs_per_query": (n_train + n_test) / len(queries_df) if len(queries_df) > 0 else 0,
     }
-    stats_path = os.path.join(OUTPUT_DIR, "dataset_stats.json")
+    stats_path = os.path.join(args.output_dir, "dataset_stats.json")
     with open(stats_path, "w", encoding="utf-8") as f:
         json.dump(stats, f, indent=2, ensure_ascii=False)
 
