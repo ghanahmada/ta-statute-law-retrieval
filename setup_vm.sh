@@ -37,9 +37,9 @@ python src/scripts/sailer/build_finetune_data.py
 python src/scripts/sailer/build_encode_data.py
 deactivate
 
-# --- JNLP venv (Python 3.13) ---
-echo "Setting up JNLP virtual environment (Python 3.13)..."
-uv venv .venv-jnlp --python 3.13
+# --- JNLP venv (Python 3.12) ---
+echo "Setting up JNLP virtual environment (Python 3.12)..."
+uv venv .venv-jnlp --python 3.12
 source .venv-jnlp/bin/activate
 uv pip install -r requirements-jnlp.txt
 deactivate
@@ -60,7 +60,7 @@ echo "    - bash src/scripts/sailer/run_finetune.sh"
 echo "    - bash src/scripts/sailer/run_encode.sh"
 echo "    - python src/scripts/sailer/evaluate_retrieval.py"
 echo ""
-echo "  .venv-jnlp (Python 3.13):"
+echo "  .venv-jnlp (Python 3.12):"
 echo "    source .venv-jnlp/bin/activate"
 echo "    - python src/scripts/evaluate_jnlp.py"
 echo "    - python src/scripts/evaluate_dense_retrieval.py"

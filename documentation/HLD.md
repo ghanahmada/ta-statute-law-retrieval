@@ -6,7 +6,7 @@
 | **Repository** | [ghanahmada/kuhperdata](https://huggingface.co/datasets/ghanahmada/kuhperdata) |
 | **Version** | 2.0 |
 | **Date** | 2026-03-08 |
-| **Language** | Python 3.13 |
+| **Language** | Python 3.12 |
 | **Package Manager** | uv |
 
 ---
@@ -272,7 +272,7 @@ TA/
 ├── outputs/                       # Model outputs (.gitignored)
 ├── setup_vm.sh                    # GPU VM one-time setup
 ├── requirements.txt               # Full dependencies
-├── requirements-jnlp.txt         # JNLP-specific deps (Python 3.13)
+├── requirements-jnlp.txt         # JNLP-specific deps (Python 3.12)
 ├── requirements-sailer.txt       # SAILER-specific deps (Python 3.10)
 └── pyproject.toml                 # Minimal dependencies (data collection)
 ```
@@ -291,7 +291,7 @@ TA/
 | **Product features over histogram** | Element-wise product preserves embedding geometry better than binned L1 histograms |
 | **BM25 hard negatives** | More informative than random negatives; teaches classifier to distinguish hard cases |
 | **Strip statute references** | Prevents data leakage from explicit article citations in court decision text |
-| **Dual virtual environments** | SAILER requires Python 3.10; JNLP requires Python 3.13 — separate venvs avoid conflicts |
+| **Dual virtual environments** | SAILER requires Python 3.10; JNLP requires Python 3.12 — separate venvs avoid conflicts |
 | **SAILER as plain code** | Converted from git submodule for easier modification (vocab extension, custom fine-tuning) |
 
 ---
@@ -602,7 +602,7 @@ SAILER_en with vocabulary extension (2,232 Indonesian tokens) and fine-tuning ac
 
 | Component | Version/Tool |
 |-----------|-------------|
-| **Python (JNLP)** | 3.13 (`.venv-jnlp`) |
+| **Python (JNLP)** | 3.12 (`.venv-jnlp`) |
 | **Python (SAILER)** | 3.10 (`.venv-sailer`) |
 | **Package Manager** | uv |
 | **GPU Setup** | `setup_vm.sh` (one-time VM provisioning) |
@@ -625,7 +625,7 @@ The `setup_vm.sh` script performs complete environment setup with **two separate
 
 1. Clones the SAILER repository as a sibling directory (`../SAILER/`)
 2. Creates `.venv-sailer` (Python 3.10) — data preparation + SAILER fine-tuning
-3. Creates `.venv-jnlp` (Python 3.13) — JNLP pipeline evaluation
+3. Creates `.venv-jnlp` (Python 3.12) — JNLP pipeline evaluation
 4. Installs dependencies from `requirements-sailer.txt` and `requirements-jnlp.txt` respectively
 5. Regenerates all 4 datasets via prepare scripts:
    - `python src/scripts/prepare_kuhperdata.py`
