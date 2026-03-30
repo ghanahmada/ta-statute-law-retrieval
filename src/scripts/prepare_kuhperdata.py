@@ -5,7 +5,7 @@ import re
 import shutil
 
 import pandas as pd
-from huggingface_hub import hf_hub_download, list_repo_files, login
+from huggingface_hub import hf_hub_download, list_repo_files, login, snapshot_download
 
 HF_DATASET_ID = "ghanahmada/kuhperdata"
 OUTPUT_DIR = os.path.join("data", "kuhperdata")
@@ -55,6 +55,7 @@ def download_raw_pdfs(
     *,
     skip_existing: bool = False,
     clean_local_first: bool = False,
+    max_workers: int = 32,
 ) -> tuple[int, int, int]:
     """Download raw PDF files from HuggingFace dataset cleaned_downloads/ folder.
 
@@ -85,23 +86,31 @@ def download_raw_pdfs(
         print("No raw PDFs found under cleaned_downloads/ in dataset repository.")
         return 0, 0, 0
 
-    downloaded_count = 0
-    skipped_existing_count = 0
+    existing_local = {
+        remote_path
+        for remote_path in raw_pdf_files
+        if os.path.exists(os.path.join(output_dir, remote_path.replace("/", os.sep)))
+    }
 
-    for remote_path in raw_pdf_files:
-        local_path = os.path.join(output_dir, remote_path.replace("/", os.sep))
-        if skip_existing and os.path.exists(local_path):
-            skipped_existing_count += 1
-            continue
+    files_to_fetch = [
+        remote_path
+        for remote_path in raw_pdf_files
+        if not (skip_existing and remote_path in existing_local)
+    ]
 
-        cached_path = hf_hub_download(
+    if files_to_fetch:
+        # Parallel folder sync is much faster than sequential single-file downloads.
+        snapshot_download(
             repo_id=HF_DATASET_ID,
-            filename=remote_path,
             repo_type="dataset",
+            allow_patterns=files_to_fetch,
+            local_dir=output_dir,
+            local_dir_use_symlinks=False,
+            max_workers=max_workers,
         )
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
-        shutil.copy2(cached_path, local_path)
-        downloaded_count += 1
+
+    skipped_existing_count = len(raw_pdf_files) - len(files_to_fetch)
+    downloaded_count = len(files_to_fetch)
 
     print(f"Remote raw PDFs found: {len(raw_pdf_files)}")
     print(f"Downloaded raw PDFs: {downloaded_count}")
@@ -128,6 +137,12 @@ def main():
         action="store_true",
         help="Delete local cleaned_downloads/ before syncing raw PDFs",
     )
+    parser.add_argument(
+        "--raw_pdf_download_workers",
+        type=int,
+        default=32,
+        help="Parallel workers for raw PDF download (default: 32)",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -153,6 +168,7 @@ def main():
         args.output_dir,
         skip_existing=args.skip_existing_raw_pdfs,
         clean_local_first=args.clean_local_raw_pdfs,
+        max_workers=args.raw_pdf_download_workers,
     )
 
     # --- corpus.jsonl ---

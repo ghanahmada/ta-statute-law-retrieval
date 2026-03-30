@@ -23,10 +23,12 @@ echo "Setting up SAILER virtual environment (Python 3.10)..."
 uv venv .venv-sailer --python 3.10
 source .venv-sailer/bin/activate
 uv pip install -r requirements-sailer.txt
+uv pip install hf_transfer
+export HF_HUB_ENABLE_HF_TRANSFER=1
 
 # Data prep (runs in SAILER venv — has datasets/huggingface_hub)
 echo "Generating datasets..."
-python src/scripts/prepare_kuhperdata.py
+python src/scripts/prepare_kuhperdata.py --skip_existing_raw_pdfs --raw_pdf_download_workers 32
 python src/scripts/prepare_bsard.py
 python src/scripts/prepare_ilpcsr.py
 python src/scripts/prepare_stard.py
