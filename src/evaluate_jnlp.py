@@ -3,7 +3,6 @@ import argparse
 from jnlp import Config, PipelineOrchestrator
 
 DATASETS = {
-    "kuhperdata": {"path": "data/kuhperdata", "max_length": 1024, "batch_size": 64},
     "kuhperdata-humanized": {"path": "data/kuhperdata-humanized", "max_length": 1024, "batch_size": 64},
     "kuhperdata-summarized": {"path": "data/kuhperdata-summarized", "max_length": 1024, "batch_size": 64},
     "bsard": {"path": "data/bsard", "max_length": 1024, "batch_size": 64},
@@ -24,6 +23,8 @@ parser.add_argument("--stage", type=int, default=1, choices=[1, 2])
 parser.add_argument("--feature_type", type=str, default="product", choices=["histogram", "product"])
 parser.add_argument("--llm_model", type=str, default="qwen2.5", choices=LLM_MODELS.keys())
 parser.add_argument("--reranker", action="store_true", help="Enable re-ranker (slow)")
+parser.add_argument("--max_relevant", type=int, default=5,
+                    help="Max ground-truth docs per query (queries with more are excluded)")
 args = parser.parse_args()
 
 datasets = DATASETS if args.dataset == "all" else {args.dataset: DATASETS[args.dataset]}
@@ -51,6 +52,7 @@ for name, cfg in datasets.items():
         encode_max_length=cfg["max_length"],
         encode_batch_size=cfg["batch_size"],
         llm_model_name=llm_name,
+        max_relevant=args.max_relevant,
         output_dir=base_dir,
     )
     pipeline = PipelineOrchestrator(config)

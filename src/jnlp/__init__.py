@@ -93,6 +93,9 @@ class Config:
     ensemble_metric: str = "f2"  # F2 prioritizes recall (legal retrieval)
     optuna_n_trials: int = 50
     
+    # Filtering
+    max_relevant: Optional[int] = None  # Max ground-truth docs per query; None = no filter
+
     # Output
     output_dir: str = "outputs/jnlp"
     seed: int = 42

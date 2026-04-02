@@ -128,9 +128,11 @@ def main():
                   f"queries: {query_embeddings.shape[0]} vs {len(test_query_ids)}). Re-encoding...")
 
     if not cache_valid:
-        print(f"\nLoading BGE-M3 ({args.bge_model})...")
+        import torch
+        devices = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"\nLoading BGE-M3 ({args.bge_model}) on {devices}...")
         from FlagEmbedding import BGEM3FlagModel
-        model = BGEM3FlagModel(args.bge_model, use_fp16=True)
+        model = BGEM3FlagModel(args.bge_model, use_fp16=True, devices=devices)
 
         print("Encoding corpus...")
         t0 = time.time()

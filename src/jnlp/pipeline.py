@@ -39,7 +39,9 @@ class PipelineOrchestrator:
             queries_path=self.config.queries_path,
             qrels_path=self.config.qrels_path
         ).load()
-        
+        if self.config.max_relevant:
+            self.data_loader.filter_max_relevant(self.config.max_relevant)
+
         return self
     
     def load_train_data(self) -> "PipelineOrchestrator":
@@ -48,16 +50,20 @@ class PipelineOrchestrator:
             queries_path=self.config.queries_path,
             qrels_path=self.config.qrels_train_path
         ).load()
-        
+        if self.config.max_relevant:
+            self.train_data_loader.filter_max_relevant(self.config.max_relevant)
+
         return self
-    
+
     def load_test_data(self) -> "PipelineOrchestrator":
         self.test_data_loader = DataLoader(
             corpus_path=self.config.corpus_path,
             queries_path=self.config.queries_path,
             qrels_path=self.config.qrels_test_path
         ).load()
-        
+        if self.config.max_relevant:
+            self.test_data_loader.filter_max_relevant(self.config.max_relevant)
+
         return self
     
     def run_stage1_training(

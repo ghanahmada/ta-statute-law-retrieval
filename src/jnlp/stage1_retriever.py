@@ -68,7 +68,7 @@ class Stage1Retriever:
         self.bge_model = BGEM3FlagModel(
             self.bge_model_name,
             use_fp16=True,
-            device=self.device
+            devices=self.device
         )
         return self
     

@@ -52,17 +52,17 @@ SCORERS = {
 }
 
 # Per-dataset recommended defaults (override global defaults when dataset is specified)
+_KUHPERDATA_DEFAULTS = {
+    "scorer": "bge",
+    "initial_pool_size": 100,
+    "budget": 50,
+    "use_stemmer": False,
+    "remove_stopwords": False,
+}
+
 DATASET_DEFAULTS = {
-    "kuhperdata": {
-        "scorer": "bge",
-        "initial_pool_size": 100,
-        "budget": 50,
-        # PySastrawi stemmer is too aggressive for formal legal Indonesian
-        # (e.g. ketentuan→tentu, peraturan→atur loses discriminative specificity).
-        # Disable by default; enable with --use_stemmer / --remove_stopwords if needed.
-        "use_stemmer": False,
-        "remove_stopwords": False,
-    },
+    "kuhperdata-humanized": _KUHPERDATA_DEFAULTS,
+    "kuhperdata-summarized": _KUHPERDATA_DEFAULTS,
 }
 
 _GLOBAL_DEFAULTS = {
@@ -434,6 +434,8 @@ def main():
     parser.add_argument("--remove_stopwords", action=argparse.BooleanOptionalAction, default=None,
                         help="Remove Indonesian stopwords via PySastrawi (default: off)")
     parser.add_argument("--cache_dir", type=str, default="outputs/gar")
+    parser.add_argument("--max_relevant", type=int, default=5,
+                        help="Max ground-truth docs per query (queries with more are excluded)")
     args = parser.parse_args()
 
     _resolve_args(args)
@@ -472,6 +474,10 @@ def main():
         print(f"{'=' * 60}")
 
         loader = DataLoader(corpus_path, queries_path, qrels_path).load()
+        if args.max_relevant:
+            before = len(loader.qrels)
+            loader.filter_max_relevant(args.max_relevant)
+            print(f"  Filtered queries: {len(loader.qrels)} (from {before}, max_relevant={args.max_relevant})")
         doc_ids, doc_texts = loader.get_corpus_texts()
         print(f"  Corpus: {len(doc_ids)} docs, Queries: {len(loader.qrels)} queries")
 
