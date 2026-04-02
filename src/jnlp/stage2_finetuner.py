@@ -32,6 +32,9 @@ Is this article relevant to answering the query? Answer with only 'Yes' or 'No'.
 <|im_start|>assistant
 {label}<|im_end|>"""
     
+    # The assistant answer starts after this marker in the ChatML prompt
+    _ANSWER_MARKER = "<|im_start|>assistant\n"
+
     def __init__(
         self,
         queries: Dict[str, str],
@@ -45,7 +48,13 @@ Is this article relevant to answering the query? Answer with only 'Yes' or 'No'.
         self.articles = articles
         self.tokenizer = tokenizer
         self.max_length = max_length
-        
+
+        # Pre-compute the token length of the answer marker so we can find
+        # the boundary between prompt and answer in any tokenized sequence.
+        self._answer_marker_ids = tokenizer.encode(
+            self._ANSWER_MARKER, add_special_tokens=False
+        )
+
         # Paper Section 4.3: upsample positive examples
         self.samples = []
         for qid, aid, label in pairs:
@@ -77,10 +86,21 @@ Is this article relevant to answering the query? Answer with only 'Yes' or 'No'.
             padding=False,
             return_tensors=None
         )
-        
-        # For causal LM, labels = input_ids (shifted internally by model)
-        encoding["labels"] = encoding["input_ids"].copy()
-        
+
+        # Mask prompt tokens in labels (-100) so loss is only computed on
+        # the answer tokens (Yes/No + <|im_end|>).
+        input_ids = encoding["input_ids"]
+        labels = input_ids.copy()
+        marker_len = len(self._answer_marker_ids)
+        # Scan for the answer marker subsequence
+        answer_start = None
+        for i in range(len(input_ids) - marker_len + 1):
+            if input_ids[i:i + marker_len] == self._answer_marker_ids:
+                answer_start = i + marker_len  # first token after the marker
+        if answer_start is not None:
+            labels[:answer_start] = [-100] * answer_start
+        encoding["labels"] = labels
+
         return {k: torch.tensor(v) for k, v in encoding.items()}
 
 
