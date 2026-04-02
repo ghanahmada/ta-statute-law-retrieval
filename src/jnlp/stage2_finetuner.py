@@ -224,6 +224,10 @@ class Stage2FineTuner:
             load_kwargs["full_finetuning"] = False
 
         self.model, self.tokenizer = FastLanguageModel.from_pretrained(**load_kwargs)
+        # Vision-language models (e.g. Qwen3.5) return a Processor instead of
+        # a tokenizer. Unwrap to the inner tokenizer for text-only training.
+        if hasattr(self.tokenizer, "tokenizer"):
+            self.tokenizer = self.tokenizer.tokenizer
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
@@ -458,5 +462,7 @@ class Stage2FineTuner:
             load_kwargs["full_finetuning"] = False
 
         self.model, self.tokenizer = FastLanguageModel.from_pretrained(**load_kwargs)
+        if hasattr(self.tokenizer, "tokenizer"):
+            self.tokenizer = self.tokenizer.tokenizer
 
         return self
