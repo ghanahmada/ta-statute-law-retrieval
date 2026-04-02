@@ -140,6 +140,10 @@ class Stage2FineTuner:
     Uses Unsloth for optimized 4-bit quantization and LoRA training.
     """
 
+    # Qwen3.5 has higher quantization error — use bf16 LoRA instead of QLoRA
+    # See: https://unsloth.ai/docs/models/qwen3.5/fine-tune
+    QLORA_BLACKLIST = ("Qwen3.5",)
+
     def __init__(
         self,
         model_name: str = "Qwen/Qwen2-7B-Instruct",
@@ -159,7 +163,13 @@ class Stage2FineTuner:
             "q_proj", "k_proj", "v_proj", "o_proj",
             "gate_proj", "up_proj", "down_proj"
         ]
-        self.load_in_4bit = load_in_4bit
+        # Force bf16 LoRA for models that don't quantize well
+        if any(tag in model_name for tag in self.QLORA_BLACKLIST):
+            self.load_in_4bit = False
+            self.load_in_16bit = True
+        else:
+            self.load_in_4bit = load_in_4bit
+            self.load_in_16bit = False
 
         self.model = None
         self.tokenizer = None
@@ -182,12 +192,18 @@ class Stage2FineTuner:
             return d
         PretrainedConfig.to_dict = _to_dict_with_dtype
 
-        self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+        load_kwargs = dict(
             model_name=self.model_name,
             max_seq_length=self.max_seq_length,
             dtype=torch.bfloat16,
             load_in_4bit=self.load_in_4bit,
         )
+        if self.load_in_16bit:
+            load_kwargs["load_in_4bit"] = False
+            load_kwargs["load_in_16bit"] = True
+            load_kwargs["full_finetuning"] = False
+
+        self.model, self.tokenizer = FastLanguageModel.from_pretrained(**load_kwargs)
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
@@ -410,11 +426,17 @@ class Stage2FineTuner:
         """Load LoRA adapter via Unsloth (auto-detects adapter_config.json)."""
         from unsloth import FastLanguageModel
 
-        self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+        load_kwargs = dict(
             model_name=adapter_path,
             max_seq_length=self.max_seq_length,
             dtype=torch.bfloat16,
             load_in_4bit=self.load_in_4bit,
         )
+        if self.load_in_16bit:
+            load_kwargs["load_in_4bit"] = False
+            load_kwargs["load_in_16bit"] = True
+            load_kwargs["full_finetuning"] = False
+
+        self.model, self.tokenizer = FastLanguageModel.from_pretrained(**load_kwargs)
 
         return self
