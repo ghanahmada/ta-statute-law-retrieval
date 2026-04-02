@@ -64,6 +64,7 @@ class Stage1Retriever:
         
     def load_bge_model(self):
         """Load BGE-M3 model for dense retrieval (Paper Section 4.3)."""
+        import util.compat  # noqa: F401 — patch transformers for FlagEmbedding compat
         from FlagEmbedding import BGEM3FlagModel
         self.bge_model = BGEM3FlagModel(
             self.bge_model_name,
@@ -365,6 +366,7 @@ class Stage1Retriever:
         self.reranker_type = reranker_type
         
         if reranker_type == "bge":
+            import util.compat  # noqa: F401
             from FlagEmbedding import FlagReranker
             model_name = model_name or "BAAI/bge-reranker-v2-m3"
             self.reranker = FlagReranker(

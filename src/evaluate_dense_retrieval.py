@@ -131,6 +131,7 @@ def main():
         import torch
         devices = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"\nLoading BGE-M3 ({args.bge_model}) on {devices}...")
+        import util.compat  # noqa: F401 — patch transformers for FlagEmbedding compat
         from FlagEmbedding import BGEM3FlagModel
         model = BGEM3FlagModel(args.bge_model, use_fp16=True, devices=devices)
 
