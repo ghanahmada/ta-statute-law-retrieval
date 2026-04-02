@@ -76,6 +76,13 @@ class DataLoader:
                         self.qrels[query_id] = {}
                     self.qrels[query_id][doc_id] = score
 
+    def filter_max_relevant(self, max_docs: int) -> "DataLoader":
+        """Remove queries that have more than max_docs relevant documents."""
+        to_remove = [qid for qid, docs in self.qrels.items() if len(docs) > max_docs]
+        for qid in to_remove:
+            del self.qrels[qid]
+        return self
+
     def get_corpus_texts(self) -> Tuple[List[str], List[str]]:
         """Return (doc_ids, texts) for encoding."""
         doc_ids = list(self.corpus.keys())

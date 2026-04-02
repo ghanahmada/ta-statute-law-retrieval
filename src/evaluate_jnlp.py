@@ -4,6 +4,8 @@ from jnlp import Config, PipelineOrchestrator
 
 DATASETS = {
     "kuhperdata": {"path": "data/kuhperdata", "max_length": 1024, "batch_size": 64},
+    "kuhperdata-humanized": {"path": "data/kuhperdata-humanized", "max_length": 1024, "batch_size": 64},
+    "kuhperdata-summarized": {"path": "data/kuhperdata-summarized", "max_length": 1024, "batch_size": 64},
     "bsard": {"path": "data/bsard", "max_length": 1024, "batch_size": 64},
     "ilpcsr": {"path": "data/ilpcsr", "max_length": 8192, "batch_size": 8},
     "stard": {"path": "data/stard", "max_length": 1024, "batch_size": 64},

@@ -23,6 +23,7 @@ import json
 import fitz
 import asyncio
 import argparse
+import subprocess
 from openai import AsyncOpenAI
 from pathlib import Path
 from tqdm.asyncio import tqdm_asyncio
@@ -54,12 +55,14 @@ def parse_pdf_text(filepath: str):
 # ── LLM call ─────────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """
-ATURAN KHUSUS:
-1. Gunakan Bahasa Indonesia formal yang lugas.
-2. ANTI-BELANDA/LATIN: Jangan gunakan istilah belanda seperti "Verstek", "Niet Ontvankelijke", "Obscuur Libel", "Wanprestasi", "Ex Aequo Et Bono", dsb.
-   - Gunakan: "Putusan tanpa kehadiran", "Gugatan tidak dapat diterima", "Gugatan kabur", "Ingkar janji".
-3. ANONIMISASI: Gunakan [Penggugat], [Tergugat], [Objek Sengketa], [Nomor Perkara] dan abstraksi lainnya untuk hal-hal yang bersifat sensitif.
-4. FOKUS REGULASI: Prioritaskan interpretasi fakta berdasarkan pasal-pasal di KUHPerdata.
+Anda adalah analis hukum perdata Indonesia. Tugas Anda adalah mengekstrak insiden hukum dari dokumen putusan pengadilan dan memetakannya ke pasal-pasal KUHPerdata (Kitab Undang-Undang Hukum Perdata) yang relevan.
+
+ATURAN:
+1. HANYA fokus pada pasal KUHPerdata. Abaikan UUD, UU, KUHP, KUHAP, dan regulasi lainnya.
+2. Jika dokumen TIDAK membahas KUHPerdata sama sekali, kembalikan JSON kosong: {"incidents": [], "relevant_laws": []}
+3. Gunakan Bahasa Indonesia formal. Ganti istilah Belanda/Latin dengan padanan Indonesia (Wanprestasi → Ingkar janji, Verstek → Putusan tanpa kehadiran, dll).
+4. Anonimkan pihak: gunakan [Penggugat], [Tergugat], [Objek Sengketa], dst.
+5. Setiap incident adalah ringkasan fakta hukum yang berdiri sendiri, bukan opini atau analisis.
 """.strip()
 
 
@@ -99,6 +102,29 @@ async def call_llm(
     return "", usage_dict
 
 
+# ── KUHPerdata regex filter ──────────────────────────────────────────────────
+
+_KUHPERDATA_PATTERN = re.compile(
+    r'Pasal\s+(\d+[a-zA-Z]?)'
+    r'(\s*(,|dan|dan\s+Pasal|jo\.?\s*Pasal)\s+(\d+[a-zA-Z]?))*'
+    r'\s+(KUHPerdata|KUH\s*Perdata|Kitab\s+Undang-Undang\s+Hukum\s+Perdata)',
+    re.IGNORECASE,
+)
+
+_PASAL_NUMBER = re.compile(r'Pasal\s+(\d+[a-zA-Z]?)', re.IGNORECASE)
+
+
+def extract_kuhperdata_pasal(text: str) -> list[str]:
+    """Extract unique KUHPerdata pasal references from text using regex."""
+    pasal_set = set()
+    for match in _KUHPERDATA_PATTERN.finditer(text):
+        # Extract all pasal numbers from the matched span
+        span = match.group(0)
+        for num_match in _PASAL_NUMBER.finditer(span):
+            pasal_set.add(f"Pasal {num_match.group(1)} KUHPerdata")
+    return sorted(pasal_set, key=lambda x: int(re.search(r'\d+', x).group()))
+
+
 # ── Pipeline: Blueprint → Workers → Synthesizer ─────────────────────────────
 
 async def worker_chunk(
@@ -110,34 +136,31 @@ async def worker_chunk(
     sem: asyncio.Semaphore,
 ) -> tuple[str, dict]:
     prompt = f"""
-TUGAS: Anda adalah analis hukum yang sangat teliti. Anda sedang memeriksa BAGIAN #{chunk_id} dari sebuah dokumen putusan.
+Anda memeriksa BAGIAN #{chunk_id} dari sebuah dokumen putusan pengadilan.
 
-Konteks global sebagai panduan:
+Konteks global:
 {blueprint}
 
-ATURAN KHUSUS:
-1. OBSERVASI LOKAL: Hanya ekstrak informasi yang BENAR-BENAR MUNCUL dalam teks Chunk #{chunk_id} di bawah ini. Jangan mengulang informasi dari Blueprint jika tidak ada buktinya di teks chunk ini.
-2. IDENTIFIKASI TAHAPAN: Tentukan apakah chunk ini berisi: 'Identitas Para Pihak', 'Duduk Perkara (Kronologi)', 'Pertimbangan Hukum (Ratio Decidendi)', atau 'Amar Putusan'. Fokuskan ekstraksi pada fungsi bagian tersebut.
-3. PENERAPAN GROUND TRUTH: Jika ada pasal yang disebutkan, jangan hanya menyalin isinya. Jelaskan: "Hakim menggunakan pasal ini UNTUK menilai [fakta apa]".
+TUGAS: Dari chunk ini, ekstrak:
+1. Semua fakta hukum / insiden (kronologi, tindakan para pihak, kerugian, objek sengketa, argumen hakim)
+2. Semua pasal atau regulasi yang disebutkan (catat apa adanya, jangan filter)
 
-FORMAT OUTPUT WAJIB:
-### [A] Analisis Chunk #{chunk_id}
-- **Kategori Dokumen**: (Sebutkan: Identitas/Duduk Perkara/Pertimbangan/Amar)
-- **Detail Unik**: (Ekstrak fakta spesifik atau argumen yang hanya ada di chunk ini)
-- **Logika Hukum**: (Bagaimana pihak atau hakim membangun argumen di bagian ini)
+ATURAN:
+- Catat SEMUA fakta hukum meskipun tidak menyebut pasal apapun.
+- Catat SEMUA referensi regulasi yang muncul apa adanya.
+- Ganti istilah Belanda/Latin: Wanprestasi → Ingkar janji, Verstek → Putusan tanpa kehadiran, Onrechtmatige daad → Perbuatan melawan hukum.
+- Anonimkan: [Penggugat], [Tergugat], [Objek Sengketa].
 
-### [B] Temuan Regulasi Spesifik (Jika Ada)
-- **Pasal/Doktrin**: [Nomor Pasal]
-- **Konteks di Chunk**: [Mengapa pasal ini muncul di sini?]
-
-Dilarang mengeluarkan output "Tidak ada data relevan" kecuali chunk tersebut benar-benar kosong atau hanya berisi disclaimer teknis.
+FORMAT OUTPUT:
+FAKTA: [daftar fakta hukum yang ditemukan di chunk ini]
+REGULASI: [daftar semua pasal/regulasi yang dirujuk di chunk ini]
 
 TEKS CHUNK #{chunk_id}:
 {chunk_text}
 """
     async with sem:
-        text, usage = await call_llm(client, model, prompt, max_tokens=2500)
-        return f"\n--- CHUNK {chunk_id} EXTRACTIONS ---\n{text}", usage
+        text, usage = await call_llm(client, model, prompt, max_tokens=1500)
+        return f"\n--- CHUNK {chunk_id} ---\n{text}", usage
 
 
 async def run_pipeline(
@@ -156,13 +179,13 @@ async def run_pipeline(
     # Phase 1: Blueprint
     planner_context = "\n".join(pages[:5] + pages[-5:])
     blueprint_prompt = f"""
-Identifikasi 3 elemen dari dokumen ini:
-1. Subjek & Objek: Siapa [Penggugat], [Tergugat], dan apa [Objek Sengketa]?
-2. Garis Besar Konflik: Inti masalah (misal: jual beli, utang piutang).
-3. Hasil Akhir: Apakah gugatan dikabulkan, ditolak, atau tidak dapat diterima?
+Identifikasi secara singkat dari dokumen putusan ini:
+1. Siapa [Penggugat] dan [Tergugat]?
+2. Apa inti sengketa (jual beli, utang piutang, waris, tanah, dll)?
+3. Regulasi apa saja yang dirujuk?
+4. Hasil akhir: gugatan dikabulkan, ditolak, atau tidak dapat diterima?
 
-Gunakan informasi ini sebagai konteks untuk proses ekstraksi detail nantinya.
-Kembalikan blueprint dalam format poin-poin yang jelas dan terstruktur.
+Jawab dalam poin-poin singkat.
 
 Document text: {planner_context}
 """
@@ -188,28 +211,50 @@ Document text: {planner_context}
         total_usage["completion_tokens"] += usage["completion_tokens"]
     combined_extractions = "\n".join(worker_texts)
 
-    # Phase 3: Synthesizer
+    # Phase 2.5: Regex-extract KUHPerdata pasal from raw PDF + worker output
+    kuhperdata_pasal = extract_kuhperdata_pasal(full_text + "\n" + combined_extractions)
+
+    if not kuhperdata_pasal:
+        # No KUHPerdata found — skip synthesizer, save tokens
+        empty = json.dumps({
+            "humanized_query": {"text": "", "relevant_laws": []},
+            "summarized_case": {"text": "", "relevant_laws": []},
+        })
+        return empty, combined_extractions, total_usage
+
+    pasal_list = ", ".join(kuhperdata_pasal)
+
+    # Phase 3: Synthesizer — scoped to KUHPerdata facts only
     synthesizer_prompt = f"""
-Ubah catatan ekstraksi menjadi query yang relevan melalui prosedur berikut.
+Dari catatan ekstraksi berikut, pasal KUHPerdata yang ditemukan dalam dokumen adalah:
+{pasal_list}
 
-ATURAN KHUSUS:
-1. HAPUS SEMUA ISTILAH BELANDA/LATIN. Jika ada "Verstek", ubah jadi "Putusan tanpa kehadiran". Jika ada "Obscuur Libel", ubah jadi "Gugatan tidak jelas/kabur". Jika ada "NO", ubah jadi "Gugatan tidak dapat diterima".
-2. FOKUS KUHPERDATA: Hubungkan temuan fakta dengan pasal-pasal di KUHPerdata
-3. BAHASA: jangan gunakan akronim atau istilah yang tidak umum. Gunakan Bahasa Indonesia sebagai abstraksi dari istilah pada notes.
-4. Pada bagian Relevansi Pasal, HANYA masukkan pasal yang benar-benar dibahas atau menjadi dasar logika di dalam kalimat query tersebut. Jangan memasukkan semua pasal jika query hanya membahas satu aspek spesifik.
-5. Jangan melakukan over-labeling pada Relevansi Pasal. Jika sebuah query membahas tentang kegagalan prosedur atau kejelasan objek, jangan mencantumkan pasal materiil kecuali query tersebut secara eksplisit menanyakan tentang unsur kesalahan atau kerugian.
+Buat DUA jenis query yang HANYA membahas fakta-fakta terkait pasal KUHPerdata di atas. Abaikan fakta yang hanya terkait regulasi lain (UUD, UU, KUHP, dll).
 
-STRUKTUR OUTPUT:
-1. Pertanyaan Hukum Orang Awam: Satu pertanyaan natural dari perspektif non legal. Contoh: "Kenapa saya kalah padahal lawan tidak datang sidang?"
-   Relevansi Pasal: [Relevansi: Pasal XXX KUHPerdata, ...].
+FORMAT OUTPUT (JSON saja):
+{{
+  "humanized_query": {{
+    "text": "Pertanyaan singkat dari perspektif orang awam (1-2 kalimat, tanpa istilah hukum)",
+    "relevant_laws": ["Pasal XXX KUHPerdata", ...]
+  }},
+  "summarized_case": {{
+    "text": "Ringkasan fakta kasus secara naratif (3-5 kalimat, fokus pada kronologi dan perikatan)",
+    "relevant_laws": ["Pasal XXX KUHPerdata", ...]
+  }}
+}}
 
-2. Ringkasan Kasus: Fokus pada Fakta perikatan, tindakan ingkar janji, dan alasan logis hakim menyatakan gugatan kabur karena tuntutan yang saling bertentangan.
-   Relevansi Pasal: [Relevansi: Pasal XXX KUHPerdata, ...].
+ATURAN KRITIS:
+1. DILARANG menyebut nomor pasal, nama undang-undang, atau referensi hukum di dalam "text". Teks harus murni fakta dan kejadian. Contoh SALAH: "melanggar Pasal 1365". Contoh BENAR: "melakukan perbuatan yang merugikan pihak lain".
+2. "relevant_laws" harus HANYA berisi pasal dari daftar KUHPerdata di atas.
+3. Setiap query punya relevant_laws SENDIRI sesuai cakupan faktanya.
+4. Ganti istilah Belanda/Latin ke Bahasa Indonesia.
+5. Anonimkan: [Penggugat], [Tergugat], [Objek Sengketa].
+6. Kembalikan HANYA JSON valid.
 
 Extracted Notes:
 {combined_extractions}
 """
-    final_summary, usage = await call_llm(client, model, synthesizer_prompt, max_tokens=2500)
+    final_summary, usage = await call_llm(client, model, synthesizer_prompt, max_tokens=2000)
     total_usage["prompt_tokens"] += usage["prompt_tokens"]
     total_usage["completion_tokens"] += usage["completion_tokens"]
 
@@ -256,34 +301,80 @@ async def process_one(
             append_result(output_path, {
                 "filename": filename,
                 "error": "pdf_parse_failed",
-                "final_output": None,
-                "worker_output": None,
+                "humanized_query": None,
+                "summarized_case": None,
+                "raw_llm_output": None,
                 "usage": None,
             })
             return False
 
         pages = [p.markdown for p in response.pages]
         try:
-            final_output, worker_output, usage = await run_pipeline(
+            raw_output, worker_extractions, usage = await run_pipeline(
                 client, model, pages
             )
-            append_result(output_path, {
+            # Try to parse JSON from LLM output
+            parsed = None
+            try:
+                # Strip markdown code fences if present
+                clean = raw_output.strip()
+                if clean.startswith("```"):
+                    clean = clean.split("\n", 1)[1] if "\n" in clean else clean[3:]
+                    clean = clean.rsplit("```", 1)[0]
+                parsed = json.loads(clean)
+            except (json.JSONDecodeError, IndexError):
+                pass
+
+            # Post-process: ensure relevant_laws only contains KUHPerdata
+            if parsed:
+                kuhp_re = re.compile(r'Pasal\s+\d+[a-zA-Z]?\s+(KUHPerdata|KUH\s*Perdata)', re.IGNORECASE)
+                for key in ("humanized_query", "summarized_case"):
+                    entry = parsed.get(key, {})
+                    if isinstance(entry, dict) and "relevant_laws" in entry:
+                        entry["relevant_laws"] = [
+                            law for law in entry["relevant_laws"]
+                            if kuhp_re.search(law)
+                        ]
+
+            record = {
                 "filename": filename,
-                "final_output": final_output,
-                "worker_output": worker_output,
+                "humanized_query": parsed.get("humanized_query") if parsed else None,
+                "summarized_case": parsed.get("summarized_case") if parsed else None,
+                "raw_llm_output": raw_output if parsed is None else None,
                 "usage": usage,
-                "error": None,
-            })
-            return True
+                "error": None if parsed else "json_parse_failed",
+            }
+            append_result(output_path, record)
+            return parsed is not None
         except Exception as e:
             append_result(output_path, {
                 "filename": filename,
                 "error": str(e),
-                "final_output": None,
-                "worker_output": None,
+                "humanized_query": None,
+                "summarized_case": None,
+                "raw_llm_output": None,
                 "usage": None,
             })
             return False
+
+
+def upload_to_hf(output_path: str, hf_repo: str) -> bool:
+    """Upload the JSONL results file to HuggingFace Hub."""
+    try:
+        from huggingface_hub import HfApi
+        api = HfApi()
+        api.upload_file(
+            path_or_fileobj=output_path,
+            path_in_repo="extraction/vllm_summarizer_results.jsonl",
+            repo_id=hf_repo,
+            repo_type="dataset",
+        )
+        count = sum(1 for line in open(output_path, "r", encoding="utf-8") if line.strip())
+        print(f"\n[Checkpoint] Uploaded {count} results to HF: {hf_repo}")
+        return True
+    except Exception as e:
+        print(f"\n[Checkpoint] HF upload failed: {e}")
+        return False
 
 
 async def main():
@@ -296,6 +387,10 @@ async def main():
                         help="Max concurrent PDF pipelines")
     parser.add_argument("--limit", type=int, default=0,
                         help="Process at most N files (0 = all)")
+    parser.add_argument("--hf_repo", default="ghanahmada/kuhperdata",
+                        help="HuggingFace repo for checkpoint uploads")
+    parser.add_argument("--checkpoint_every", type=int, default=50,
+                        help="Upload to HF every N completed PDFs")
     args = parser.parse_args()
 
     # Connect to vLLM
@@ -318,16 +413,48 @@ async def main():
         print("Nothing to process.")
         return
 
+    # Process with periodic HF checkpoint uploads
     sem = asyncio.Semaphore(args.concurrency)
-    tasks = [
-        process_one(sem, client, args.model, str(p), args.output)
-        for p in todo
-    ]
-    results = await tqdm_asyncio.gather(*tasks, desc="Processing PDFs")
-    success = sum(1 for r in results if r)
-    failed = len(results) - success
+    completed = 0
+    since_last_upload = 0
+    success = 0
+    failed = 0
+    pbar = None
+
+    try:
+        from tqdm import tqdm
+        pbar = tqdm(total=len(todo), desc="Processing PDFs")
+    except ImportError:
+        pass
+
+    async def process_and_count(filepath):
+        nonlocal completed, since_last_upload, success, failed
+        result = await process_one(sem, client, args.model, filepath, args.output)
+        completed += 1
+        since_last_upload += 1
+        if result:
+            success += 1
+        else:
+            failed += 1
+        if pbar:
+            pbar.update(1)
+
+        # Checkpoint upload
+        if since_last_upload >= args.checkpoint_every:
+            since_last_upload = 0
+            upload_to_hf(args.output, args.hf_repo)
+
+    tasks = [process_and_count(str(p)) for p in todo]
+    await asyncio.gather(*tasks)
+
+    if pbar:
+        pbar.close()
+
+    # Final upload
     print(f"\nDone. Success: {success}, Failed: {failed}")
     print(f"Results saved to: {args.output}")
+    upload_to_hf(args.output, args.hf_repo)
+    print("Final checkpoint uploaded to HuggingFace.")
 
 
 if __name__ == "__main__":

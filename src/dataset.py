@@ -27,6 +27,27 @@ def load_statute_documents(csv_path: str) -> Tuple[List[str], List[str]]:
     return documents, document_ids
 
 
+def strip_statute_references(text: str) -> str:
+    """Remove statute references from query text to prevent data leakage."""
+    _KUHPERDATA = r'(KUHPerdata|KUH\s*Perdata|Kitab\s+Undang-Undang\s+Hukum\s+Perdata)'
+    _OTHER_LAWS = r'\s+(?:RBg|HIR|KUHP|KUHAP|UU|UUD|PP|Perpres|Perma|KUHPidana|KUHDagang)\b'
+    _PASAL_CHAIN = r'Pasal\s+\d+[a-zA-Z]?(\s*(,|dan|dan\s+Pasal)\s+\d+[a-zA-Z]?)*'
+
+    text = re.sub(_PASAL_CHAIN + r'\s+' + _KUHPERDATA, '', text, flags=re.IGNORECASE)
+    text = re.sub(_KUHPERDATA, '', text, flags=re.IGNORECASE)
+
+    def _keep_other_law(m):
+        after = m.string[m.end():]
+        if re.match(_OTHER_LAWS, after, re.IGNORECASE):
+            return m.group(0)
+        return ''
+
+    text = re.sub(_PASAL_CHAIN, _keep_other_law, text, flags=re.IGNORECASE)
+    text = re.sub(r'\(\s*\)', '', text)
+    text = re.sub(r'\s{2,}', ' ', text).strip()
+    return text
+
+
 def parse_kuhperdata_pasal(law_string: str) -> str | None:
     kuhperdata_patterns = [
         r'KUHPerdata',
@@ -48,37 +69,102 @@ def parse_kuhperdata_pasal(law_string: str) -> str | None:
 
 
 def load_queries(json_path: str) -> Tuple[List[str], List[List[str]], List[str]]:
+    """Load queries from the legacy judgement_to_content.json format."""
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    
+
     queries = []
     ground_truths = []
     case_names = []
-    
+
     for case_name, case_data in data.items():
         incidents = case_data.get('incidents', [])
         relevant_laws = case_data.get('relevant_laws', [])
-        
+
         # filter only KUHPerdata pasal numbers
         pasal_numbers = []
         for law in relevant_laws:
             pasal_num = parse_kuhperdata_pasal(law)
             if pasal_num:
                 pasal_numbers.append(pasal_num)
-        
+
         if not pasal_numbers:
             continue
-        
+
         if not incidents:
             continue
-        
+
         combined_query = ". ".join(incidents)
-        
+
         queries.append(combined_query)
         ground_truths.append(pasal_numbers)
         case_names.append(case_name)
-    
+
     return queries, ground_truths, case_names
+
+
+def load_queries_v2(jsonl_path: str) -> Dict[str, Tuple[List[str], List[List[str]], List[str]]]:
+    """Load queries from the vLLM summarizer JSONL format.
+
+    Returns a dict with two query sets:
+        {
+            "humanized": (queries, ground_truths, case_names),
+            "summarized": (queries, ground_truths, case_names),
+        }
+    Each entry that has valid text and at least one KUHPerdata pasal
+    is included. Entries with errors or empty text are skipped.
+    """
+    results: Dict[str, Tuple[List[str], List[List[str]], List[str]]] = {
+        "humanized": ([], [], []),
+        "summarized": ([], [], []),
+    }
+
+    with open(jsonl_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            if rec.get("error") and rec["error"] != "json_parse_failed":
+                continue
+
+            filename = rec.get("filename", "")
+
+            for key, result_key in [("humanized_query", "humanized"),
+                                     ("summarized_case", "summarized")]:
+                entry = rec.get(key)
+                if not isinstance(entry, dict):
+                    continue
+
+                text = (entry.get("text") or "").strip()
+                if not text:
+                    continue
+
+                # Strip any leaked statute references from query text
+                text = strip_statute_references(text)
+                if not text:
+                    continue
+
+                laws = entry.get("relevant_laws", [])
+                pasal_numbers = []
+                for law in laws:
+                    pasal_num = parse_kuhperdata_pasal(law)
+                    if pasal_num:
+                        pasal_numbers.append(pasal_num)
+
+                if not pasal_numbers:
+                    continue
+
+                queries, gts, names = results[result_key]
+                queries.append(text)
+                gts.append(pasal_numbers)
+                names.append(filename)
+
+    return results
 
 
 def embed_queries_for_splitting(
@@ -340,50 +426,229 @@ def export_ir_dataset(
 def get_default_paths() -> Dict[str, Path]:
     src_dir = Path(__file__).parent
     project_root = src_dir.parent
-    
+
     return {
         'statute': project_root / 'data' / 'statute' / 'kuh_perdata.csv',
         'queries': project_root / 'data' / 'judgement' / 'judgement_to_content.json',
+        'queries_v2': project_root / 'experiment' / 'vllm_summarizer_results.jsonl',
     }
 
 
-if __name__ == '__main__':
-    paths = get_default_paths()
-    
-    print("Loading statute documents...")
-    documents, doc_ids = load_statute_documents(str(paths['statute']))
-    print(f"Loaded {len(documents)} documents")
-    print(f"Sample document: {documents[0][:100]}...")
-    
-    print("\nLoading queries (filtered for KUHPerdata only)...")
+def build_v1(paths: Dict[str, Path], documents, doc_ids):
+    """Build dataset from legacy judgement_to_content.json."""
+    print("\nLoading queries (v1: judgement_to_content.json)...")
     queries, ground_truths, case_names = load_queries(str(paths['queries']))
     print(f"Loaded {len(queries)} queries with KUHPerdata ground truth")
-    
+
     if queries:
-        print(f"\nSample query (combined incidents): {queries[0][:150]}...")
+        print(f"\nSample query: {queries[0][:150]}...")
         print(f"Ground truth pasals: {ground_truths[0]}")
-        print(f"Case name: {case_names[0]}")
-    
-    print("\n" + "=" * 60)
-    print("Exporting IR dataset with Semantic Train/Test Split...")
-    print("=" * 60)
+
     output_dir = paths['statute'].parent.parent / 'kuhperdata'
     created_files = export_ir_dataset(
         str(output_dir),
         documents, doc_ids,
         queries, ground_truths, case_names,
-        test_ratio=0.2,  # 20% test
-        n_clusters=50,   # More clusters = finer split (closer to exact 80/20)
+        test_ratio=0.2,
+        n_clusters=50,
         random_state=42
     )
-    
-    print("\nCreated files:")
-    for name, path in created_files.items():
-        print(f"  {name}: {path}")
-    
-    print("\n" + "=" * 60)
-    print("Usage:")
-    print("  - qrels_train.tsv: Use for training (semantically grouped)")
-    print("  - qrels_test.tsv:  Use for evaluation (unseen, distant queries)")
-    print("  - split_indices.json: Reproducible split indices")
-    print("=" * 60)
+    return created_files
+
+
+def _export_with_split(
+    output_dir: str,
+    documents: List[str],
+    document_ids: List[str],
+    queries: List[str],
+    ground_truths: List[List[str]],
+    case_names: List[str],
+    train_cases: set,
+    test_cases: set,
+) -> Dict[str, Path]:
+    """Export BEIR dataset using a pre-determined case-name split."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    created_files = {}
+
+    # Corpus
+    corpus_path = output_path / 'corpus.jsonl'
+    with open(corpus_path, 'w', encoding='utf-8') as f:
+        for doc_id, doc_text in zip(document_ids, documents):
+            entry = {'_id': doc_id, 'title': f'Pasal {doc_id}', 'text': doc_text}
+            f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+    created_files['corpus'] = corpus_path
+
+    # Queries
+    queries_path = output_path / 'queries.jsonl'
+    with open(queries_path, 'w', encoding='utf-8') as f:
+        for i, (query, case_name) in enumerate(zip(queries, case_names)):
+            entry = {'_id': f'q{i}', 'text': query, 'metadata': {'case_name': case_name}}
+            f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+    created_files['queries'] = queries_path
+
+    # Split by case name
+    train_indices = [i for i, name in enumerate(case_names) if name in train_cases]
+    test_indices = [i for i, name in enumerate(case_names) if name in test_cases]
+
+    # Qrels
+    for label, indices, filename in [
+        ('qrels', list(range(len(queries))), 'qrels.tsv'),
+        ('qrels_train', train_indices, 'qrels_train.tsv'),
+        ('qrels_test', test_indices, 'qrels_test.tsv'),
+    ]:
+        p = output_path / filename
+        with open(p, 'w', encoding='utf-8') as f:
+            f.write('query_id\tdoc_id\tscore\n')
+            for i in indices:
+                for doc_id in ground_truths[i]:
+                    f.write(f'q{i}\t{doc_id}\t1\n')
+        created_files[label] = p
+
+    # Split indices
+    split_path = output_path / 'split_indices.json'
+    with open(split_path, 'w', encoding='utf-8') as f:
+        json.dump({
+            'train_indices': train_indices,
+            'test_indices': test_indices,
+            'train_query_ids': [f'q{i}' for i in train_indices],
+            'test_query_ids': [f'q{i}' for i in test_indices],
+        }, f, indent=2)
+    created_files['split_indices'] = split_path
+
+    # Stats
+    stats_path = output_path / 'dataset_stats.json'
+    stats = {
+        'num_documents': len(documents),
+        'num_queries': len(queries),
+        'num_train_queries': len(train_indices),
+        'num_test_queries': len(test_indices),
+        'num_relevance_judgments': sum(len(gt) for gt in ground_truths),
+        'num_train_judgments': sum(len(ground_truths[i]) for i in train_indices),
+        'num_test_judgments': sum(len(ground_truths[i]) for i in test_indices),
+        'avg_relevant_docs_per_query': sum(len(gt) for gt in ground_truths) / len(queries) if queries else 0,
+        'avg_query_length_chars': sum(len(q) for q in queries) / len(queries) if queries else 0,
+    }
+    with open(stats_path, 'w', encoding='utf-8') as f:
+        json.dump(stats, f, indent=2, ensure_ascii=False)
+    created_files['stats'] = stats_path
+
+    print(f"  Train: {len(train_indices)} queries, Test: {len(test_indices)} queries")
+    return created_files
+
+
+def build_v2(paths: Dict[str, Path], documents, doc_ids, max_relevant: int = 0):
+    """Build dataset from vLLM JSONL with humanized + summarized queries.
+
+    Uses a single case-name-based split so humanized and summarized
+    have the same cases in train/test.
+    """
+    print("\nLoading queries (v2: vllm_summarizer_results.jsonl)...")
+    query_sets = load_queries_v2(str(paths['queries_v2']))
+
+    # Validate doc_ids — only keep pasal numbers that exist in corpus
+    valid_doc_ids = set(doc_ids)
+
+    for query_type, (queries, ground_truths, case_names) in query_sets.items():
+        filtered_queries = []
+        filtered_gts = []
+        filtered_names = []
+        dropped_invalid = 0
+        dropped_too_many = 0
+        for q, gt, name in zip(queries, ground_truths, case_names):
+            valid_gt = [p for p in gt if p in valid_doc_ids]
+            if not valid_gt:
+                dropped_invalid += 1
+                continue
+            if max_relevant > 0 and len(valid_gt) > max_relevant:
+                dropped_too_many += 1
+                continue
+            filtered_queries.append(q)
+            filtered_gts.append(valid_gt)
+            filtered_names.append(name)
+        query_sets[query_type] = (filtered_queries, filtered_gts, filtered_names)
+
+        print(f"  {query_type}: {len(filtered_queries)} queries "
+              f"({dropped_invalid} dropped — invalid pasal"
+              f"{f', {dropped_too_many} dropped — >{max_relevant} relevant docs' if max_relevant > 0 else ''})")
+
+    # Collect all unique case names across both query sets
+    all_case_names = set()
+    for queries, ground_truths, case_names in query_sets.values():
+        all_case_names.update(case_names)
+    all_case_names = sorted(all_case_names)
+
+    # Do ONE semantic split on the summarized queries (longer = better clustering)
+    # then apply by case name to both datasets
+    print(f"\n{'=' * 60}")
+    print("Performing shared semantic split (on summarized queries)")
+    print(f"{'=' * 60}")
+
+    split_queries, split_gts, split_names = query_sets["summarized"]
+    train_indices, test_indices, split_info = semantic_train_test_split(
+        queries=split_queries,
+        ground_truths=split_gts,
+        case_names=split_names,
+        test_ratio=0.2,
+        n_clusters=50,
+        random_state=42,
+    )
+
+    train_cases = {split_names[i] for i in train_indices}
+    test_cases = {split_names[i] for i in test_indices}
+    print(f"  Train cases: {len(train_cases)}, Test cases: {len(test_cases)}")
+
+    # Export both datasets with the same case-level split
+    for query_type, (queries, ground_truths, case_names) in query_sets.items():
+        if not queries:
+            print(f"  Skipping {query_type}: no valid queries")
+            continue
+
+        print(f"\n{'=' * 60}")
+        print(f"Building BEIR dataset: kuhperdata-{query_type}")
+        print(f"{'=' * 60}")
+
+        if queries:
+            print(f"Sample query: {queries[0][:150]}...")
+            print(f"Ground truth: {ground_truths[0]}")
+
+        output_dir = paths['statute'].parent.parent / f'kuhperdata-{query_type}'
+        created_files = _export_with_split(
+            str(output_dir),
+            documents, doc_ids,
+            queries, ground_truths, case_names,
+            train_cases, test_cases,
+        )
+
+        print(f"\nCreated files for {query_type}:")
+        for name, path in created_files.items():
+            print(f"  {name}: {path}")
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Build KUHPerdata BEIR dataset")
+    parser.add_argument("--version", choices=["v1", "v2", "all"], default="all",
+                        help="v1=legacy JSON, v2=vLLM JSONL, all=both")
+    parser.add_argument("--max_relevant", type=int, default=10,
+                        help="Max relevant docs per query for v2 (0=no limit, default=10)")
+    args = parser.parse_args()
+
+    paths = get_default_paths()
+
+    print("Loading statute documents...")
+    documents, doc_ids = load_statute_documents(str(paths['statute']))
+    print(f"Loaded {len(documents)} documents")
+
+    if args.version in ("v1", "all"):
+        if paths['queries'].exists():
+            build_v1(paths, documents, doc_ids)
+        else:
+            print(f"Skipping v1: {paths['queries']} not found")
+
+    if args.version in ("v2", "all"):
+        if paths['queries_v2'].exists():
+            build_v2(paths, documents, doc_ids, max_relevant=args.max_relevant)
+        else:
+            print(f"Skipping v2: {paths['queries_v2']} not found")

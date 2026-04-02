@@ -37,7 +37,8 @@ from gar.corpus_graph import CorpusGraph
 from gar.adaptive_reranker import GAR
 
 DATASETS = {
-    "kuhperdata": {"path": "data/kuhperdata", "lang": "id"},
+    "kuhperdata-humanized": {"path": "data/kuhperdata-humanized", "lang": "id"},
+    "kuhperdata-summarized": {"path": "data/kuhperdata-summarized", "lang": "id"},
     "bsard": {"path": "data/bsard", "lang": "fr"},
     "ilpcsr": {"path": "data/ilpcsr", "lang": "en"},
     "stard": {"path": "data/stard", "lang": "zh"},

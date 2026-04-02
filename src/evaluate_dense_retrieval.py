@@ -58,24 +58,48 @@ def evaluate_cosine_retrieval(
     return results
 
 
+DATASETS = {
+    "kuhperdata-humanized": "data/kuhperdata-humanized",
+    "kuhperdata-summarized": "data/kuhperdata-summarized",
+    "bsard": "data/bsard",
+    "ilpcsr": "data/ilpcsr",
+    "stard": "data/stard",
+}
+
+
 def main():
     parser = argparse.ArgumentParser(description="BGE-M3 cosine similarity retrieval PoC")
+    parser.add_argument("--dataset", type=str, default=None, choices=DATASETS.keys(),
+                        help="Dataset name (overrides --corpus_path/--queries_path/--qrels_test_path)")
     parser.add_argument("--corpus_path", default="data/kuhperdata/corpus.jsonl")
     parser.add_argument("--queries_path", default="data/kuhperdata/queries.jsonl")
     parser.add_argument("--qrels_test_path", default="data/kuhperdata/qrels_test.tsv")
+    parser.add_argument("--split", type=str, default="test", choices=["train", "test"])
     parser.add_argument("--bge_model", default="BAAI/bge-m3")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--max_length", type=int, default=1024)
     parser.add_argument("--save_embeddings", action="store_true", help="Cache embeddings to disk")
     parser.add_argument("--embeddings_dir", default="outputs/embeddings")
+    parser.add_argument("--max_relevant", type=int, default=5,
+                        help="Max ground-truth docs per query (queries with more are excluded)")
     args = parser.parse_args()
 
+    if args.dataset:
+        data_dir = DATASETS[args.dataset]
+        args.corpus_path = f"{data_dir}/corpus.jsonl"
+        args.queries_path = f"{data_dir}/queries.jsonl"
+        args.qrels_test_path = f"{data_dir}/qrels_{args.split}.tsv"
+
     print("=" * 60)
-    print("PoC: BGE-M3 Raw Cosine Similarity vs CatBoost Histogram")
+    print(f"BGE-M3 Dense Retrieval{f' — {args.dataset}' if args.dataset else ''}")
     print("=" * 60)
 
     # --- Load data ---
     loader = DataLoader(args.corpus_path, args.queries_path, args.qrels_test_path).load()
+    if args.max_relevant:
+        before = len(loader.qrels)
+        loader.filter_max_relevant(args.max_relevant)
+        print(f"Filtered queries: {len(loader.qrels)} (from {before}, max_relevant={args.max_relevant})")
     doc_ids, doc_texts = loader.get_corpus_texts()
     test_query_ids = list(loader.qrels.keys())
     test_query_texts = [loader.queries[qid]["text"] for qid in test_query_ids]

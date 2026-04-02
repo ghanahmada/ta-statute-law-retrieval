@@ -37,7 +37,8 @@ from util.dataloader import DataLoader
 from util.metrics import evaluate_ranking
 
 DATASETS = {
-    "kuhperdata": {"path": "data/kuhperdata", "lang": "id"},
+    "kuhperdata-humanized": {"path": "data/kuhperdata-humanized", "lang": "id"},
+    "kuhperdata-summarized": {"path": "data/kuhperdata-summarized", "lang": "id"},
     "bsard": {"path": "data/bsard", "lang": "fr"},
     "ilpcsr": {"path": "data/ilpcsr", "lang": "en"},
     "stard": {"path": "data/stard", "lang": "zh"},
@@ -50,7 +51,13 @@ SCORERS = {
 }
 
 DATASET_DEFAULTS = {
-    "kuhperdata": {
+    "kuhperdata-humanized": {
+        "scorer": "bge",
+        "pool_size": 200,
+        "use_stemmer": False,
+        "remove_stopwords": False,
+    },
+    "kuhperdata-summarized": {
         "scorer": "bge",
         "pool_size": 200,
         "use_stemmer": False,
@@ -259,6 +266,8 @@ def main():
     parser.add_argument("--bm25_ngram", type=int, default=1)
     parser.add_argument("--use_stemmer", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--remove_stopwords", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--max_relevant", type=int, default=5,
+                        help="Max ground-truth docs per query (queries with more are excluded)")
     args = parser.parse_args()
 
     _resolve_args(args)
@@ -292,7 +301,12 @@ def main():
         print(f"{'=' * 60}")
 
         loader = DataLoader(corpus_path, queries_path, qrels_path).load()
-        print(f"  Corpus: {len(loader.corpus)} docs, Queries: {len(loader.qrels)} queries")
+        if args.max_relevant:
+            before = len(loader.qrels)
+            loader.filter_max_relevant(args.max_relevant)
+            print(f"  Corpus: {len(loader.corpus)} docs, Queries: {len(loader.qrels)} (filtered from {before}, max_relevant={args.max_relevant})")
+        else:
+            print(f"  Corpus: {len(loader.corpus)} docs, Queries: {len(loader.qrels)} queries")
 
         # Step 1: BM25 pool
         print(f"\n  Step 1: BM25 initial pool (top-{pool_size})")

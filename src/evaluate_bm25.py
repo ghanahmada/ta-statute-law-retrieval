@@ -7,18 +7,16 @@ from util.dataloader import DataLoader
 from util.metrics import evaluate_ranking
 
 DATASETS = {
-    "kuhperdata": {"path": "data/kuhperdata", "lang": "id"},
+    "kuhperdata-humanized": {"path": "data/kuhperdata-humanized", "lang": "id"},
+    "kuhperdata-summarized": {"path": "data/kuhperdata-summarized", "lang": "id"},
     "bsard": {"path": "data/bsard", "lang": "fr"},
     "ilpcsr": {"path": "data/ilpcsr", "lang": "en"},
     "stard": {"path": "data/stard", "lang": "zh"},
 }
 
-# Per-dataset BM25 defaults
-# PySastrawi stemmer is too aggressive for formal legal Indonesian:
-# it over-stems legal terms (e.g. ketentuan→tentu, peraturan→atur),
-# which reduces BM25 precision. Disabled by default; enable with --use_stemmer.
 DATASET_DEFAULTS = {
-    "kuhperdata": {"use_stemmer": False, "remove_stopwords": False},
+    "kuhperdata-humanized": {"use_stemmer": False, "remove_stopwords": False},
+    "kuhperdata-summarized": {"use_stemmer": False, "remove_stopwords": False},
 }
 
 
@@ -65,6 +63,8 @@ def main():
                         help="Indonesian stemmer via PySastrawi (default: on for kuhperdata)")
     parser.add_argument("--remove_stopwords", action=argparse.BooleanOptionalAction, default=None,
                         help="Remove Indonesian stopwords via PySastrawi (default: on for kuhperdata)")
+    parser.add_argument("--max_relevant", type=int, default=5,
+                        help="Max ground-truth docs per query (queries with more are excluded)")
     args = parser.parse_args()
 
     datasets = DATASET_DEFAULTS if args.dataset == "all" else {args.dataset: DATASETS[args.dataset]}
@@ -86,7 +86,12 @@ def main():
         print(f"{'=' * 60}")
 
         loader = DataLoader(corpus_path, queries_path, qrels_path).load()
-        print(f"  Corpus: {len(loader.corpus)} docs, Queries: {len(loader.qrels)} queries")
+        if args.max_relevant:
+            before = len(loader.qrels)
+            loader.filter_max_relevant(args.max_relevant)
+            print(f"  Corpus: {len(loader.corpus)} docs, Queries: {len(loader.qrels)} (filtered from {before}, max_relevant={args.max_relevant})")
+        else:
+            print(f"  Corpus: {len(loader.corpus)} docs, Queries: {len(loader.qrels)} queries")
 
         results = run_bm25(loader, args.top_k, lang, args.bm25_b, args.bm25_k1, args.n_gram,
                            use_stemmer=use_stemmer, remove_stopwords=remove_stopwords)

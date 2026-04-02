@@ -1,0 +1,11 @@
+{
+  "num_documents": 2127,
+  "num_queries": 2280,
+  "num_train_queries": 1797,
+  "num_test_queries": 483,
+  "num_relevance_judgments": 6521,
+  "num_train_judgments": 5011,
+  "num_test_judgments": 1510,
+  "avg_relevant_docs_per_query": 2.8600877192982455,
+  "avg_query_length_chars": 660.7057017543859
+}
