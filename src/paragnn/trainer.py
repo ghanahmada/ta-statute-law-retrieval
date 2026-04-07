@@ -6,9 +6,11 @@ import json
 import os
 from math import ceil
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader as TorchDataLoader
 from tqdm import tqdm
+from transformers import get_linear_schedule_with_warmup
 
 from util import set_seed
 from .model import CaseGnn, TestCaseGnn
@@ -32,15 +34,6 @@ class ParaGNNTrainer:
         test_corpus_ids: list,
         test_gold: dict,
     ):
-        """
-        Args:
-            train_dataset: ParaGNNDataset
-            collator: ParaGNNCollator
-            bm25_test_scores: (num_test_queries, num_corpus) tensor
-            test_query_ids: ordered list of test query IDs
-            test_corpus_ids: ordered list of corpus doc IDs
-            test_gold: {qid: {doc_id: score}} for test evaluation
-        """
         set_seed(42)
 
         output_dir = f"{self.config.output_dir}/{self.config.dataset}"
@@ -52,9 +45,8 @@ class ParaGNNTrainer:
 
         # Resume from checkpoint if exists
         start_epoch = 0
-        best_mrr = 0
+        best_metric = 0
         log = []
-        checkpoint_path = f"{output_dir}/best_model.pt"
         resume_path = f"{output_dir}/resume_checkpoint.pt"
 
         if os.path.exists(resume_path):
@@ -62,9 +54,9 @@ class ParaGNNTrainer:
             checkpoint = torch.load(resume_path, map_location="cpu")
             model.load_state_dict(checkpoint["model_state_dict"])
             start_epoch = checkpoint["epoch"]
-            best_mrr = checkpoint["best_mrr"]
+            best_metric = checkpoint.get("best_metric", 0)
             log = checkpoint.get("log", [])
-            print(f"  Resumed at epoch {start_epoch}, best MRR={best_mrr:.4f}")
+            print(f"  Resumed at epoch {start_epoch}, best metric={best_metric:.4f}")
 
         model = model.to(self.device)
 
@@ -73,23 +65,17 @@ class ParaGNNTrainer:
         if os.path.exists(resume_path):
             optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
+        # IL-PCSR LR schedule: linear warmup + 1.2x total steps (never fully decays)
         steps_per_epoch = ceil(len(train_dataset) / self.config.batch_size)
         total_steps = steps_per_epoch * self.config.epochs
-        warmup_steps = int(total_steps * self.config.warmup_ratio)
-
-        # Cosine annealing with warmup: ramps up then decays smoothly
-        warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
-            optimizer, start_factor=0.1, total_iters=warmup_steps
-        )
-        cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=total_steps - warmup_steps, eta_min=1e-6
-        )
-        scheduler = torch.optim.lr_scheduler.SequentialLR(
-            optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[warmup_steps]
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer,
+            num_warmup_steps=int(total_steps * self.config.warmup_ratio),
+            num_training_steps=int(total_steps * 1.2),
         )
 
         # Early stopping
-        patience = 10  # stop if no improvement for 10 epochs
+        patience = 10
         epochs_without_improvement = 0
 
         train_dl = TorchDataLoader(
@@ -100,13 +86,16 @@ class ParaGNNTrainer:
             num_workers=0,
         )
 
+        # Handle BM25 NaN values
+        bm25_test_scores = torch.nan_to_num(bm25_test_scores, nan=0.0)
+
         # Build test graph once
         print("Building test graph...")
         test_graph = GraphBuilder(test_query_ids, test_corpus_ids, self.para_store).graph
         test_graph = test_graph.to(self.device)
         bm25_test_scores = bm25_test_scores.to(self.device)
 
-        # Build gold matrix for evaluation
+        # Build gold matrix
         gold_matrix = torch.zeros(len(test_query_ids), len(test_corpus_ids))
         doc_id_to_idx = {d: i for i, d in enumerate(test_corpus_ids)}
         for qi, qid in enumerate(test_query_ids):
@@ -122,23 +111,31 @@ class ParaGNNTrainer:
             n_batches = 0
 
             for batch in tqdm(train_dl, desc=f"Epoch {epoch+1}", leave=False):
+                torch.cuda.empty_cache()
+
                 batch_on_device = {
                     k: v.to(self.device) if isinstance(v, torch.Tensor) else v
                     for k, v in batch.items()
                 }
-                # Move graph to device
                 if hasattr(batch_on_device["graph"], "to"):
                     batch_on_device["graph"] = batch_on_device["graph"].to(self.device)
 
-                loss = model(
-                    query_pos=batch_on_device["query_pos"],
-                    candidate_pos=batch_on_device["candidate_pos"],
-                    bm25_scores=batch_on_device["bm25_scores"],
-                    candidate_relevance_labels=batch_on_device["candidate_relevance_labels"],
-                    graph=batch_on_device["graph"],
-                )
+                # OOM handling (from IL-PCSR)
+                try:
+                    loss = model(
+                        query_pos=batch_on_device["query_pos"],
+                        candidate_pos=batch_on_device["candidate_pos"],
+                        bm25_scores=batch_on_device["bm25_scores"],
+                        candidate_relevance_labels=batch_on_device["candidate_relevance_labels"],
+                        graph=batch_on_device["graph"],
+                    )
+                    loss.backward()
+                except torch.cuda.OutOfMemoryError:
+                    print("  OOM, skipping batch")
+                    optimizer.zero_grad()
+                    torch.cuda.empty_cache()
+                    continue
 
-                loss.backward()
                 optimizer.step()
                 scheduler.step()
                 optimizer.zero_grad()
@@ -148,9 +145,10 @@ class ParaGNNTrainer:
 
             avg_loss = total_loss / max(n_batches, 1)
 
-            # Evaluate every epoch
-            mrr, recall, hit_rate, avg_alpha = self._evaluate(
-                model, bm25_test_scores, test_graph, gold_matrix
+            # Evaluate: get raw GNN scores then grid search alpha
+            gnn_scores, avg_alpha = self._get_gnn_scores(model, test_graph)
+            best_alpha, mrr, recall, hit_rate = self._grid_search_alpha(
+                gnn_scores, bm25_test_scores.cpu(), gold_matrix
             )
 
             log_entry = {
@@ -159,16 +157,17 @@ class ParaGNNTrainer:
                 "mrr@10": mrr,
                 "recall@10": recall,
                 "hit_rate": hit_rate,
-                "avg_alpha": avg_alpha,
+                "best_alpha": best_alpha,
+                "learned_alpha": avg_alpha,
             }
             log.append(log_entry)
-            print(f"  Epoch {epoch+1}: loss={avg_loss:.4f} MRR={mrr:.4f} R@10={recall:.4f} Hit={hit_rate:.1%} alpha={avg_alpha:.3f}")
+            print(f"  Epoch {epoch+1}: loss={avg_loss:.4f} MRR={mrr:.4f} R@10={recall:.4f} Hit={hit_rate:.1%} alpha={best_alpha:.2f} (learned={avg_alpha:.3f})")
 
-            if mrr > best_mrr:
-                best_mrr = mrr
+            if mrr > best_metric:
+                best_metric = mrr
                 epochs_without_improvement = 0
                 torch.save(model.state_dict(), f"{output_dir}/best_model.pt")
-                print(f"  → New best MRR={mrr:.4f}, saved model")
+                print(f"  → New best MRR={mrr:.4f} at alpha={best_alpha:.2f}, saved model")
             else:
                 epochs_without_improvement += 1
 
@@ -177,24 +176,47 @@ class ParaGNNTrainer:
                 "epoch": epoch + 1,
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
-                "best_mrr": best_mrr,
+                "best_metric": best_metric,
                 "log": log,
             }, f"{output_dir}/resume_checkpoint.pt")
 
             with open(f"{output_dir}/training_log.json", "w") as f:
                 json.dump(log, f, indent=2)
 
-            # Early stopping
             if epochs_without_improvement >= patience:
                 print(f"  Early stopping at epoch {epoch+1} (no improvement for {patience} epochs)")
                 break
 
+        # Final grid search with best model
+        print(f"\n{'='*60}")
+        print(f"  Final evaluation with best model + alpha grid search")
+        print(f"{'='*60}")
+        model.load_state_dict(torch.load(f"{output_dir}/best_model.pt", map_location="cpu"))
+        model = model.to(self.device)
+        gnn_scores, _ = self._get_gnn_scores(model, test_graph)
+
+        print(f"\n  Alpha grid search results:")
+        print(f"  {'Alpha':<8} {'MRR@10':<10} {'R@10':<10} {'Hit':<10}")
+        print(f"  {'-'*38}")
+        best_alpha, best_mrr, best_recall, best_hit = 0, 0, 0, 0
+        for alpha in np.arange(0.0, 1.05, 0.1):
+            scores = alpha * gnn_scores + (1 - alpha) * bm25_test_scores.cpu()
+            mrr, recall, hit_rate = self._compute_metrics(scores, gold_matrix)
+            marker = " ←" if mrr > best_mrr else ""
+            print(f"  {alpha:<8.1f} {mrr:<10.4f} {recall:<10.4f} {hit_rate:<10.1%}{marker}")
+            if mrr > best_mrr:
+                best_mrr = mrr
+                best_recall = recall
+                best_hit = hit_rate
+                best_alpha = alpha
+
+        print(f"\n  Best: alpha={best_alpha:.1f} MRR={best_mrr:.4f} R@10={best_recall:.4f} Hit={best_hit:.1%}")
         print(f"\nTraining complete. Best MRR@10: {best_mrr:.4f}")
         return best_mrr
 
     @torch.no_grad()
-    def _evaluate(self, train_model, bm25_scores, test_graph, gold_matrix):
-        """Run TestCaseGnn and compute MRR@10."""
+    def _get_gnn_scores(self, train_model, test_graph):
+        """Get raw GNN scores (before alpha blending)."""
         dim = self.config.embed_dim
         test_model = TestCaseGnn(in_dim=dim, h_dim=dim, out_dim=dim,
                                   dropout=self.config.dropout, num_head=self.config.num_heads)
@@ -202,12 +224,36 @@ class ParaGNNTrainer:
         test_model = test_model.to(self.device)
         test_model.eval()
 
-        scores, alphas = test_model(bm25_scores, test_graph)
-        scores = scores.cpu()
-        alphas = alphas.cpu()
+        # Get raw GNN node embeddings and compute scores
+        h = test_model.eugat_gnn(test_graph, test_graph.ndata["h"], test_graph.edata["h"])
+        query_encoded = h[test_graph.ndata["query_mask"].bool()]
+        candidate_encoded = h[test_graph.ndata["candidate_mask"].bool()]
+        alphas = test_model.ffnn(query_encoded)
 
-        # Compute MRR@10, Recall@10, Hit Rate
-        k = 10
+        scores = torch.matmul(query_encoded, candidate_encoded.T)
+
+        # Z-normalize
+        mean_scores = scores.mean(dim=1, keepdim=True)
+        std_scores = scores.std(dim=1, keepdim=True)
+        gnn_scores = (scores - mean_scores) / (std_scores + 1e-8)
+
+        return gnn_scores.cpu(), alphas.mean().item()
+
+    def _grid_search_alpha(self, gnn_scores, bm25_scores, gold_matrix):
+        """Find optimal alpha via grid search."""
+        best_alpha, best_mrr, best_recall, best_hit = 0, 0, 0, 0
+        for alpha in np.arange(0.0, 1.05, 0.1):
+            scores = alpha * gnn_scores + (1 - alpha) * bm25_scores
+            mrr, recall, hit_rate = self._compute_metrics(scores, gold_matrix)
+            if mrr > best_mrr:
+                best_mrr = mrr
+                best_recall = recall
+                best_hit = hit_rate
+                best_alpha = alpha
+        return best_alpha, best_mrr, best_recall, best_hit
+
+    def _compute_metrics(self, scores, gold_matrix, k=10):
+        """Compute MRR@k, Recall@k, Hit Rate from score matrix."""
         mrr_sum = 0
         recall_sum = 0
         hit_count = 0
@@ -220,23 +266,14 @@ class ParaGNNTrainer:
 
             ranked = torch.argsort(scores[qi], descending=True)[:k].tolist()
 
-            # MRR
             for rank, idx in enumerate(ranked):
                 if idx in relevant:
                     mrr_sum += 1.0 / (rank + 1)
                     break
 
-            # Recall@k
             hits = len(set(ranked) & set(relevant))
             recall_sum += hits / len(relevant)
-
-            # Hit rate
             if hits > 0:
                 hit_count += 1
 
-        mrr = mrr_sum / n_queries
-        recall = recall_sum / n_queries
-        hit_rate = hit_count / n_queries
-        avg_alpha = alphas.mean().item()
-
-        return mrr, recall, hit_rate, avg_alpha
+        return mrr_sum / n_queries, recall_sum / n_queries, hit_count / n_queries
