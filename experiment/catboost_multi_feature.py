@@ -207,41 +207,40 @@ for config_name, X_train in train_configs.items():
                               verbose=False, random_seed=42)
     clf.fit(X_train, train_y)
 
-    # Predict on ALL test query-doc pairs for ranking
-    # For proper evaluation, score every query against every corpus doc
-    # But that's too expensive. Instead: score test pairs and compute metrics on those.
-    test_probs = clf.predict_proba(X_test)[:, 1]
-
-    # Reconstruct per-query rankings from test features
-    # We need to map back features to (qid, did) pairs
-    # Rebuild the mapping
+    # Score EVERY query against EVERY corpus doc (full ranking)
+    from tqdm import tqdm
     rankings = {}
-    idx = 0
-    for qi, qid in enumerate(test_qids):
-        gt = set(test_qrels[qid])
-        n_pos = sum(1 for d in gt if d in doc_id_to_idx)
+    for qi, qid in tqdm(enumerate(test_qids), total=len(test_qids), desc=f'  Ranking'):
+        q_d = te_dense[qi]
+        q_s = te_sparse[qi]
+        q_t = te_title[qi]
         bm25_q = test_texts[qi]
         if lang == 'zh':
             bm25_q = ' '.join(jieba.cut(bm25_q))
         bm25_scores = bm25.transform(bm25_q)
-        ranked_idx = np.argsort(bm25_scores)[::-1]
-        n_neg = 0
-        neg_dids = []
-        for ridx in ranked_idx:
-            if n_neg >= 10: break
-            if doc_ids[ridx] in gt: continue
-            neg_dids.append(doc_ids[ridx])
-            n_neg += 1
 
-        # Collect (did, prob) for this query
-        cands = [(d, test_probs[idx + i]) for i, d in enumerate(list(gt) + neg_dids) if d in doc_id_to_idx]
-        idx += n_pos + len(neg_dids)
+        # Build features for ALL corpus docs
+        products = q_d * c_dense  # [2127, 1024]
 
-        # Sort by probability descending
-        cands.sort(key=lambda x: -x[1])
-        rankings[qid] = [d for d, _ in cands[:10]]
+        if config_name.startswith('A'):
+            X_all = products
+        elif config_name.startswith('B'):
+            X_all = np.hstack([products, bm25_scores.reshape(-1, 1)])
+        elif config_name.startswith('C'):
+            title_scores = c_title @ q_t  # [2127]
+            X_all = np.hstack([products, bm25_scores.reshape(-1, 1), title_scores.reshape(-1, 1)])
+        else:  # D
+            title_scores = c_title @ q_t
+            sparse_scores = np.array([
+                sum(q_s.get(t, 0) * c_sparse[di].get(t, 0) for t in set(q_s.keys()) & set(c_sparse[di].keys()))
+                for di in range(len(doc_ids))
+            ])
+            X_all = np.hstack([products, bm25_scores.reshape(-1, 1), sparse_scores.reshape(-1, 1), title_scores.reshape(-1, 1)])
 
-    # Evaluate
+        probs = clf.predict_proba(X_all)[:, 1]
+        top_idx = np.argsort(probs)[::-1][:10]
+        rankings[qid] = [doc_ids[idx] for idx in top_idx]
+
     ground_truth = {qid: list(set(test_qrels[qid])) for qid in test_qids}
     results = evaluate_ranking(rankings, ground_truth, top_k=10)
 
