@@ -186,14 +186,108 @@ The current measurement uses KUHPerdata-specific heuristics:
 
 ---
 
-## 4. Legal Feature Design for Channel 2
+## 4. Multi-Representation Independence Experiment (BGE-M3)
 
-### TODO: Design exact features
+BGE-M3 produces 3 output types in one forward pass: dense (1024d), sparse (lexical weights), and ColBERT (token-level multi-vector). We tested whether these, plus BM25 and title embeddings, provide independent signals.
+
+### Test set results (30 queries, random negatives, 368 pairs)
+
+| Signal | ρ with label | Discriminative? |
+|---|---|---|
+| dense | +0.269 | Yes |
+| colbert | +0.267 | Yes |
+| bm25 | +0.218 | Yes |
+| sparse | +0.178 | Yes |
+| title | -0.009 | No |
+
+### Train set results (1670 queries, BM25 hard negatives, 19970 pairs)
+
+| Signal | ρ with label | Pos avg | Neg avg |
+|---|---|---|---|
+| bm25 | **-0.549** | 5.59 | 15.95 |
+| sparse | **-0.409** | 0.034 | 0.081 |
+| colbert | -0.284 | 0.420 | 0.480 |
+| dense | -0.252 | 0.450 | 0.502 |
+| title | -0.027 | 0.321 | 0.323 |
+
+ALL signals are **inverted** against hard negatives: wrong documents score HIGHER than correct ones on every representation. BM25 hard negatives are selected for being lexically similar, and that similarity carries over to all representations.
+
+### Signal independence (train, hard negatives)
+
+| Pair | ρ | Relationship |
+|---|---|---|
+| dense ↔ colbert | 0.908 | Redundant |
+| sparse ↔ dense | 0.602 | Redundant |
+| sparse ↔ bm25 | 0.580 | Redundant |
+| dense ↔ bm25 | 0.461 | Moderately correlated |
+| title ↔ sparse | 0.023 | Independent |
+| title ↔ bm25 | 0.049 | Independent |
+
+### Conclusions
+1. **Dense and ColBERT are redundant** (ρ=0.908). ColBERT's MaxSim collapses to same signal as dense cosine. No value in using both.
+2. **Sparse and BM25 are redundant** (ρ=0.580). BGE-M3 sparse is a learned version of BM25's lexical matching.
+3. **Title embedding is independent but not discriminative.** "Pasal N" titles don't encode domain semantics.
+4. **No existing representation can distinguish positives from hard negatives at the aggregate level.** JNLP S1 succeeds because CatBoost learns patterns over the full 1024-d product vector, not because any single similarity score works.
+5. **The missing third channel must capture something that surface similarity cannot** — legal reasoning, Tatbestand matching, domain classification — signals orthogonal to "how similar do these texts look."
+
+### Updated Architecture Implication
+
+Two working channels confirmed:
+- **Channel 1: Dense embeddings** (BGE-M3 1024-d product features → CatBoost) — already works (JNLP S1)
+- **Channel 2: Lexical** (BM25 score) — moderately independent from dense (ρ=0.461)
+
+Channel 3 requirements:
+- Independent from dense and lexical (ρ < 0.3)
+- NOT invertible by surface similarity (hard negatives should NOT score higher)
+- Computable across 4 languages
+- Must capture legal reasoning that embeddings miss
+
+This is where legal characteristic extraction is genuinely needed — proven by elimination of all simpler alternatives.
+
+---
+
+## 4b. Why CatBoost Works Despite Inverted Aggregate Scores
+
+### The Puzzle
+All aggregate similarity scores (cosine, BM25, sparse) are HIGHER for hard negatives than positives. Yet CatBoost on the 1024-d product vector achieves 0.37 MRR (AUC=0.898). How?
+
+### SHAP Analysis Results (KUHPerdata-humanized, 3130 pairs: 925 pos, 2205 hard neg)
+
+**CatBoost prediction separation:**
+- Positive pairs: median=0.806 (high confidence)
+- Negative pairs: median=0.002 (low confidence)
+- AUC: 0.898
+
+**Per-dimension SHAP discrimination:**
+- 78.3% of dimensions are HELPFUL (push pos up, neg down)
+- 17.9% are harmful
+- Total helpful SHAP: 6.22, total harmful: -0.14 (45x ratio)
+- Feature importance correlates strongly with discriminative power (ρ=0.808)
+
+**Top 3 discriminative dimensions:**
+- Dim 376: disc_shap=+0.381 (6% of all discrimination alone)
+- Dim 903: disc_shap=+0.222
+- Dim 763: disc_shap=+0.171
+
+### Why Aggregate Scores Are Misleading
+The mean-level analysis showed "negatives score higher on 86.8% of dims." But CatBoost doesn't use means — it learns THRESHOLDS. A dimension where negatives have higher mean can still be discriminative if the VALUE DISTRIBUTION differs: e.g., positives cluster at two specific ranges while negatives spread broadly. Decision trees capture this; linear/mean analysis cannot.
+
+### Implication for Method Design
+CatBoost already extracts strong signal from BGE-M3 product features. Channel 3 must provide information NOT encoded in ANY of the 1024 BGE-M3 dimensions. From our perspective analysis:
+- Domain (ρ=0.073 with dense cosine) → independent from embeddings
+- Function (ρ=-0.000 with domain) → independent from domain
+- These are candidates IF they can be measured without heuristics
+
+---
+
+## 5. Legal Feature Design for Channel 3
+
+### Requirements
 
 Each feature must be:
 1. Computable from query + statute text (no external knowledge at inference)
 2. Legal-specific (not just generic NLP)
-3. Potentially independent from Channel 1 (embeddings) and Channel 3 (BM25)
+3. Independent from Channel 1 (embeddings) and Channel 2 (BM25)
 
 Candidate features to investigate:
 
