@@ -80,7 +80,9 @@ print(f"  AUC approx: {np.mean(pos_probs[:, None] > neg_probs[None, :]):.4f}")
 
 # SHAP values
 print("\nComputing SHAP values...")
-shap_values = model.get_feature_importance(type='ShapValues', data=X)
+from catboost import Pool
+pool = Pool(X, label=y)
+shap_values = model.get_feature_importance(type='ShapValues', data=pool)
 # ShapValues returns [n_samples, n_features + 1], last column is bias
 shap_features = shap_values[:, :-1]  # [n_samples, 1024]
 shap_bias = shap_values[:, -1]       # [n_samples]
