@@ -73,12 +73,24 @@ class ParaGNNTrainer:
         if os.path.exists(resume_path):
             optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
-        total_steps = ceil(len(train_dataset) / self.config.batch_size) * self.config.epochs
+        steps_per_epoch = ceil(len(train_dataset) / self.config.batch_size)
+        total_steps = steps_per_epoch * self.config.epochs
         warmup_steps = int(total_steps * self.config.warmup_ratio)
 
-        scheduler = torch.optim.lr_scheduler.LinearLR(
+        # Cosine annealing with warmup: ramps up then decays smoothly
+        warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
             optimizer, start_factor=0.1, total_iters=warmup_steps
         )
+        cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=total_steps - warmup_steps, eta_min=1e-6
+        )
+        scheduler = torch.optim.lr_scheduler.SequentialLR(
+            optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[warmup_steps]
+        )
+
+        # Early stopping
+        patience = 10  # stop if no improvement for 10 epochs
+        epochs_without_improvement = 0
 
         train_dl = TorchDataLoader(
             train_dataset,
@@ -154,8 +166,11 @@ class ParaGNNTrainer:
 
             if mrr > best_mrr:
                 best_mrr = mrr
+                epochs_without_improvement = 0
                 torch.save(model.state_dict(), f"{output_dir}/best_model.pt")
                 print(f"  → New best MRR={mrr:.4f}, saved model")
+            else:
+                epochs_without_improvement += 1
 
             # Save resume checkpoint
             torch.save({
@@ -168,6 +183,11 @@ class ParaGNNTrainer:
 
             with open(f"{output_dir}/training_log.json", "w") as f:
                 json.dump(log, f, indent=2)
+
+            # Early stopping
+            if epochs_without_improvement >= patience:
+                print(f"  Early stopping at epoch {epoch+1} (no improvement for {patience} epochs)")
+                break
 
         print(f"\nTraining complete. Best MRR@10: {best_mrr:.4f}")
         return best_mrr
