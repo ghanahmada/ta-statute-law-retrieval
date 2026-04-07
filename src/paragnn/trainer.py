@@ -49,9 +49,30 @@ class ParaGNNTrainer:
         dim = self.config.embed_dim
         model = CaseGnn(in_dim=dim, h_dim=dim, out_dim=dim,
                         dropout=self.config.dropout, num_head=self.config.num_heads)
+
+        # Resume from checkpoint if exists
+        start_epoch = 0
+        best_mrr = 0
+        log = []
+        checkpoint_path = f"{output_dir}/best_model.pt"
+        resume_path = f"{output_dir}/resume_checkpoint.pt"
+
+        if os.path.exists(resume_path):
+            print(f"Resuming from {resume_path}...")
+            checkpoint = torch.load(resume_path, map_location="cpu")
+            model.load_state_dict(checkpoint["model_state_dict"])
+            start_epoch = checkpoint["epoch"]
+            best_mrr = checkpoint["best_mrr"]
+            log = checkpoint.get("log", [])
+            print(f"  Resumed at epoch {start_epoch}, best MRR={best_mrr:.4f}")
+
         model = model.to(self.device)
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=self.config.learning_rate)
+
+        if os.path.exists(resume_path):
+            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
         total_steps = ceil(len(train_dataset) / self.config.batch_size) * self.config.epochs
         warmup_steps = int(total_steps * self.config.warmup_ratio)
 
@@ -82,11 +103,8 @@ class ParaGNNTrainer:
                     if did in doc_id_to_idx and score > 0:
                         gold_matrix[qi][doc_id_to_idx[did]] = 1
 
-        best_mrr = 0
-        log = []
-
-        print(f"Training Para-GNN for {self.config.epochs} epochs...")
-        for epoch in range(self.config.epochs):
+        print(f"Training Para-GNN for epochs {start_epoch+1}-{self.config.epochs}...")
+        for epoch in range(start_epoch, self.config.epochs):
             model.train()
             total_loss = 0
             n_batches = 0
@@ -138,6 +156,15 @@ class ParaGNNTrainer:
                 best_mrr = mrr
                 torch.save(model.state_dict(), f"{output_dir}/best_model.pt")
                 print(f"  → New best MRR={mrr:.4f}, saved model")
+
+            # Save resume checkpoint
+            torch.save({
+                "epoch": epoch + 1,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "best_mrr": best_mrr,
+                "log": log,
+            }, f"{output_dir}/resume_checkpoint.pt")
 
             with open(f"{output_dir}/training_log.json", "w") as f:
                 json.dump(log, f, indent=2)
