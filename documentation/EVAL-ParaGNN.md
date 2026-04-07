@@ -155,6 +155,43 @@ Datasets with more lexical overlap between queries and statutes benefit from hig
 
 ---
 
+---
+
+## Results: Direction A — Statute Proximity Edges (prox=50)
+
+Adding bidirectional edges between statute nodes within 50 articles of each other.
+Inspired by G-DSR (Louis et al., EACL 2023). Empirically justified: co-relevant statutes have median distance of 18 articles (66% within 50).
+
+### KUHPerdata-humanized
+
+| Setting | MRR@10 | R@10 | Hit | Alpha |
+|---|---|---|---|---|
+| Adapted (no prox) | 0.456 | 0.542 | 67.8% | 0.9 |
+| **Adapted + prox=50** | **0.486** | **0.551** | **68.3%** | 0.9 |
+| Delta | **+0.030 (+6.4%)** | +0.009 | +0.5% | |
+
+### KUHPerdata-summarized
+
+| Setting | MRR@10 | R@10 | Hit | Alpha |
+|---|---|---|---|---|
+| Adapted (no prox) | 0.458 | 0.522 | 71.1% | 0.8 |
+| **Adapted + prox=50** | **0.498** | **0.516** | **69.2%** | 0.9 |
+| Delta | **+0.040 (+8.7%)** | -0.006 | -1.9% | |
+
+### Key Observations
+
+1. **MRR improves on both datasets** (+6-9%). The GNN uses statute proximity to rank the correct article higher.
+2. **Alpha shifts from 0.8 to 0.9** on summarized — with proximity edges, the GNN becomes stronger and needs less BM25 support.
+3. **Recall slightly drops on summarized** (-0.006) — proximity edges may cause the GNN to over-focus on nearby clusters and miss isolated relevant statutes.
+4. **No new precomputation needed** — same embeddings and BM25 scores, only graph structure changes.
+
+### TODO
+- Run prox=50 on BSARD and STARD
+- Test prox=20 for tighter connectivity comparison
+- Test on full method (RR labels + proximity)
+
+---
+
 ## Environment Setup
 
 ```bash
