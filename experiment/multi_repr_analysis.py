@@ -23,7 +23,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--split', default='train', choices=['train', 'test'])
 parser.add_argument('--neg_type', default='hard', choices=['hard', 'random'])
-parser.add_argument('--sample', type=int, default=50)
+parser.add_argument('--sample', type=int, default=0, help='0 = use all queries')
 args = parser.parse_args()
 
 path = 'data/kuhperdata-humanized'
@@ -39,7 +39,8 @@ with open(f'{path}/qrels_{args.split}.tsv', 'r', encoding='utf-8') as f:
 qrels = {qid: docs for qid, docs in qrels.items() if len(docs) <= 5}
 
 random.seed(42)
-sample_qids = random.sample([q for q in qrels if q in queries], min(args.sample, len(qrels)))
+all_qids = [q for q in qrels if q in queries]
+sample_qids = random.sample(all_qids, min(args.sample, len(all_qids))) if args.sample > 0 else all_qids
 sample_q_texts = [queries[qid]['text'] for qid in sample_qids]
 print(f'Split: {args.split}, Neg type: {args.neg_type}, Sample: {len(sample_qids)} queries')
 doc_ids = list(corpus.keys())
