@@ -36,7 +36,11 @@ class ParaGNNTrainer:
     ):
         set_seed(42)
 
-        output_dir = f"{self.config.output_dir}/{self.config.dataset}"
+        # Output to method-specific subfolder
+        method_suffix = self.config.method
+        if self.config.proximity_radius > 0:
+            method_suffix = f"{method_suffix}_prox{self.config.proximity_radius}"
+        output_dir = f"{self.config.output_dir}/{self.config.dataset}/{method_suffix}"
         os.makedirs(output_dir, exist_ok=True)
 
         dim = self.config.embed_dim
@@ -91,7 +95,8 @@ class ParaGNNTrainer:
 
         # Build test graph once
         print("Building test graph...")
-        test_graph = GraphBuilder(test_query_ids, test_corpus_ids, self.para_store).graph
+        test_graph = GraphBuilder(test_query_ids, test_corpus_ids, self.para_store,
+                                   proximity_radius=self.config.proximity_radius).graph
         test_graph = test_graph.to(self.device)
         bm25_test_scores = bm25_test_scores.to(self.device)
 

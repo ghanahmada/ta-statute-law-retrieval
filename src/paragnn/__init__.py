@@ -42,6 +42,9 @@ class ParaGNNConfig:
     method: str = "adapted"  # "full" or "adapted"
     rr_labels_path: Optional[str] = None  # path to rr_labels.json (method="full" only)
 
+    # Graph structure
+    proximity_radius: int = 0  # 0 = no proximity edges, N = connect statutes within N articles
+
     # Model
     embed_dim: int = 1024  # BGE-M3 output dimension
     h_dim: int = 1024

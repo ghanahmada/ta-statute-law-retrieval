@@ -104,10 +104,18 @@ class GraphBuilder:
     """
 
     def __init__(self, query_ids: List[str], candidate_ids: List[str],
-                 para_store: ParagraphStore):
+                 para_store: ParagraphStore, proximity_radius: int = 0):
+        """
+        Args:
+            proximity_radius: if > 0, add bidirectional edges between statute
+                nodes whose article numbers are within this distance.
+                Based on empirical finding: co-relevant statutes have median
+                distance of 18 articles (66% within 50).
+        """
         self.query_ids = query_ids
         self.candidate_ids = candidate_ids
         self.all_doc_ids = query_ids + candidate_ids
+        self.proximity_radius = proximity_radius
 
         n_docs = len(self.all_doc_ids)
 
@@ -151,6 +159,42 @@ class GraphBuilder:
                 query_para_count += num_paras
             else:
                 candidate_para_count += num_paras
+
+        # Add proximity edges between nearby statute nodes (Direction A)
+        if proximity_radius > 0:
+            n_queries = len(query_ids)
+            # Extract article numbers for candidate statutes
+            import re
+            cand_nums = []
+            for cid in candidate_ids:
+                match = re.match(r'(\d+)', cid)
+                cand_nums.append(int(match.group(1)) if match else -1)
+
+            # Add bidirectional edges between statutes within radius
+            proximity_edge_count = 0
+            # Use "NONE" embedding for proximity edges (same dim as RR embeddings)
+            proximity_edge_feat = para_store.get_rr_embedding("NONE")
+
+            for i in range(len(candidate_ids)):
+                if cand_nums[i] < 0:
+                    continue
+                node_i = n_queries + i  # index in all_doc_ids
+                for j in range(i + 1, len(candidate_ids)):
+                    if cand_nums[j] < 0:
+                        continue
+                    if abs(cand_nums[i] - cand_nums[j]) <= proximity_radius:
+                        node_j = n_queries + j
+                        # Bidirectional
+                        u_ids.append(node_i)
+                        v_ids.append(node_j)
+                        edge_features.append(proximity_edge_feat)
+                        u_ids.append(node_j)
+                        v_ids.append(node_i)
+                        edge_features.append(proximity_edge_feat)
+                        proximity_edge_count += 1
+
+            if proximity_edge_count > 0 and len(query_ids) < 10:  # only print for small graphs (test)
+                pass  # avoid spam during training
 
         # Stack all node features: [doc_nodes | para_nodes]
         all_node_features = torch.stack(doc_node_features + node_features)  # (n_docs + n_paras, 1024)

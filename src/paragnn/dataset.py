@@ -85,8 +85,9 @@ class ParaGNNDataset(Dataset):
 class ParaGNNCollator:
     """Collates batch items into a DGL graph + training tensors."""
 
-    def __init__(self, para_store: ParagraphStore):
+    def __init__(self, para_store: ParagraphStore, proximity_radius: int = 0):
         self.para_store = para_store
+        self.proximity_radius = proximity_radius
 
     def __call__(self, batch: List[dict]) -> dict:
         # Collect unique query and candidate IDs in this batch
@@ -101,7 +102,8 @@ class ParaGNNCollator:
                     candidate_id_list.append(did)
 
         # Build graph for this batch
-        graph_builder = GraphBuilder(query_id_list, candidate_id_list, self.para_store)
+        graph_builder = GraphBuilder(query_id_list, candidate_id_list, self.para_store,
+                                     proximity_radius=self.proximity_radius)
 
         # Compute positions
         query_pos = []

@@ -35,13 +35,16 @@ def main():
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--num_negatives", type=int, default=299)
     parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--proximity_radius", type=int, default=0,
+                        help="Connect statute nodes within N articles (0=disabled, 50=recommended)")
     args = parser.parse_args()
 
     datasets = DATASETS if args.dataset == "all" else {args.dataset: DATASETS[args.dataset]}
 
     for name, cfg in datasets.items():
+        prox_label = f", prox={args.proximity_radius}" if args.proximity_radius > 0 else ""
         print(f"\n{'='*60}")
-        print(f"  Para-GNN ({args.method}): {name}")
+        print(f"  Para-GNN ({args.method}{prox_label}): {name}")
         print(f"{'='*60}")
 
         config = ParaGNNConfig(
@@ -54,6 +57,7 @@ def main():
             batch_size=args.batch_size,
             num_negatives=args.num_negatives,
             learning_rate=args.lr,
+            proximity_radius=args.proximity_radius,
         )
         output_dir = f"{config.output_dir}/{name}"
 
@@ -133,7 +137,8 @@ def main():
             num_negatives=config.num_negatives,
         )
 
-        collator = ParaGNNCollator(para_store=para_store)
+        collator = ParaGNNCollator(para_store=para_store,
+                                    proximity_radius=config.proximity_radius)
 
         # Train
         trainer = ParaGNNTrainer(config=config, para_store=para_store)
