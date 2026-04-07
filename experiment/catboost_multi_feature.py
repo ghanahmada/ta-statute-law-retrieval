@@ -243,7 +243,7 @@ for config_name, X_train in train_configs.items():
 
     # Evaluate
     ground_truth = {qid: list(set(test_qrels[qid])) for qid in test_qids}
-    results = evaluate_ranking(rankings, ground_truth, k=10)
+    results = evaluate_ranking(rankings, ground_truth, top_k=10)
 
     mrr = results[f'mrr@10']
     recall = results[f'recall@10']
