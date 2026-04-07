@@ -4,14 +4,26 @@ Adapted from IL-PCSR's train_paragnn_plus_bm25_for_secs.py.
 """
 import json
 import os
+import random
 from math import ceil
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader as TorchDataLoader
 from tqdm import tqdm
 
 from .model import CaseGnn, TestCaseGnn
 from .graph_builder import ParagraphStore, GraphBuilder
+
+
+def set_seed(seed: int = 42):
+    """Set all random seeds for reproducibility."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 class ParaGNNTrainer:
@@ -40,6 +52,8 @@ class ParaGNNTrainer:
             test_corpus_ids: ordered list of corpus doc IDs
             test_gold: {qid: {doc_id: score}} for test evaluation
         """
+        set_seed(42)
+
         output_dir = f"{self.config.output_dir}/{self.config.dataset}"
         os.makedirs(output_dir, exist_ok=True)
 
