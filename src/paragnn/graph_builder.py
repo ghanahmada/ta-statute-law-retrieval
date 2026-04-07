@@ -74,7 +74,15 @@ class ParagraphStore:
     def get_query_rr_labels(self, qid: str) -> List[str]:
         """Get RR label strings for each paragraph of a query."""
         paras = self.query_paras.get(qid, [{"sentence": "", "role": "NONE"}])
-        return [p["role"] for p in paras]
+        labels = []
+        for p in paras:
+            if isinstance(p, dict):
+                labels.append(p.get("role", "NONE"))
+            elif isinstance(p, str):
+                labels.append("NONE")
+            else:
+                labels.append("NONE")
+        return labels
 
     def get_rr_embedding(self, label: str) -> torch.Tensor:
         """Get the embedding for an RR label string. Returns (1024,)."""
