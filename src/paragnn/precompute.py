@@ -155,21 +155,39 @@ def precompute_paragraph_embeddings(config: ParaGNNConfig):
 
     print(f"  Avg paragraphs per statute: {np.mean(para_counts):.1f}")
 
+    # Load RR labels if method=full (to use LLM sentence splits for encoding)
+    rr_labels = None
+    if config.method == "full":
+        rr_path = f"{output_dir}/rr_labels.json"
+        if os.path.exists(rr_path):
+            with open(rr_path, "r", encoding="utf-8") as f:
+                rr_labels = json.load(f)
+            print(f"  Loaded RR labels for {len(rr_labels)} queries")
+        else:
+            print(f"  WARNING: RR labels not found at {rr_path}, falling back to sentence splitting")
+
     # Encode query paragraphs (sentences)
     print(f"Encoding query paragraph embeddings ({len(loader.queries)} queries)...")
     para_counts = []
     for qid, query in tqdm(loader.queries.items(), desc="Query embeddings"):
         emb_path = f"{emb_dir}/queries/{qid}.pt"
-        if os.path.exists(emb_path):
-            para_counts.append(torch.load(emb_path).shape[0])
-            continue
 
         if config.method == "adapted":
-            # Method 2: treat entire query as single paragraph
             sentences = [query["text"]]
+        elif rr_labels and qid in rr_labels:
+            # Method 1: use LLM sentence splits
+            sentences = [p["sentence"] for p in rr_labels[qid] if isinstance(p, dict) and "sentence" in p]
+            if not sentences:
+                sentences = [query["text"]]
         else:
-            # Method 1: split into sentences (RR labels loaded separately)
             sentences = split_into_sentences(query["text"], config.lang)
+
+        # Re-encode if paragraph count doesn't match (e.g., switching from adapted to full)
+        if os.path.exists(emb_path):
+            existing = torch.load(emb_path)
+            if existing.shape[0] == len(sentences):
+                para_counts.append(len(sentences))
+                continue
 
         embeddings = model.encode(sentences, batch_size=32, max_length=config.encode_max_length)
         emb_tensor = torch.tensor(embeddings["dense_vecs"], dtype=torch.float32)
@@ -195,6 +213,9 @@ def precompute_paragraph_embeddings(config: ParaGNNConfig):
     for qid, query in loader.queries.items():
         if config.method == "adapted":
             query_paras[qid] = [{"sentence": query["text"], "role": "NONE"}]
+        elif rr_labels and qid in rr_labels:
+            # Use LLM-labeled sentence splits directly
+            query_paras[qid] = rr_labels[qid]
         else:
             sents = split_into_sentences(query["text"], config.lang)
             query_paras[qid] = [{"sentence": s, "role": "NONE"} for s in sents]
