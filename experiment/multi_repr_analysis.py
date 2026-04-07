@@ -19,12 +19,29 @@ def load_data(path):
                 qrels.setdefault(parts[0], []).append(parts[1])
     return corpus, queries, qrels
 
-corpus, queries, qrels = load_data('data/kuhperdata-humanized')
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--split', default='train', choices=['train', 'test'])
+parser.add_argument('--neg_type', default='hard', choices=['hard', 'random'])
+parser.add_argument('--sample', type=int, default=50)
+args = parser.parse_args()
+
+path = 'data/kuhperdata-humanized'
+corpus, queries, _ = load_data(path)
+# Load specified split
+qrels = {}
+with open(f'{path}/qrels_{args.split}.tsv', 'r', encoding='utf-8') as f:
+    for i, line in enumerate(f):
+        parts = line.strip().split('\t')
+        if i == 0 and parts[0] == 'query_id': continue
+        if len(parts) >= 3 and int(parts[2]) > 0:
+            qrels.setdefault(parts[0], []).append(parts[1])
 qrels = {qid: docs for qid, docs in qrels.items() if len(docs) <= 5}
 
 random.seed(42)
-sample_qids = random.sample([q for q in qrels if q in queries], 30)
+sample_qids = random.sample([q for q in qrels if q in queries], min(args.sample, len(qrels)))
 sample_q_texts = [queries[qid]['text'] for qid in sample_qids]
+print(f'Split: {args.split}, Neg type: {args.neg_type}, Sample: {len(sample_qids)} queries')
 doc_ids = list(corpus.keys())
 doc_texts = [corpus[d]['text'] for d in doc_ids]
 doc_id_to_idx = {d: i for i, d in enumerate(doc_ids)}
@@ -63,11 +80,23 @@ bm25.fit(doc_texts)
 
 S = {'dense': [], 'sparse': [], 'colbert': [], 'title': [], 'bm25': [], 'label': []}
 
-print('Computing scores...')
+print(f'Computing scores ({args.neg_type} negatives)...')
 for qi, qid in enumerate(sample_qids):
     gt = set(qrels[qid])
     bs = bm25.transform(sample_q_texts[qi])
-    cands = list(gt) + random.sample([d for d in doc_ids if d not in gt], 10)
+
+    if args.neg_type == 'hard':
+        # BM25 top-ranked non-relevant as hard negatives
+        ranked_idx = np.argsort(bs)[::-1]
+        neg_dids = []
+        for idx in ranked_idx:
+            if len(neg_dids) >= 10: break
+            if doc_ids[idx] not in gt:
+                neg_dids.append(doc_ids[idx])
+        cands = list(gt) + neg_dids
+    else:
+        cands = list(gt) + random.sample([d for d in doc_ids if d not in gt], 10)
+
     for did in cands:
         if did not in doc_id_to_idx: continue
         di = doc_id_to_idx[did]
