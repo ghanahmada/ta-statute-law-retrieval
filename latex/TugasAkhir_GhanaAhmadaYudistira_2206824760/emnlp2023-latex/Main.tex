@@ -1,0 +1,62 @@
+% Main.tex
+\documentclass[11pt]{article}
+
+% Remove the "review" option to generate the final version.
+\usepackage[review]{EMNLP2023}
+
+% Standard package includes
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsmath}
+
+% Compact placeholder for missing values
+\newcommand{\xxx}{\textcolor{red}{\textbf{xxx}}}
+
+% Title and Author
+\title{Prox-GNN: Robust Statute Retrieval via Structural Proximity Graphs \\
+Across Formality Levels and Languages}
+
+\author{Ghana Ahmada Yudistira \\
+  Faculty of Computer Science \\
+  Universitas Indonesia \\
+  \texttt{ghana.ahmada@ui.ac.id} \\\And
+  Alfan Farizki Wicaksono \\
+  Faculty of Computer Science \\
+  Universitas Indonesia \\
+  \texttt{alfan@ui.ac.id} \\}
+
+\begin{document}
+\maketitle
+
+% Abstract
+\input{Sections/0_Abstract}
+
+% Main content
+\input{Sections/1_Introduction}
+\input{Sections/2_Related_Work}
+\input{Sections/3_Corpus}
+\input{Sections/4_Analysis}
+\input{Sections/5_Method}
+\input{Sections/6_Experiments}
+
+% End matter (unnumbered)
+\input{Sections/6_Limitations}
+\input{Sections/7_Ethics}
+\input{Sections/8_Acknowledgements}
+
+% Bibliography
+\bibliography{custom}
+\bibliographystyle{acl_natbib}
+
+% Appendix
+\appendix
+\input{Sections/9_Appendix}
+
+\end{document}

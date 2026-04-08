@@ -1,0 +1,69 @@
+\section{Empirical Analysis}
+\label{sec:analysis}
+
+Before designing our retrieval method, we conduct systematic error analysis across all four datasets to identify universal failure patterns. Each observation in this section motivates a specific design decision in \S\ref{sec:method}.
+
+\noindent\textbf{What Predicts Retrieval Failure?} We split test queries into BM25 hits (at least one relevant statute in top 10) and misses, then compare query characteristics between the two groups. Across all four datasets, vocabulary overlap between query and relevant statutes is the sole consistent predictor of failure (Table~\ref{tab:failure-analysis}). Query length, sentence count, and question format have near-zero predictive power. This finding is consistent across all four languages.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcccc}
+\hline
+\textbf{Dataset} & \textbf{Hit\%} & \textbf{Ovl (hit)} & \textbf{Ovl (miss)} & \textbf{Gap} \\
+\hline
+KUHPer. (human.) & 10.7 & 3.91 & 2.18 & +1.73 \\
+KUHPer. (summ.) & 17.7 & 7.39 & 4.76 & +2.63 \\
+BSARD & 42.3 & 2.43 & 1.11 & +1.32 \\
+STARD & 53.2 & 13.71 & 7.40 & +6.31 \\
+\hline
+\end{tabular}
+\caption{\label{tab:failure-analysis}
+BM25 error analysis. Hit\% = fraction of queries with at least one relevant statute in top 10. Ovl = average content token overlap between query and relevant statutes. The overlap gap between hits and misses is consistent across all four languages.
+}
+\end{table}
+
+The vocabulary gap manifests as three types of mismatch, validated across Indonesian, French, and Chinese: (i) framing words that queries use but statutes never contain (e.g., ``why,'' ``whether''), (ii) concreteness gap where users name specific entities while statutes use abstract categories, and (iii) register gap where users use everyday verbs while statutes use formal prescriptive language.
+
+\noindent\textbf{How Do Relevant Statutes Relate Structurally?} For queries with multiple relevant statutes, we measure the structural distance between co-relevant articles (Table~\ref{tab:structural-distance}). Co-relevant statutes are overwhelmingly close neighbors in the legal code: 85.2\% share the same book (legal domain), 66.3\% are within 50 articles of each other, with a median distance of only 18 articles. In contrast, BM25's hard negatives (top-ranked wrong statutes) are structurally distant: median 297 articles, only 56.6\% in the same book.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcc}
+\hline
+\textbf{Metric} & \textbf{Co-relevant} & \textbf{Hard neg.} \\
+\hline
+Median distance (articles) & 18 & 297 \\
+Same book (\%) & 85.2 & 56.6 \\
+Within 50 articles (\%) & 66.3 & -- \\
+\hline
+\end{tabular}
+\caption{\label{tab:structural-distance}
+Structural distance between article pairs on KUHPerdata. Co-relevant statutes cluster tightly; hard negatives are far. Cross-references are too sparse (15.6\% point to co-relevant articles) to serve as edges.
+}
+\end{table}
+
+This separation suggests that structural proximity is a signal for co-relevance that is independent of textual content. A method that exploits this should improve ranking of correct articles without introducing hard negatives into the retrieval pool.
+
+\noindent\textbf{What Is the Right Signal Balance?} We observe that the paragraph-level GNN of \citet{ilpcsr} learns a blending weight (alpha) between GNN semantic scores and BM25 lexical scores. When trained end-to-end, alpha converges to approximately 0.97 regardless of dataset, effectively ignoring BM25. However, BM25 carries different amounts of useful signal per dataset: BSARD queries achieve 42.3\% BM25 hit rate (substantial lexical overlap), while KUHPerdata humanized queries achieve only 10.7\%. Post-training grid search reveals that the optimal alpha ranges from 0.7 (BSARD, most lexical overlap) to 0.9 (KUHPerdata humanized, least overlap), as shown in Table~\ref{tab:alpha-correlation}.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcc}
+\hline
+\textbf{Dataset} & \textbf{BM25 Hit Rate} & \textbf{Optimal $\alpha$} \\
+\hline
+KUHPer. (human.) & 10.7\% & 0.9 \\
+KUHPer. (summ.) & 17.7\% & 0.8 \\
+STARD & 53.2\% & 0.8 \\
+BSARD & 42.3\% & 0.7 \\
+\hline
+\end{tabular}
+\caption{\label{tab:alpha-correlation}
+Optimal blending weight $\alpha$ (in $\alpha \cdot \text{GNN} + (1-\alpha) \cdot \text{BM25}$) correlates with dataset-level lexical overlap. Datasets with less lexical overlap need more GNN signal; datasets with more overlap benefit from retaining BM25.
+}
+\end{table}
+
+The correlation between optimal alpha and BM25 hit rate indicates that the right signal balance is a function of dataset-level lexical characteristics. A fixed or blindly-learned alpha misses this, systematically over-weighting the GNN signal.

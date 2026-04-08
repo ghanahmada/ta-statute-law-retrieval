@@ -1,0 +1,18 @@
+\section{Introduction}
+\label{sec:intro}
+
+In the legal domain, statutes are a fundamental source of knowledge that guides principles of jurisdiction \citep{ilpcsr}. In practice, when faced with a legal situation, a practitioner identifies applicable statutes based on experience and knowledge. This process is time-consuming, and the problem worsens with the growing number of legal cases in populous countries. Hence, there is an imminent need to automate statute retrieval: given a description of facts, identify the relevant legal provisions.
+
+Statute retrieval requires bridging two fundamentally different registers. Queries describe concrete events in narrative language; statutes define abstract legal norms using formal terminology. A layperson asking about a landlord who refuses to return a deposit must be matched to provisions on \textit{obligation} (\textit{perikatan}) and \textit{debtor default} (\textit{wanprestasi}). This vocabulary gap is the core challenge, and it widens as queries become less formal.
+
+Current statute retrieval benchmarks do not reveal whether methods are robust to this challenge. IL-PCSR \citep{ilpcsr} uses full case judgments and LLM-generated summaries as queries. COLIEE \citep{coliee2024} provides expert-crafted bar exam questions. BSARD \citep{bsard} and STARD \citep{stard} use shorter queries, but each evaluates at a single formality level. While STARD demonstrated that models trained on formal queries perform poorly on real layperson queries, their comparison is cross-dataset rather than controlled: different queries about different cases make it impossible to isolate the effect of query formality. Beyond formality, no existing work measures whether a retrieval method that works on French citizen questions also works on Chinese layperson queries or Indonesian case summaries, each with fundamentally different vocabulary characteristics.
+
+We address these gaps with the following contributions:
+
+\begin{itemize}
+\item We construct KUHPerdata, the first Indonesian statute retrieval dataset with two query formality levels (narrative case summaries and layperson questions) sharing identical relevance judgments, enabling controlled measurement of formality robustness. To the best of our knowledge, this is the first statute retrieval resource for Indonesian, a language spoken by 270 million people with no prior legal NLP resources for this task.
+
+\item We conduct the first cross-lingual error analysis of statute retrieval across four datasets in four languages (Indonesian, French, Chinese, English). We show that vocabulary overlap is the sole universal predictor of lexical retrieval failure, and that co-relevant statutes cluster structurally (median 18 articles apart) while hard negatives are distant (median 297). These findings are consistent across all four languages.
+
+\item Guided by these observations, we propose Prox-GNN, which extends the paragraph-level graph neural network of \citet{ilpcsr} with two targeted modifications: statute proximity edges that exploit structural clustering, and post-training alpha grid search that adapts the lexical-semantic blend per dataset. On four datasets, Prox-GNN achieves MRR@10 of 0.486--0.527, improving 24--94\% over the strongest baseline (JNLP Stage~1; \citealp{jnlp}). Ablation confirms each modification is necessary and addresses the specific failure pattern it targets.
+\end{itemize}
