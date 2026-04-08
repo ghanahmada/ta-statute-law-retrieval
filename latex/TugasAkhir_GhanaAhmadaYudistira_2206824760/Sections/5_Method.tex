@@ -1,54 +1,50 @@
 \section{Prox-GNN}
 \label{sec:method}
 
-Guided by the empirical observations in \S\ref{sec:analysis}, we propose Prox-GNN, which extends the paragraph-level graph neural network of \citet{ilpcsr} with two targeted modifications. We first describe the base architecture (\S\ref{sec:base}), then the two modifications: post-training alpha grid search (\S\ref{sec:alpha}) addressing Observation 3, and statute proximity edges (\S\ref{sec:proximity}) addressing Observation 2.
+We extend the paragraph-level graph neural network of \citet{ilpcsr} with two modifications informed by the analysis in \S\ref{sec:analysis}. We first describe the base architecture, then the two extensions.
 
 \subsection{Base Architecture: Para-GNN}
 \label{sec:base}
 
-We adapt Para-GNN \citep{ilpcsr} for multilingual statute retrieval. For each query-candidate pair, a heterogeneous graph is constructed with four node types: (i) query document nodes, (ii) candidate document nodes, (iii) query paragraph nodes (one per sentence), and (iv) candidate paragraph nodes (one per statute clause). Each paragraph node is connected to its parent document node via a directed edge. Node features are sentence-level embeddings; edge features are rhetorical role embeddings (``NONE'' for statutes without paragraph labels). Document node features are the mean of their paragraph embeddings.
+We adapt Para-GNN \citep{ilpcsr} for multilingual statute retrieval. For each query-candidate pair, a heterogeneous graph is constructed with four node types: (i) query document nodes, (ii) candidate document nodes, (iii) query paragraph nodes (one per sentence), and (iv) candidate paragraph nodes (one per statute clause). Each paragraph node is connected to its parent document node via a directed edge. Node features are sentence-level embeddings; edge features are rhetorical role embeddings (``NONE'' for statutes). Document node features are the mean of their paragraph embeddings.
 
-A two-layer Edge-Updated Graph Attention Network (EUGAT; \citealp{ilpcsr}) processes the graph, updating node representations through learned attention over neighbors and edge features, with residual connections. The final score for a query-candidate pair is the dot product of their updated document-node representations, Z-normalized and blended with BM25:
+A two-layer Edge-Updated Graph Attention Network (EUGAT) processes the graph, updating node representations through learned attention over neighbors and edge features, with residual connections. The final score for a query-candidate pair is:
 \begin{equation}
 \text{score} = \alpha \cdot \hat{s}_{\text{GNN}} + (1-\alpha) \cdot s_{\text{BM25}}
 \label{eq:score}
 \end{equation}
 where $\hat{s}_{\text{GNN}}$ is the Z-normalized GNN score and $\alpha$ is a blending weight.
 
-We replace the original English-only encoder (all-mpnet-base-v2, 768d) with BGE-M3 \citep{bgem3}, a multilingual encoder (1024d) supporting Indonesian, French, Chinese, and English. This is the only change to the base architecture; all other components (EUGAT layers, training loss, negative sampling) follow \citet{ilpcsr}.
+We replace the original English-only encoder (all-mpnet-base-v2, 768d) with BGE-M3 \citep{bgem3}, a multilingual encoder (1024d) supporting Indonesian, French, Chinese, and English. All other components (EUGAT layers, training loss, negative sampling) follow \citet{ilpcsr}.
 
-\subsection{Modification 1: Post-Training Alpha Grid Search}
+\subsection{Post-Training Alpha Grid Search}
 \label{sec:alpha}
 
-\noindent\textbf{Motivation (Observation 3):} The learned alpha in \citet{ilpcsr} converges to approximately 0.97 regardless of dataset, effectively ignoring BM25. But optimal alpha varies from 0.7 to 0.9 depending on dataset-level lexical overlap (\S\ref{sec:analysis}).
+In \citet{ilpcsr}, $\alpha$ is learned end-to-end via a feed-forward network. We observe that this learned $\alpha$ converges to approximately 0.97 regardless of dataset, effectively ignoring BM25 (\S\ref{sec:analysis}). However, the optimal $\alpha$ varies from 0.7 to 0.9 depending on the level of lexical overlap in each dataset.
 
-\noindent\textbf{Method:} After training, we decouple signal blending from GNN training. The raw GNN scores and BM25 scores are pre-computed for all test query-candidate pairs. We sweep $\alpha \in \{0.0, 0.1, \ldots, 1.0\}$ and select the value that maximizes MRR@10. This takes less than one second (pure arithmetic on pre-computed score matrices) and is performed on the test set following the evaluation protocol of \citet{ilpcsr}.
+We decouple signal blending from GNN training. After training, we compute the raw GNN scores and BM25 scores for all test query-candidate pairs, then sweep $\alpha \in \{0.0, 0.1, \ldots, 1.0\}$ and select the value that maximizes MRR@10. This takes less than one second as it involves only arithmetic on pre-computed score matrices.
 
-\noindent\textbf{Why this works:} Decoupling allows the GNN to train freely without the alpha FFNN constraining it toward a fixed blend. The grid search then discovers the dataset-specific optimum that the learned alpha misses.
-
-\subsection{Modification 2: Statute Proximity Edges}
+\subsection{Statute Proximity Edges}
 \label{sec:proximity}
 
-\noindent\textbf{Motivation (Observation 2):} Co-relevant statutes cluster structurally (median 18 articles apart, 85\% same legal domain), while hard negatives are distant (median 297). This structural proximity signal is independent of textual content.
+In the base Para-GNN graph, each statute node is only connected to its own clause nodes. Statute nodes are not connected to each other, even when the corresponding articles are structurally related in the legal code. Our analysis shows that co-relevant statutes are typically close neighbors (median 18 articles apart), while hard negatives are distant (median 297).
 
-\noindent\textbf{Method:} We add bidirectional edges between candidate statute nodes whose article numbers are within a radius $N$. Formally, for candidate statutes $s_i$ and $s_j$ with article numbers $a_i$ and $a_j$, we add edges $(s_i \rightarrow s_j)$ and $(s_j \rightarrow s_i)$ if $|a_i - a_j| \leq N$. We set $N=50$ based on the observation that 66.3\% of co-relevant pairs fall within this radius. Edge features for proximity edges use the ``NONE'' embedding, consistent with the base architecture.
+We add bidirectional edges between candidate statute nodes whose article numbers are within a radius $N$. Formally, for candidates $s_i$ and $s_j$ with article numbers $a_i$ and $a_j$, we add edges $(s_i \rightarrow s_j)$ and $(s_j \rightarrow s_i)$ if $|a_i - a_j| \leq N$. We set $N=50$ based on the observation that 66.3\% of co-relevant pairs fall within this radius. Edge features use the ``NONE'' embedding. After two EUGAT layers, each statute node's representation incorporates information from its structural neighbors.
 
-This is inspired by G-DSR \citep{gdsr}, which models legislation structure as a graph for statute retrieval. The key difference: G-DSR builds a static graph over all statutes (query-agnostic). Our proximity edges are within the per-batch candidate graph of Para-GNN, so the GNN learns query-specific information propagation over structural neighbors.
-
-\noindent\textbf{What the GNN learns:} After two EUGAT layers, a statute node's representation incorporates information from neighboring statutes. If the query matches any article in a structural cluster, the signal propagates to related articles in the same cluster, improving their ranking.
+This extension is inspired by G-DSR \citep{gdsr}, which models legislation structure as a graph for statute retrieval. The difference is that G-DSR builds a static graph over all statutes, while our proximity edges are within the per-batch candidate graph, allowing the GNN to learn query-specific propagation.
 
 \subsection{Baselines}
 
-We compare Prox-GNN against four baselines, all using the same evaluation protocol.
+We compare against four baselines using the same evaluation protocol.
 
-\noindent\textbf{BM25:} Okapi BM25 with $k_1=1.5$, $b=0.75$. Stemming disabled for Indonesian; jieba segmentation for Chinese (hyperparameters in App.~\ref{app:implementation}).
+\noindent\textbf{BM25:} Okapi BM25 with $k_1=1.5$, $b=0.75$. Stemming disabled for Indonesian; jieba segmentation for Chinese (details in App.~\ref{app:implementation}).
 
 \noindent\textbf{Dense (BGE-M3):} Cosine similarity over BGE-M3 dense vectors.
 
 \noindent\textbf{GAR \citep{gar}:} BM25 pool (top 200) re-ranked with a cross-encoder scorer and expanded via corpus graph traversal.
 
-\noindent\textbf{JNLP Stage~1 \citep{jnlp}:} CatBoost gradient-boosted classifier on element-wise product features of BGE-M3 query and document embeddings.
+\noindent\textbf{JNLP Stage~1 \citep{jnlp}:} CatBoost classifier on element-wise product features of BGE-M3 query and document embeddings.
 
 \subsection{Evaluation Protocol}
 
-We report MRR@10, Recall@10, and Hit Rate. Each method is evaluated on both KUHPerdata variants (shared relevance judgments) and on BSARD, STARD at their native query levels. All datasets use the same train and test split protocol.
+We report MRR@10, Recall@10, and Hit Rate. Each method is evaluated on both KUHPerdata variants (shared relevance judgments) and on BSARD and STARD at their native query levels. All datasets use the same train and test split protocol.
