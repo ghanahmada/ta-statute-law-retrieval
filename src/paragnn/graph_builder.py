@@ -1,4 +1,4 @@
-"""Graph construction for Para-GNN.
+"""Graph construction for Para-GNN / Prox-GNN / StructGNN.
 
 Builds DGL graphs from pre-computed paragraph embeddings and RR labels.
 Adapted from IL-PCSR's GraphGenerator for BEIR-format datasets.
@@ -6,10 +6,17 @@ Adapted from IL-PCSR's GraphGenerator for BEIR-format datasets.
 Graph layout:
   Nodes: [query_doc_0, ..., query_doc_N, cand_doc_0, ..., cand_doc_M,
           query_para_0_0, query_para_0_1, ..., cand_para_0_0, ...]
-  Edges: paragraph_node → parent_doc_node
+  Edges: paragraph_node -> parent_doc_node
   Edge features: RR label embedding (1024d) for that paragraph
+
+Structure modes:
+  - "none": Para-GNN base. Node features = BGE-M3 only (1024d).
+  - "proximity": Prox-GNN. Same node features + explicit proximity edges.
+  - "structural": StructGNN. Node features = [BGE-M3 | act_hash | pos_enc]
+    (1120d), projected to 1024d by the model before EUGAT.
 """
 import json
+import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -24,47 +31,34 @@ class ParagraphStore:
 
     def __init__(self, output_dir: str, method: str = "adapted",
                  rr_labels_path: Optional[str] = None):
-        """
-        Args:
-            output_dir: path to outputs/paragnn/{dataset}/
-            method: "full" (LLM-labeled RR) or "adapted" (single para, NONE)
-            rr_labels_path: path to rr_labels.json (method="full" only)
-        """
         self.output_dir = Path(output_dir)
         self.emb_dir = self.output_dir / "embeddings"
         self.method = method
 
-        # Load RR constant embeddings
         self.rr_const_emb = torch.load(self.emb_dir / "EMBD_CONST.pt")  # (13, 1024)
         self.rr_label_to_idx = {label: i for i, label in enumerate(RR_LABELS)}
 
-        # Load paragraph metadata
         with open(self.output_dir / "query_paragraphs.json", "r", encoding="utf-8") as f:
-            self.query_paras = json.load(f)  # {qid: [{sentence, role}, ...]}
+            self.query_paras = json.load(f)
         with open(self.output_dir / "corpus_paragraphs.json", "r", encoding="utf-8") as f:
-            self.corpus_paras = json.load(f)  # {doc_id: [{sentence, role}, ...]}
+            self.corpus_paras = json.load(f)
 
-        # If method="full", override query paragraph roles with LLM-labeled roles
         if method == "full" and rr_labels_path:
             with open(rr_labels_path, "r", encoding="utf-8") as f:
-                llm_labels = json.load(f)  # {qid: [{sentence, role}, ...]}
-            # Merge: use LLM roles where available
+                llm_labels = json.load(f)
             for qid, paras in llm_labels.items():
                 if qid in self.query_paras:
                     self.query_paras[qid] = paras
 
-        # Embedding cache
         self._emb_cache: Dict[str, torch.Tensor] = {}
 
     def get_query_embedding(self, qid: str) -> torch.Tensor:
-        """Load paragraph embeddings for a query. Returns (num_paras, 1024)."""
         if qid not in self._emb_cache:
             path = self.emb_dir / "queries" / f"{qid}.pt"
             self._emb_cache[qid] = torch.load(path, map_location="cpu")
         return self._emb_cache[qid]
 
     def get_corpus_embedding(self, doc_id: str) -> torch.Tensor:
-        """Load paragraph embeddings for a corpus doc. Returns (num_paras, 1024)."""
         key = f"c_{doc_id}"
         if key not in self._emb_cache:
             path = self.emb_dir / "corpus" / f"{doc_id}.pt"
@@ -72,7 +66,6 @@ class ParagraphStore:
         return self._emb_cache[key]
 
     def get_query_rr_labels(self, qid: str) -> List[str]:
-        """Get RR label strings for each paragraph of a query."""
         paras = self.query_paras.get(qid, [{"sentence": "", "role": "NONE"}])
         labels = []
         for p in paras:
@@ -85,7 +78,6 @@ class ParagraphStore:
         return labels
 
     def get_rr_embedding(self, label: str) -> torch.Tensor:
-        """Get the embedding for an RR label string. Returns (1024,)."""
         idx = self.rr_label_to_idx.get(label, self.rr_label_to_idx["NONE"])
         return self.rr_const_emb[idx]
 
@@ -94,65 +86,86 @@ class ParagraphStore:
 
 
 class GraphBuilder:
-    """Builds a DGL graph from query IDs + candidate IDs using ParagraphStore.
+    """Builds a DGL graph from query IDs + candidate IDs.
 
-    Matches IL-PCSR's GraphGenerator layout exactly:
-      - Document nodes: [queries | candidates]
-      - Paragraph nodes appended after document nodes
-      - Edges: paragraph → parent document
-      - Edge features: RR label embedding
+    Supports three structure modes:
+      - "none": Para-GNN base (paragraph->doc edges only)
+      - "proximity": Prox-GNN (+ proximity edges between nearby statutes)
+      - "structural": StructGNN (structural features concatenated to node embeddings)
     """
 
-    def __init__(self, query_ids: List[str], candidate_ids: List[str],
-                 para_store: ParagraphStore, proximity_radius: int = 0):
+    def __init__(
+        self,
+        query_ids: List[str],
+        candidate_ids: List[str],
+        para_store: ParagraphStore,
+        structure_mode: str = "none",
+        proximity_radius: int = 50,
+        structure_features: Optional[Dict[str, torch.Tensor]] = None,
+        query_structure_feature: Optional[torch.Tensor] = None,
+    ):
         """
         Args:
-            proximity_radius: if > 0, add bidirectional edges between statute
-                nodes whose article numbers are within this distance.
-                Based on empirical finding: co-relevant statutes have median
-                distance of 18 articles (66% within 50).
+            structure_mode: "none", "proximity", or "structural"
+            proximity_radius: Prox-GNN only. Connect statutes within N articles.
+            structure_features: StructGNN only. {doc_id: (act_dim+pos_dim,)} precomputed.
+            query_structure_feature: StructGNN only. (act_dim+pos_dim,) for query nodes.
         """
         self.query_ids = query_ids
         self.candidate_ids = candidate_ids
         self.all_doc_ids = query_ids + candidate_ids
-        self.proximity_radius = proximity_radius
 
         n_docs = len(self.all_doc_ids)
 
-        # Collect paragraph info
-        u_ids = []  # source (paragraph nodes)
-        v_ids = []  # destination (document nodes)
+        u_ids = []
+        v_ids = []
         edge_features = []
         node_features = []
         query_para_count = 0
         candidate_para_count = 0
-
-        # Document node features (mean of paragraph embeddings)
         doc_node_features = []
 
-        para_offset = n_docs  # paragraph nodes start after all doc nodes
+        para_offset = n_docs
 
         for idx, doc_id in enumerate(self.all_doc_ids):
             is_query = idx < len(query_ids)
 
             if is_query:
-                emb = para_store.get_query_embedding(doc_id)  # (num_paras, 1024)
+                emb = para_store.get_query_embedding(doc_id)
                 rr_labels = para_store.get_query_rr_labels(doc_id)
             else:
-                emb = para_store.get_corpus_embedding(doc_id)  # (num_paras, 1024)
-                rr_labels = ["NONE"] * emb.shape[0]  # statutes always NONE
+                emb = para_store.get_corpus_embedding(doc_id)
+                rr_labels = ["NONE"] * emb.shape[0]
 
             num_paras = emb.shape[0]
 
-            # Document node = mean of paragraph embeddings
-            doc_node_features.append(emb.mean(dim=0))
+            doc_feat = emb.mean(dim=0)  # (1024,)
 
-            # Paragraph nodes and edges
+            if structure_mode == "structural":
+                if is_query:
+                    struct_feat = query_structure_feature
+                else:
+                    struct_feat = structure_features.get(doc_id)
+                if struct_feat is not None:
+                    doc_feat = torch.cat([doc_feat, struct_feat])
+
+            doc_node_features.append(doc_feat)
+
             for i in range(num_paras):
-                node_features.append(emb[i])
+                para_feat = emb[i]
+                if structure_mode == "structural":
+                    if is_query:
+                        struct_feat = query_structure_feature
+                    else:
+                        struct_feat = structure_features.get(doc_id)
+                    if struct_feat is not None:
+                        para_feat = torch.cat([para_feat, struct_feat])
+                node_features.append(para_feat)
                 u_ids.append(para_offset)
                 v_ids.append(idx)
-                edge_features.append(para_store.get_rr_embedding(rr_labels[i] if i < len(rr_labels) else "NONE"))
+                edge_features.append(
+                    para_store.get_rr_embedding(rr_labels[i] if i < len(rr_labels) else "NONE")
+                )
                 para_offset += 1
 
             if is_query:
@@ -160,51 +173,38 @@ class GraphBuilder:
             else:
                 candidate_para_count += num_paras
 
-        # Add proximity edges between nearby statute nodes (Direction A)
-        if proximity_radius > 0:
+        # Prox-GNN: add proximity edges between nearby statute nodes
+        if structure_mode == "proximity" and proximity_radius > 0:
             n_queries = len(query_ids)
-            # Extract article numbers for candidate statutes
-            import re
             cand_nums = []
             for cid in candidate_ids:
                 match = re.match(r'(\d+)', cid)
                 cand_nums.append(int(match.group(1)) if match else -1)
 
-            # Add bidirectional edges between statutes within radius
-            proximity_edge_count = 0
-            # Use "NONE" embedding for proximity edges (same dim as RR embeddings)
             proximity_edge_feat = para_store.get_rr_embedding("NONE")
 
             for i in range(len(candidate_ids)):
                 if cand_nums[i] < 0:
                     continue
-                node_i = n_queries + i  # index in all_doc_ids
+                node_i = n_queries + i
                 for j in range(i + 1, len(candidate_ids)):
                     if cand_nums[j] < 0:
                         continue
                     if abs(cand_nums[i] - cand_nums[j]) <= proximity_radius:
                         node_j = n_queries + j
-                        # Bidirectional
                         u_ids.append(node_i)
                         v_ids.append(node_j)
                         edge_features.append(proximity_edge_feat)
                         u_ids.append(node_j)
                         v_ids.append(node_i)
                         edge_features.append(proximity_edge_feat)
-                        proximity_edge_count += 1
 
-            if proximity_edge_count > 0 and len(query_ids) < 10:  # only print for small graphs (test)
-                pass  # avoid spam during training
+        all_node_features = torch.stack(doc_node_features + node_features)
+        all_edge_features = torch.stack(edge_features)
 
-        # Stack all node features: [doc_nodes | para_nodes]
-        all_node_features = torch.stack(doc_node_features + node_features)  # (n_docs + n_paras, 1024)
-        all_edge_features = torch.stack(edge_features)  # (n_edges, 1024)
-
-        # Build DGL graph
         self.graph = dgl.graph((u_ids, v_ids), num_nodes=all_node_features.shape[0])
         self.graph = dgl.add_self_loop(self.graph)
 
-        # Pad edge features for self-loops (zero vectors)
         n_self_loops = self.graph.num_edges() - len(edge_features)
         if n_self_loops > 0:
             pad = torch.zeros(n_self_loops, all_edge_features.shape[1])
@@ -213,10 +213,8 @@ class GraphBuilder:
         self.graph.ndata["h"] = all_node_features
         self.graph.edata["h"] = all_edge_features
 
-        # Node masks
         n_total = all_node_features.shape[0]
         n_queries = len(query_ids)
-        n_candidates = len(candidate_ids)
 
         query_mask = torch.zeros(n_total, dtype=torch.float32)
         query_mask[:n_queries] = 1.0

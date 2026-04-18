@@ -1,10 +1,11 @@
-"""Training loop for Para-GNN.
+"""Training loop for Para-GNN / Prox-GNN / StructGNN.
 
 Adapted from IL-PCSR's train_paragnn_plus_bm25_for_secs.py.
 """
 import json
 import os
 from math import ceil
+from typing import Dict, Optional
 
 import numpy as np
 import torch
@@ -18,11 +19,15 @@ from .graph_builder import ParagraphStore, GraphBuilder
 
 
 class ParaGNNTrainer:
-    """Trains Para-GNN and evaluates on test set."""
+    """Trains Para-GNN / Prox-GNN / StructGNN and evaluates on test set."""
 
-    def __init__(self, config, para_store: ParagraphStore):
+    def __init__(self, config, para_store: ParagraphStore,
+                 structure_features: Optional[Dict[str, torch.Tensor]] = None,
+                 query_structure_feature: Optional[torch.Tensor] = None):
         self.config = config
         self.para_store = para_store
+        self.structure_features = structure_features
+        self.query_structure_feature = query_structure_feature
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def train(
@@ -37,15 +42,20 @@ class ParaGNNTrainer:
         set_seed(42)
 
         # Output to method-specific subfolder
+        mode = self.config.structure_mode
         method_suffix = self.config.method
-        if self.config.proximity_radius > 0:
+        if mode == "proximity":
             method_suffix = f"{method_suffix}_prox{self.config.proximity_radius}"
+        elif mode == "structural":
+            method_suffix = f"{method_suffix}_struct"
         output_dir = f"{self.config.output_dir}/{self.config.dataset}/{method_suffix}"
         os.makedirs(output_dir, exist_ok=True)
 
         dim = self.config.embed_dim
+        struct_input_dim = dim + self.config.act_dim + self.config.pos_dim
         model = CaseGnn(in_dim=dim, h_dim=dim, out_dim=dim,
-                        dropout=self.config.dropout, num_head=self.config.num_heads)
+                        dropout=self.config.dropout, num_head=self.config.num_heads,
+                        structure_mode=mode, struct_input_dim=struct_input_dim)
 
         # Resume from checkpoint if exists
         start_epoch = 0
@@ -95,8 +105,13 @@ class ParaGNNTrainer:
 
         # Build test graph once
         print("Building test graph...")
-        test_graph = GraphBuilder(test_query_ids, test_corpus_ids, self.para_store,
-                                   proximity_radius=self.config.proximity_radius).graph
+        test_graph = GraphBuilder(
+            test_query_ids, test_corpus_ids, self.para_store,
+            structure_mode=mode,
+            proximity_radius=self.config.proximity_radius,
+            structure_features=self.structure_features,
+            query_structure_feature=self.query_structure_feature,
+        ).graph
         test_graph = test_graph.to(self.device)
         bm25_test_scores = bm25_test_scores.to(self.device)
 
@@ -109,7 +124,8 @@ class ParaGNNTrainer:
                     if did in doc_id_to_idx and score > 0:
                         gold_matrix[qi][doc_id_to_idx[did]] = 1
 
-        print(f"Training Para-GNN for epochs {start_epoch+1}-{self.config.epochs}...")
+        mode_name = {"none": "Para-GNN", "proximity": "Prox-GNN", "structural": "StructGNN"}[mode]
+        print(f"Training {mode_name} for epochs {start_epoch+1}-{self.config.epochs}...")
         for epoch in range(start_epoch, self.config.epochs):
             model.train()
             total_loss = 0
@@ -223,21 +239,28 @@ class ParaGNNTrainer:
     def _get_gnn_scores(self, train_model, test_graph):
         """Get raw GNN scores (before alpha blending)."""
         dim = self.config.embed_dim
+        mode = self.config.structure_mode
+        struct_input_dim = dim + self.config.act_dim + self.config.pos_dim
         test_model = TestCaseGnn(in_dim=dim, h_dim=dim, out_dim=dim,
-                                  dropout=self.config.dropout, num_head=self.config.num_heads)
+                                  dropout=self.config.dropout, num_head=self.config.num_heads,
+                                  structure_mode=mode, struct_input_dim=struct_input_dim)
         test_model.load_state_dict(train_model.state_dict(), strict=False)
         test_model = test_model.to(self.device)
         test_model.eval()
 
-        # Get raw GNN node embeddings and compute scores
-        h = test_model.eugat_gnn(test_graph, test_graph.ndata["h"], test_graph.edata["h"])
+        node_h = test_graph.ndata["h"]
+        edge_h = test_graph.edata["h"]
+
+        if mode == "structural":
+            node_h = test_model.struct_proj(node_h)
+
+        h = test_model.eugat_gnn(test_graph, node_h, edge_h)
         query_encoded = h[test_graph.ndata["query_mask"].bool()]
         candidate_encoded = h[test_graph.ndata["candidate_mask"].bool()]
         alphas = test_model.ffnn(query_encoded)
 
         scores = torch.matmul(query_encoded, candidate_encoded.T)
 
-        # Z-normalize
         mean_scores = scores.mean(dim=1, keepdim=True)
         std_scores = scores.std(dim=1, keepdim=True)
         gnn_scores = (scores - mean_scores) / (std_scores + 1e-8)

@@ -1,10 +1,9 @@
-"""Training dataset and collator for Para-GNN.
+"""Training dataset and collator for Para-GNN / Prox-GNN / StructGNN.
 
 Adapted from IL-PCSR's SAILERDataset and SAILERDataCollator.
 """
 import random
-from copy import deepcopy
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import torch
 from torch.utils.data import Dataset
@@ -24,15 +23,6 @@ class ParaGNNDataset(Dataset):
         bm25_scores: torch.Tensor,
         num_negatives: int = 299,
     ):
-        """
-        Args:
-            train_qids: ordered list of training query IDs
-            qrels: {qid: {doc_id: score}} from DataLoader
-            corpus_doc_ids: ordered list of corpus doc IDs (matches bm25_scores columns)
-            hard_negatives: {qid: [ranked_doc_ids]} from BM25
-            bm25_scores: (num_train_queries, num_corpus) tensor
-            num_negatives: number of negative candidates per training example
-        """
         self.dataset = []
         self.corpus_doc_ids = corpus_doc_ids
         doc_id_to_idx = {d: i for i, d in enumerate(corpus_doc_ids)}
@@ -47,21 +37,18 @@ class ParaGNNDataset(Dataset):
                 continue
 
             for pos_did in relevant_docs:
-                # Get negatives from BM25 hard negatives
                 neg_candidates = [
                     d for d in hard_negatives.get(qid, [])[:400]
                     if d not in set(relevant_docs) and d in doc_id_to_idx
                 ]
 
                 if len(neg_candidates) < num_negatives:
-                    # Fill with random negatives
                     remaining = [d for d in corpus_doc_ids if d not in set(relevant_docs) and d not in set(neg_candidates)]
                     extra = min(num_negatives - len(neg_candidates), len(remaining))
                     neg_candidates += random.sample(remaining, extra)
 
                 sampled_negs = random.sample(neg_candidates, min(num_negatives, len(neg_candidates)))
 
-                # BM25 scores for [positive] + [negatives]
                 all_cand_ids = [pos_did] + sampled_negs
                 all_cand_indices = [doc_id_to_idx[d] for d in all_cand_ids]
                 bm25_slice = bm25_scores[qi][all_cand_indices]
@@ -83,14 +70,26 @@ class ParaGNNDataset(Dataset):
 
 
 class ParaGNNCollator:
-    """Collates batch items into a DGL graph + training tensors."""
+    """Collates batch items into a DGL graph + training tensors.
 
-    def __init__(self, para_store: ParagraphStore, proximity_radius: int = 0):
+    Supports all three structure modes via GraphBuilder.
+    """
+
+    def __init__(
+        self,
+        para_store: ParagraphStore,
+        structure_mode: str = "none",
+        proximity_radius: int = 50,
+        structure_features: Optional[Dict[str, torch.Tensor]] = None,
+        query_structure_feature: Optional[torch.Tensor] = None,
+    ):
         self.para_store = para_store
+        self.structure_mode = structure_mode
         self.proximity_radius = proximity_radius
+        self.structure_features = structure_features
+        self.query_structure_feature = query_structure_feature
 
     def __call__(self, batch: List[dict]) -> dict:
-        # Collect unique query and candidate IDs in this batch
         query_id_list = []
         candidate_id_list = []
 
@@ -101,11 +100,16 @@ class ParaGNNCollator:
                 if did not in candidate_id_list:
                     candidate_id_list.append(did)
 
-        # Build graph for this batch
-        graph_builder = GraphBuilder(query_id_list, candidate_id_list, self.para_store,
-                                     proximity_radius=self.proximity_radius)
+        graph_builder = GraphBuilder(
+            query_id_list,
+            candidate_id_list,
+            self.para_store,
+            structure_mode=self.structure_mode,
+            proximity_radius=self.proximity_radius,
+            structure_features=self.structure_features,
+            query_structure_feature=self.query_structure_feature,
+        )
 
-        # Compute positions
         query_pos = []
         candidate_pos = []
         bm25_scores = []
@@ -118,7 +122,6 @@ class ParaGNNCollator:
             candidate_pos.append(cand_pos)
             bm25_scores.append(item["bm25_scores"])
 
-        # Labels: position 0 is always the positive
         num_cands = len(candidate_pos[0])
         labels = torch.zeros(len(batch), num_cands)
         labels[:, 0] = 1

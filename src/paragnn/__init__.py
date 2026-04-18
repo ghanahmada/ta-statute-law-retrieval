@@ -1,11 +1,16 @@
-"""Para-GNN: Paragraph-level Graph Neural Network for Statute Retrieval.
+"""Paragraph-level Graph Neural Network for Statute Retrieval.
 
 Adapted from IL-PCSR (Paul et al., EMNLP 2025) for BEIR-format multilingual datasets.
 Uses BGE-M3 (1024d) instead of all-mpnet-base-v2 (768d) for multilingual support.
 
-Two methods:
+Query methods:
   - method="full": LLM-labeled query rhetorical roles + statute "NONE"
   - method="adapted": query as single node + statute "NONE" (no LLM needed)
+
+Structure modes (for ablation):
+  - structure_mode="none": Para-GNN base (no inter-statute signal)
+  - structure_mode="proximity": Prox-GNN (proximity edges by article number distance)
+  - structure_mode="structural": StructGNN (act hash + positional encoding as node features)
 """
 from dataclasses import dataclass, field
 from typing import Optional, List
@@ -43,7 +48,10 @@ class ParaGNNConfig:
     rr_labels_path: Optional[str] = None  # path to rr_labels.json (method="full" only)
 
     # Graph structure
-    proximity_radius: int = 0  # 0 = no proximity edges, N = connect statutes within N articles
+    structure_mode: str = "none"  # "none" (Para-GNN), "proximity" (Prox-GNN), "structural" (StructGNN)
+    proximity_radius: int = 50  # Prox-GNN only: connect statutes within N articles
+    act_dim: int = 64  # StructGNN only: act hash embedding dimension
+    pos_dim: int = 32  # StructGNN only: sinusoidal position encoding dimension
 
     # Model
     embed_dim: int = 1024  # BGE-M3 output dimension
