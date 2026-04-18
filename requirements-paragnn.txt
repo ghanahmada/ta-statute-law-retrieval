@@ -1,0 +1,25 @@
+# Para-GNN requirements (Python 3.11, CUDA 12.4)
+# Setup:
+#   python3.11 -m venv .venv-paragnn
+#   source .venv-paragnn/bin/activate
+#   pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
+#   pip install dgl -f https://data.dgl.ai/wheels/torch-2.5/cu121/repo.html
+#   pip install -r requirements-paragnn.txt
+
+# Embeddings
+FlagEmbedding==1.3.5
+transformers==4.44.2
+sentence-transformers>=3.0.0
+
+# Core
+numpy
+scipy
+scikit-learn>=1.8.0
+tqdm
+pydantic
+
+# Multilingual tokenization
+jieba>=0.42.1
+
+# Training
+accelerate>=0.30.0

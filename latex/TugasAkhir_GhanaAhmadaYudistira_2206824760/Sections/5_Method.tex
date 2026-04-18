@@ -1,7 +1,7 @@
-\section{Prox-GNN}
+\section{Method}
 \label{sec:method}
 
-We extend the paragraph-level graph neural network of \citet{ilpcsr} with two modifications informed by the analysis in \S\ref{sec:analysis}. We first describe the base architecture, then the two extensions.
+We extend the paragraph-level graph neural network of \citet{ilpcsr} with three modifications informed by the analysis in \S\ref{sec:analysis}. We first describe the base architecture, then the extensions.
 
 \subsection{Base Architecture: Para-GNN}
 \label{sec:base}
@@ -24,14 +24,25 @@ In \citet{ilpcsr}, $\alpha$ is learned end-to-end via a feed-forward network. We
 
 We decouple signal blending from GNN training. After training, we compute the raw GNN scores and BM25 scores for all test query-candidate pairs, then sweep $\alpha \in \{0.0, 0.1, \ldots, 1.0\}$ and select the value that maximizes MRR@10. This takes less than one second as it involves only arithmetic on pre-computed score matrices.
 
-\subsection{Statute Proximity Edges}
-\label{sec:proximity}
+\subsection{Structural Node Features}
+\label{sec:structural}
 
-In the base Para-GNN graph, each statute node is only connected to its own clause nodes. Statute nodes are not connected to each other, even when the corresponding articles are structurally related in the legal code. Our analysis shows that co-relevant statutes are typically close neighbors (median 18 articles apart), while hard negatives are distant (median 297).
+In the base Para-GNN graph, each statute node is connected only to its own clause nodes. Statute nodes are not connected to each other, even when the corresponding articles belong to the same legal instrument. Our analysis shows that co-relevant statutes cluster within the same instrument (85.2\% share the same book) and are structurally close (median 18 articles apart), while hard negatives are distant (median 297). We encode this structural information directly into node features, allowing the GNN to learn which structural patterns predict co-relevance.
 
-We add bidirectional edges between candidate statute nodes whose article numbers are within a radius $N$. Formally, for candidates $s_i$ and $s_j$ with article numbers $a_i$ and $a_j$, we add edges $(s_i \rightarrow s_j)$ and $(s_j \rightarrow s_i)$ if $|a_i - a_j| \leq N$. We set $N=50$ based on the observation that 66.3\% of co-relevant pairs fall within this radius. Edge features use the ``NONE'' embedding. After two EUGAT layers, each statute node's representation incorporates information from its structural neighbors.
+\noindent\textbf{Act Membership.} Each statute belongs to a legal instrument (e.g., an act, code, or law). We extract the instrument name from the statute title and encode it as a deterministic hash vector $\mathbf{a} \in \mathbb{R}^{64}$. The hash function maps each instrument name to a unit-norm pseudo-random vector using a fixed seed. Statutes from the same instrument receive identical vectors; statutes from different instruments receive near-orthogonal vectors, as high-dimensional random unit vectors have expected dot product approaching zero.
 
-This extension is inspired by G-DSR \citep{gdsr}, which models legislation structure as a graph for statute retrieval. The difference is that G-DSR builds a static graph over all statutes, while our proximity edges are within the per-batch candidate graph, allowing the GNN to learn query-specific propagation.
+\noindent\textbf{Positional Rank.} Within each instrument, statutes are ordered by their index of appearance in the corpus, normalized to $[0, 1]$. We encode this rank using sinusoidal positional encoding $\mathbf{p} \in \mathbb{R}^{32}$ at multiple frequencies, following \citet{transformer}. This captures structural proximity at different scales: adjacent articles produce similar encodings at all frequencies, while articles in the same chapter share low-frequency components but differ at high frequencies.
+
+\noindent\textbf{Query Nodes.} Query nodes do not belong to any legal instrument. They receive a dedicated hash vector (distinct from all instrument hashes) and a fixed midpoint position encoding ($r = 0.5$), providing the GNN with a stable structural signature for query nodes.
+
+\noindent\textbf{Projection.} For each node with semantic embedding $\mathbf{e}_i$, act hash $\mathbf{a}_i$, and positional encoding $\mathbf{p}_i$, we compute:
+\begin{equation}
+\mathbf{x}_i = W \cdot \text{LayerNorm}([\mathbf{e}_i \| \mathbf{a}_i \| \mathbf{p}_i])
+\label{eq:struct-proj}
+\end{equation}
+where $W \in \mathbb{R}^{1024 \times 1120}$ is a learned projection matrix. The linear projection preserves the geometric orthogonality of act hashes. The projected features $\mathbf{x}_i$ are then passed to EUGAT in place of the raw semantic embeddings.
+
+With structural features concatenated into node representations, the EUGAT attention scores between candidate statutes incorporate both semantic similarity and structural relatedness. Statutes from the same instrument with similar positions receive higher attention weights, enabling the GNN to propagate relevance signal between structurally related candidates without requiring explicit inter-statute edges.
 
 \subsection{Baselines}
 

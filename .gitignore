@@ -43,3 +43,5 @@ bin/
 # Training outputs
 outputs/
 catboost_info/
+# Demonstration apps (local only)
+demonstration/
