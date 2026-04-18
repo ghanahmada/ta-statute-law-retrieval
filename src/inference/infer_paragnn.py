@@ -42,7 +42,7 @@ def get_model_dir(config):
 
 @torch.no_grad()
 def run_inference(config, model_dir, para_store, structure_features, query_structure_feature,
-                  bm25_test_scores, test_query_ids, test_corpus_ids, test_gold, alpha=None):
+                  bm25_test_scores, test_query_ids, test_corpus_ids, test_gold, alpha=None, top_k=10):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     mode = config.structure_mode
     dim = config.embed_dim
@@ -121,16 +121,17 @@ def run_inference(config, model_dir, para_store, structure_features, query_struc
 
     # Build per-query ranked results
     results = {}
-    k = 10
     for qi, qid in enumerate(test_query_ids):
-        ranked_indices = torch.argsort(final_scores[qi], descending=True)[:k].tolist()
+        ranked_indices = torch.argsort(final_scores[qi], descending=True)[:top_k].tolist()
         ranked_docs = []
         relevant_set = set()
         if qid in test_gold:
             relevant_set = {did for did, s in test_gold[qid].items() if s > 0}
 
+        retrieved_ids = set()
         for rank, idx in enumerate(ranked_indices):
             doc_id = test_corpus_ids[idx]
+            retrieved_ids.add(doc_id)
             ranked_docs.append({
                 "rank": rank + 1,
                 "doc_id": doc_id,
@@ -138,14 +139,28 @@ def run_inference(config, model_dir, para_store, structure_features, query_struc
                 "gnn_score": float(gnn_scores[qi][idx]),
                 "bm25_score": float(bm25_test_scores[qi][idx]),
                 "relevant": doc_id in relevant_set,
+                "beyond_topk": False,
             })
+
+        for did in relevant_set:
+            if did not in retrieved_ids and did in doc_id_to_idx:
+                idx = doc_id_to_idx[did]
+                ranked_docs.append({
+                    "rank": None,
+                    "doc_id": did,
+                    "score": float(final_scores[qi][idx]),
+                    "gnn_score": float(gnn_scores[qi][idx]),
+                    "bm25_score": float(bm25_test_scores[qi][idx]),
+                    "relevant": True,
+                    "beyond_topk": True,
+                })
 
         results[qid] = {
             "ranked": ranked_docs,
             "num_relevant": len(relevant_set),
-            "hits_in_top10": sum(1 for d in ranked_docs if d["relevant"]),
+            "hits_in_top10": sum(1 for d in ranked_docs if d["relevant"] and not d["beyond_topk"]),
             "first_relevant_rank": next(
-                (d["rank"] for d in ranked_docs if d["relevant"]), None
+                (d["rank"] for d in ranked_docs if d["relevant"] and not d["beyond_topk"]), None
             ),
         }
 
@@ -285,7 +300,7 @@ def main():
             config, model_dir, para_store,
             structure_features, query_structure_feature,
             bm25_test_scores, test_qids, corpus_doc_ids,
-            test_loader.qrels, alpha=args.alpha,
+            test_loader.qrels, alpha=args.alpha, top_k=args.top_k,
         )
 
         if output is None:

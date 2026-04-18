@@ -26,6 +26,8 @@ data/_raw/
 # BEIR format datasets (regenerable via src/scripts/prepare_*.py)
 data/kuhperdata/
 data/ir_dataset/
+data/kuhperdata-humanized/
+data/kuhperdata-summarized/
 data/bsard/
 data/ilpcsr/
 data/stard/
