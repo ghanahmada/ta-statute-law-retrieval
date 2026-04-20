@@ -153,6 +153,7 @@ class ParaGNNTrainer:
                         bm25_scores=batch_on_device["bm25_scores"],
                         candidate_relevance_labels=batch_on_device["candidate_relevance_labels"],
                         graph=batch_on_device["graph"],
+                        ips_weights=batch_on_device["ips_weights"],
                     )
                     loss.backward()
                 except torch.cuda.OutOfMemoryError:

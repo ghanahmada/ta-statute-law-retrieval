@@ -55,10 +55,10 @@ class CaseGnn(nn.Module):
 
         self.eugat_gnn = EUGATGNN(in_dim, h_dim, out_dim, dropout, num_head)
         self.ffnn = SimpleFFNN(input_dim=in_dim)
-        self.loss = nn.CrossEntropyLoss()
+        self.loss = nn.CrossEntropyLoss(reduction="none")
 
     def forward(self, query_pos, candidate_pos, bm25_scores,
-                candidate_relevance_labels, graph):
+                candidate_relevance_labels, graph, ips_weights=None):
         node_h = graph.ndata["h"]
         edge_h = graph.edata["h"]
 
@@ -88,7 +88,10 @@ class CaseGnn(nn.Module):
 
         scores = alphas * normalized_scores + (1 - alphas) * bm25_scores
 
-        return self.loss(scores, candidate_relevance_labels.argmax(dim=1))
+        per_sample_loss = self.loss(scores, candidate_relevance_labels.argmax(dim=1))
+        if ips_weights is not None:
+            per_sample_loss = per_sample_loss * ips_weights
+        return per_sample_loss.mean()
 
 
 class TestCaseGnn(nn.Module):

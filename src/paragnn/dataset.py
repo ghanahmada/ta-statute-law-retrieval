@@ -2,7 +2,9 @@
 
 Adapted from IL-PCSR's SAILERDataset and SAILERDataCollator.
 """
+import math
 import random
+from collections import Counter
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -26,6 +28,15 @@ class ParaGNNDataset(Dataset):
         self.dataset = []
         self.corpus_doc_ids = corpus_doc_ids
         doc_id_to_idx = {d: i for i, d in enumerate(corpus_doc_ids)}
+
+        # Count positive document frequency for IPS weighting
+        doc_freq = Counter()
+        for qid in train_qids:
+            if qid not in qrels:
+                continue
+            for d, s in qrels[qid].items():
+                if s > 0 and d in doc_id_to_idx:
+                    doc_freq[d] += 1
 
         print(f"Creating ParaGNN training dataset...")
         for qi, qid in enumerate(train_qids):
@@ -53,11 +64,14 @@ class ParaGNNDataset(Dataset):
                 all_cand_indices = [doc_id_to_idx[d] for d in all_cand_ids]
                 bm25_slice = bm25_scores[qi][all_cand_indices]
 
+                ips_weight = 1.0 / math.log(1 + doc_freq[pos_did])
+
                 self.dataset.append({
                     "qid": qid,
                     "positive_did": pos_did,
                     "negative_dids": sampled_negs,
                     "bm25_scores": bm25_slice,
+                    "ips_weight": ips_weight,
                 })
 
         print(f"  Created {len(self.dataset)} training examples from {len(train_qids)} queries")
@@ -113,6 +127,7 @@ class ParaGNNCollator:
         query_pos = []
         candidate_pos = []
         bm25_scores = []
+        ips_weights = []
 
         for item in batch:
             query_pos.append(query_id_list.index(item["qid"]))
@@ -121,6 +136,7 @@ class ParaGNNCollator:
             cand_pos = [candidate_id_list.index(d) for d in cand_ids]
             candidate_pos.append(cand_pos)
             bm25_scores.append(item["bm25_scores"])
+            ips_weights.append(item["ips_weight"])
 
         num_cands = len(candidate_pos[0])
         labels = torch.zeros(len(batch), num_cands)
@@ -131,5 +147,6 @@ class ParaGNNCollator:
             "candidate_pos": torch.tensor(candidate_pos, dtype=torch.long),
             "bm25_scores": torch.stack(bm25_scores),
             "candidate_relevance_labels": labels,
+            "ips_weights": torch.tensor(ips_weights, dtype=torch.float32),
             "graph": graph_builder.graph,
         }
