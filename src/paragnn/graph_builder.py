@@ -23,23 +23,41 @@ from typing import Dict, List, Optional
 import torch
 import dgl
 
-from paragnn import RR_LABELS
+from paragnn import RR_LABELS, FACT_TYPES
 
 
 class ParagraphStore:
-    """Loads and caches pre-computed paragraph embeddings and RR labels."""
+    """Loads and caches pre-computed paragraph embeddings and RR/fact-type labels."""
 
     def __init__(self, output_dir: str, method: str = "adapted",
-                 rr_labels_path: Optional[str] = None):
+                 rr_labels_path: Optional[str] = None,
+                 use_fact_types: bool = False):
         self.output_dir = Path(output_dir)
         self.emb_dir = self.output_dir / "embeddings"
         self.method = method
+        self.use_fact_types = use_fact_types
 
         self.rr_const_emb = torch.load(self.emb_dir / "EMBD_CONST.pt")  # (13, 1024)
         self.rr_label_to_idx = {label: i for i, label in enumerate(RR_LABELS)}
 
-        with open(self.output_dir / "query_paragraphs.json", "r", encoding="utf-8") as f:
-            self.query_paras = json.load(f)
+        self.fact_type_emb = None
+        self.fact_type_to_idx = {}
+        if use_fact_types:
+            ft_path = self.emb_dir / "EMBD_FACT_TYPES.pt"
+            if ft_path.exists():
+                self.fact_type_emb = torch.load(ft_path)  # (5, 1024)
+                self.fact_type_to_idx = {label: i for i, label in enumerate(FACT_TYPES)}
+            else:
+                print(f"  WARNING: --use_fact_types but {ft_path} not found, falling back to NONE")
+                self.use_fact_types = False
+
+        if use_fact_types and (self.output_dir / "query_paragraphs_facts.json").exists():
+            with open(self.output_dir / "query_paragraphs_facts.json", "r", encoding="utf-8") as f:
+                self.query_paras = json.load(f)
+        else:
+            with open(self.output_dir / "query_paragraphs.json", "r", encoding="utf-8") as f:
+                self.query_paras = json.load(f)
+
         with open(self.output_dir / "corpus_paragraphs.json", "r", encoding="utf-8") as f:
             self.corpus_paras = json.load(f)
 
@@ -54,7 +72,12 @@ class ParagraphStore:
 
     def get_query_embedding(self, qid: str) -> torch.Tensor:
         if qid not in self._emb_cache:
-            path = self.emb_dir / "queries" / f"{qid}.pt"
+            if self.use_fact_types:
+                path = self.emb_dir / "queries_facts" / f"{qid}.pt"
+                if not path.exists():
+                    path = self.emb_dir / "queries" / f"{qid}.pt"
+            else:
+                path = self.emb_dir / "queries" / f"{qid}.pt"
             self._emb_cache[qid] = torch.load(path, map_location="cpu")
         return self._emb_cache[qid]
 
@@ -78,6 +101,8 @@ class ParagraphStore:
         return labels
 
     def get_rr_embedding(self, label: str) -> torch.Tensor:
+        if self.use_fact_types and label in self.fact_type_to_idx:
+            return self.fact_type_emb[self.fact_type_to_idx[label]]
         idx = self.rr_label_to_idx.get(label, self.rr_label_to_idx["NONE"])
         return self.rr_const_emb[idx]
 

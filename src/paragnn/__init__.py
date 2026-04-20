@@ -33,6 +33,17 @@ RR_LABELS = [
     "Paragraph Cites",
 ]
 
+# Fact types for query paragraphs — used as edge features to make query
+# embeddings composition-aware (different fact compositions → different
+# attention patterns → more discriminative query representations).
+FACT_TYPES = [
+    "CIRCUMSTANCE",  # background situation, context, status
+    "ACTION",        # what someone did or failed to do
+    "DAMAGE",        # harm, loss, injury suffered
+    "DISPUTE",       # what is contested, the legal question
+    "GENERAL",       # catch-all
+]
+
 
 @dataclass
 class ParaGNNConfig:

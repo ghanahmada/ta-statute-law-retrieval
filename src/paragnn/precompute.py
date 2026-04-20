@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from paragnn import DATASETS, RR_LABELS, ParaGNNConfig
+from paragnn import DATASETS, RR_LABELS, FACT_TYPES, ParaGNNConfig
 from util.dataloader import DataLoader
 from util.bm25 import BM25
 
@@ -205,6 +205,13 @@ def precompute_paragraph_embeddings(config: ParaGNNConfig):
     rr_tensor = torch.tensor(rr_output["dense_vecs"], dtype=torch.float32)
     torch.save(rr_tensor, f"{emb_dir}/EMBD_CONST.pt")
     print(f"  Saved: {emb_dir}/EMBD_CONST.pt, shape={rr_tensor.shape}")
+
+    # Encode fact type labels for query edge features
+    print("Encoding fact type embeddings...")
+    ft_output = model.encode(FACT_TYPES, batch_size=32, max_length=64)
+    ft_tensor = torch.tensor(ft_output["dense_vecs"], dtype=torch.float32)
+    torch.save(ft_tensor, f"{emb_dir}/EMBD_FACT_TYPES.pt")
+    print(f"  Saved: {emb_dir}/EMBD_FACT_TYPES.pt, shape={ft_tensor.shape}")
     del model
 
     # Save sentence splits for queries (needed by graph builder to get RR labels)
@@ -234,6 +241,100 @@ def precompute_paragraph_embeddings(config: ParaGNNConfig):
     print("Done!")
 
 
+def precompute_fact_type_embeddings(config: ParaGNNConfig):
+    """Re-encode queries using fact annotations (one embedding per fact).
+
+    Reads fact annotations from outputs/subsumption/{dataset}/query_facts.jsonl
+    and encodes each fact as a separate paragraph embedding.
+
+    Saves to separate files so the original pipeline is untouched:
+      - embeddings/queries_facts/{qid}.pt  (N facts × 1024d per query)
+      - embeddings/EMBD_FACT_TYPES.pt      (5 × 1024d label embeddings)
+      - query_paragraphs_facts.json        (fact texts + types as "role")
+    """
+    output_dir = f"{config.output_dir}/{config.dataset}"
+    emb_dir = f"{output_dir}/embeddings"
+
+    # Load fact annotations
+    facts_path = f"outputs/subsumption/{config.dataset}/query_facts.jsonl"
+    if not os.path.exists(facts_path):
+        print(f"  Fact annotations not found: {facts_path}")
+        print(f"  Run first: python experiment/annotate_subsumption.py --dataset {config.dataset} --mode queries")
+        return
+
+    query_facts = {}
+    with open(facts_path, "r", encoding="utf-8") as f:
+        for line in f:
+            entry = json.loads(line)
+            if entry.get("annotation") is not None:
+                query_facts[entry["id"]] = entry["annotation"]["facts"]
+    print(f"  Loaded fact annotations for {len(query_facts)} queries")
+
+    # Load original queries for fallback
+    from util.dataloader import DataLoader as DL
+    loader = DL(
+        f"{config.data_path}/corpus.jsonl",
+        f"{config.data_path}/queries.jsonl",
+        f"{config.data_path}/qrels_train.tsv",
+    ).load()
+
+    from FlagEmbedding import BGEM3FlagModel
+    model = BGEM3FlagModel(config.bge_model_name, use_fp16=True)
+
+    # Encode fact type label strings
+    print("  Encoding fact type label embeddings...")
+    ft_output = model.encode(FACT_TYPES, batch_size=32, max_length=64)
+    ft_tensor = torch.tensor(ft_output["dense_vecs"], dtype=torch.float32)
+    torch.save(ft_tensor, f"{emb_dir}/EMBD_FACT_TYPES.pt")
+    print(f"  Saved: {emb_dir}/EMBD_FACT_TYPES.pt, shape={ft_tensor.shape}")
+
+    # Encode each query's facts as separate paragraphs
+    os.makedirs(f"{emb_dir}/queries_facts", exist_ok=True)
+    query_paras_facts = {}
+    para_counts = []
+    n_fallback = 0
+
+    print(f"  Encoding query fact embeddings ({len(loader.queries)} queries)...")
+    for qid, query in tqdm(loader.queries.items(), desc="Fact embeddings"):
+        emb_path = f"{emb_dir}/queries_facts/{qid}.pt"
+
+        if qid in query_facts and query_facts[qid]:
+            facts = query_facts[qid]
+            sentences = [f["text"] for f in facts]
+            roles = [f.get("fact_type", "GENERAL") for f in facts]
+        else:
+            sentences = [query["text"]]
+            roles = ["GENERAL"]
+            n_fallback += 1
+
+        if os.path.exists(emb_path):
+            existing = torch.load(emb_path)
+            if existing.shape[0] == len(sentences):
+                para_counts.append(len(sentences))
+                query_paras_facts[qid] = [
+                    {"sentence": s, "role": r} for s, r in zip(sentences, roles)
+                ]
+                continue
+
+        embeddings = model.encode(sentences, batch_size=32, max_length=config.encode_max_length)
+        emb_tensor = torch.tensor(embeddings["dense_vecs"], dtype=torch.float32)
+        torch.save(emb_tensor, emb_path)
+        para_counts.append(len(sentences))
+
+        query_paras_facts[qid] = [
+            {"sentence": s, "role": r} for s, r in zip(sentences, roles)
+        ]
+
+    with open(f"{output_dir}/query_paragraphs_facts.json", "w", encoding="utf-8") as f:
+        json.dump(query_paras_facts, f, ensure_ascii=False, indent=2)
+
+    print(f"  Avg facts per query: {np.mean(para_counts):.1f}")
+    print(f"  Queries with fact annotations: {len(query_facts)}, fallback to original: {n_fallback}")
+    print(f"  Saved: {emb_dir}/queries_facts/ and {output_dir}/query_paragraphs_facts.json")
+
+    del model
+
+
 def main():
     parser = argparse.ArgumentParser(description="Pre-compute Para-GNN inputs")
     parser.add_argument("--dataset", default="kuhperdata-humanized", choices=[*DATASETS, "all"])
@@ -241,6 +342,8 @@ def main():
     parser.add_argument("--max_relevant", type=int, default=5)
     parser.add_argument("--skip_bm25", action="store_true")
     parser.add_argument("--skip_embeddings", action="store_true")
+    parser.add_argument("--encode_fact_types", action="store_true",
+                        help="Re-encode queries using fact annotations from annotate_subsumption.py")
     args = parser.parse_args()
 
     datasets = DATASETS if args.dataset == "all" else {args.dataset: DATASETS[args.dataset]}
@@ -263,6 +366,9 @@ def main():
 
         if not args.skip_embeddings:
             precompute_paragraph_embeddings(config)
+
+        if args.encode_fact_types:
+            precompute_fact_type_embeddings(config)
 
 
 if __name__ == "__main__":

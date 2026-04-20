@@ -13,6 +13,9 @@ Usage:
 
   # StructGNN (structural node features, all datasets):
   python src/evaluate_paragnn.py --dataset kuhperdata-humanized --structure_mode structural
+
+  # Any mode + fact-type query edges (requires annotate_subsumption.py + precompute --encode_fact_types):
+  python src/evaluate_paragnn.py --dataset kuhperdata-humanized --structure_mode structural --use_fact_types
 """
 import argparse
 import json
@@ -44,14 +47,17 @@ def main():
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--num_negatives", type=int, default=299)
     parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--use_fact_types", action="store_true",
+                        help="Use fact-type edge features for query paragraphs (requires precompute --encode_fact_types)")
     args = parser.parse_args()
 
     datasets = DATASETS if args.dataset == "all" else {args.dataset: DATASETS[args.dataset]}
 
+    ft_tag = " + FactTypes" if args.use_fact_types else ""
     mode_labels = {
-        "none": "Para-GNN",
-        "proximity": f"Prox-GNN (r={args.proximity_radius})",
-        "structural": f"StructGNN (act={args.act_dim}d, pos={args.pos_dim}d)",
+        "none": f"Para-GNN{ft_tag}",
+        "proximity": f"Prox-GNN (r={args.proximity_radius}){ft_tag}",
+        "structural": f"StructGNN (act={args.act_dim}d, pos={args.pos_dim}d){ft_tag}",
     }
 
     for name, cfg in datasets.items():
@@ -134,6 +140,7 @@ def main():
             output_dir=output_dir,
             method=args.method,
             rr_labels_path=rr_labels_path,
+            use_fact_types=args.use_fact_types,
         )
 
         # Precompute structure features for StructGNN
@@ -174,6 +181,7 @@ def main():
             para_store=para_store,
             structure_features=structure_features,
             query_structure_feature=query_structure_feature,
+            use_fact_types=args.use_fact_types,
         )
         best_mrr = trainer.train(
             train_dataset=train_dataset,

@@ -23,11 +23,13 @@ class ParaGNNTrainer:
 
     def __init__(self, config, para_store: ParagraphStore,
                  structure_features: Optional[Dict[str, torch.Tensor]] = None,
-                 query_structure_feature: Optional[torch.Tensor] = None):
+                 query_structure_feature: Optional[torch.Tensor] = None,
+                 use_fact_types: bool = False):
         self.config = config
         self.para_store = para_store
         self.structure_features = structure_features
         self.query_structure_feature = query_structure_feature
+        self.use_fact_types = use_fact_types
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def train(
@@ -48,6 +50,8 @@ class ParaGNNTrainer:
             method_suffix = f"{method_suffix}_prox{self.config.proximity_radius}"
         elif mode == "structural":
             method_suffix = f"{method_suffix}_struct"
+        if self.use_fact_types:
+            method_suffix = f"{method_suffix}_facts"
         output_dir = f"{self.config.output_dir}/{self.config.dataset}/{method_suffix}"
         os.makedirs(output_dir, exist_ok=True)
 
