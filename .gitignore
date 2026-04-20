@@ -15,6 +15,7 @@ unsloth_compiled_cache/
 
 .env
 .claude
+.playwright-mcp/
 experiment/downloads/
 experiment/cleaned_downloads/
 
