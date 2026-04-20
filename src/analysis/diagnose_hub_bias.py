@@ -32,13 +32,15 @@ from util.dataloader import DataLoader
 HUB_ARTICLES = {"1365", "1865", "1320", "1337", "1234", "188"}
 
 
-def get_model_dir(config):
+def get_model_dir(config, use_fact_types=False):
     mode = config.structure_mode
     method_suffix = config.method
     if mode == "proximity":
         method_suffix = f"{method_suffix}_prox{config.proximity_radius}"
     elif mode == "structural":
         method_suffix = f"{method_suffix}_struct"
+    if use_fact_types:
+        method_suffix = f"{method_suffix}_facts"
     return f"{config.output_dir}/{config.dataset}/{method_suffix}"
 
 
@@ -308,6 +310,7 @@ def main():
     parser.add_argument("--act_dim", type=int, default=64)
     parser.add_argument("--pos_dim", type=int, default=32)
     parser.add_argument("--max_relevant", type=int, default=5)
+    parser.add_argument("--use_fact_types", action="store_true")
     args = parser.parse_args()
 
     cfg = DATASETS[args.dataset]
@@ -324,7 +327,7 @@ def main():
     )
 
     precompute_dir = f"{config.output_dir}/{args.dataset}"
-    model_dir = get_model_dir(config)
+    model_dir = get_model_dir(config, use_fact_types=args.use_fact_types)
 
     print("Loading data...")
     bm25_test_scores = torch.load(f"{precompute_dir}/bm25_test_scores.pt")
@@ -341,7 +344,8 @@ def main():
     if config.max_relevant > 0:
         test_loader.filter_max_relevant(config.max_relevant)
 
-    para_store = ParagraphStore(output_dir=precompute_dir, method=args.method)
+    para_store = ParagraphStore(output_dir=precompute_dir, method=args.method,
+                                use_fact_types=args.use_fact_types)
 
     structure_features = None
     query_structure_feature = None
