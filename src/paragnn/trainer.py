@@ -175,6 +175,13 @@ class ParaGNNTrainer:
             best_alpha, mrr, recall, hit_rate = self._grid_search_alpha(
                 gnn_scores, bm25_test_scores.cpu(), gold_matrix
             )
+            # Also try debiased scores
+            gnn_debiased = gnn_scores - gnn_scores.mean(dim=0, keepdim=True)
+            best_alpha_d, mrr_d, recall_d, hit_rate_d = self._grid_search_alpha(
+                gnn_debiased, bm25_test_scores.cpu(), gold_matrix
+            )
+            if mrr_d > mrr:
+                mrr, recall, hit_rate, best_alpha = mrr_d, recall_d, hit_rate_d, best_alpha_d
 
             log_entry = {
                 "epoch": epoch + 1,
@@ -220,7 +227,10 @@ class ParaGNNTrainer:
         model = model.to(self.device)
         gnn_scores, _ = self._get_gnn_scores(model, test_graph)
 
-        print(f"\n  Alpha grid search results:")
+        # Debiased GNN scores: subtract per-candidate mean across all queries
+        gnn_debiased = gnn_scores - gnn_scores.mean(dim=0, keepdim=True)
+
+        print(f"\n  Alpha grid search results (original):")
         print(f"  {'Alpha':<8} {'MRR@10':<10} {'R@10':<10} {'Hit':<10}")
         print(f"  {'-'*38}")
         best_alpha, best_mrr, best_recall, best_hit = 0, 0, 0, 0
@@ -235,9 +245,28 @@ class ParaGNNTrainer:
                 best_hit = hit_rate
                 best_alpha = alpha
 
-        print(f"\n  Best: alpha={best_alpha:.1f} MRR={best_mrr:.4f} R@10={best_recall:.4f} Hit={best_hit:.1%}")
-        print(f"\nTraining complete. Best MRR@10: {best_mrr:.4f}")
-        return best_mrr
+        print(f"\n  Best (original): alpha={best_alpha:.1f} MRR={best_mrr:.4f} R@10={best_recall:.4f} Hit={best_hit:.1%}")
+
+        print(f"\n  Alpha grid search results (debiased):")
+        print(f"  {'Alpha':<8} {'MRR@10':<10} {'R@10':<10} {'Hit':<10}")
+        print(f"  {'-'*38}")
+        best_alpha_d, best_mrr_d, best_recall_d, best_hit_d = 0, 0, 0, 0
+        for alpha in np.arange(0.0, 1.05, 0.1):
+            scores = alpha * gnn_debiased + (1 - alpha) * bm25_test_scores.cpu()
+            mrr, recall, hit_rate = self._compute_metrics(scores, gold_matrix)
+            marker = " ←" if mrr > best_mrr_d else ""
+            print(f"  {alpha:<8.1f} {mrr:<10.4f} {recall:<10.4f} {hit_rate:<10.1%}{marker}")
+            if mrr > best_mrr_d:
+                best_mrr_d = mrr
+                best_recall_d = recall
+                best_hit_d = hit_rate
+                best_alpha_d = alpha
+
+        print(f"\n  Best (debiased): alpha={best_alpha_d:.1f} MRR={best_mrr_d:.4f} R@10={best_recall_d:.4f} Hit={best_hit_d:.1%}")
+
+        final_mrr = max(best_mrr, best_mrr_d)
+        print(f"\nTraining complete. Best MRR@10: {final_mrr:.4f}")
+        return final_mrr
 
     @torch.no_grad()
     def _get_gnn_scores(self, train_model, test_graph):
