@@ -9,8 +9,8 @@ Search strategy:
 - Keep queries SHORT (3-8 words). Use legal terms, not full sentences.
 - First search: use key terms from the user query.
 - After each search: read the "Suggested terms" at the bottom of results. \
-Use those domain-specific legal terms in your NEXT search query. \
-For example, if results mention "pinjam pakai", search for "pinjam pakai" next.
+Use those domain-specific legal terms in your NEXT search query instead of \
+rephrasing the original question.
 - Each search must use DIFFERENT terms. Never repeat or rephrase the same query.
 - Use grep_corpus to find specific article numbers or exact legal phrases.
 - Use read_document to verify relevance before including in final answer.
