@@ -195,23 +195,23 @@ class AgenticRetriever:
                 and not state.budget.at_hard_threshold
             ):
                 state.messages.append({
-                    "role": "system",
+                    "role": "user",
                     "content": (
-                        "WARNING: Token budget is running low. Consider "
-                        "pruning irrelevant documents or providing your "
-                        "final answer now. "
+                        "[SYSTEM] WARNING: Token budget is running low. "
+                        "Consider pruning irrelevant documents or providing "
+                        "your final answer now. "
                         + state.budget.status_message()
                     ),
                 })
 
             if is_last_turn:
                 state.messages.append({
-                    "role": "system",
+                    "role": "user",
                     "content": (
-                        "FINAL TURN: You MUST provide your final answer NOW. "
-                        "List the most relevant documents using the "
-                        "<Document id=\"DOC_ID\"><Justification>...</Justification></Document> "
-                        "format. No more tool calls."
+                        "[SYSTEM] FINAL TURN: You MUST provide your final "
+                        "answer NOW. List the most relevant documents using "
+                        "the <Document id=\"DOC_ID\"><Justification>..."
+                        "</Justification></Document> format. No more tool calls."
                     ),
                 })
 
