@@ -226,4 +226,11 @@ class AgenticRetriever:
             for doc_id in list(state.seen_doc_ids)[:10]:
                 state.selected_doc_ids[doc_id] = "fallback: no final answer produced"
 
+        if len(state.selected_doc_ids) < 10:
+            for doc_id in state.seen_doc_ids:
+                if doc_id not in state.selected_doc_ids:
+                    state.selected_doc_ids[doc_id] = "padded from seen"
+                if len(state.selected_doc_ids) >= 10:
+                    break
+
         return state
