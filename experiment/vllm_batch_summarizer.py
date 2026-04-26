@@ -229,31 +229,34 @@ Document text: {planner_context}
 Berdasarkan hasil ekstraksi berikut, telah ditemukan rujukan pasal KUHPerdata:
 {pasal_list}
 
-Tugas Anda adalah menyusun dua keluaran:
+Tugas Anda adalah menyusun dua keluaran query:
 1. Pertanyaan dalam bahasa sehari-hari (humanized_query)
 2. Ringkasan kasus (summarized_case)
 
 KETENTUAN UMUM:
-- Fokuskan analisis hanya pada prinsip hukum perdata yang tercermin dari pasal KUHPerdata.
-- Abaikan konteks lain di luar hukum perdata, termasuk namun tidak terbatas pada:
-  pengujian undang-undang, hukum pidana, hukum tata negara, dan kebijakan publik.
-- Jika suatu perkara berasal dari konteks non-perdata, lakukan abstraksi sehingga
-  permasalahan dapat dipahami sebagai sengketa antar subjek hukum dalam ranah perdata.
+- Fokuskan analisis hanya pada PRINSIP hukum perdata yang tercermin dari pasal KUHPerdata.
+- Jika perkara berasal dari konteks non-perdata (pengujian undang-undang, pidana, tata negara,
+  kebijakan publik), Anda WAJIB mengubah skenario menjadi sengketa perdata murni antara
+  orang/badan hukum swasta yang secara alami memunculkan pasal KUHPerdata yang sama.
+- Identifikasi prinsip hukum inti dari pasal yang dirujuk, lalu ciptakan situasi perdata
+  yang realistis di mana prinsip tersebut menjadi inti perselisihan.
 
 KETENTUAN KHUSUS:
 1. "humanized_query"
-   - Ditulis dalam 1 kalimat singkat, bahasa sehari-hari.
-   - Menggambarkan inti persoalan dari sudut pandang orang awam.
-   - Tidak menggunakan istilah teknis hukum.
+   - Ditulis dari sudut pandang orang biasa yang BUKAN sarjana hukum.
+   - Cukup 1-2 kalimat, langsung ke inti masalah.
+   - Jangan gunakan istilah formal/hukum, gunakan bahasa seperti dalam percakapan sehari-hari.
 
 2. "summarized_case"
-   - Ditulis dalam 3–5 kalimat.
-   - Berisi kronologi singkat yang menekankan hubungan hukum, hak, dan kewajiban para pihak.
-   - Tidak menyebut konteks institusi atau rezim hukum di luar perdata.
+   - Ditulis dalam paragraf berisi kronologi singkat yang menekankan hubungan hukum, hak, dan kewajiban para pihak.
+   - Semua pihak harus diabstraksikan menjadi pihak swasta (individu atau perusahaan).
+   - Jangan menyebutkan konteks pengadilan, jenis perkara, atau hasil putusan
 
-3. Larangan dalam teks:
-   - Tidak menyebut nama lembaga negara atau proses pengujian undang-undang.
-   - Tidak menggunakan istilah pidana atau konteks non-perdata lainnya.
+3. Larangan keras dalam teks:
+   - DILARANG menyebut: Mahkamah Konstitusi, DPR, pengujian undang-undang, konstitusi,
+     pemilu, BPJS, kebijakan publik, tata negara, hukum pidana, atau lembaga pemerintah.
+   - Jika konteks asli melibatkan hal-hal tersebut, Anda harus mengganti dengan
+     skenario perdata yang setara, jangan hanya menghilangkan istilahnya.
 
 FORMAT OUTPUT (JSON saja):
 {{
