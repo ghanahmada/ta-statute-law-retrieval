@@ -67,7 +67,8 @@ class AgenticRetriever:
         )
 
         if force_conclude:
-            pass
+            kwargs["tools"] = TOOLS
+            kwargs["tool_choice"] = "none"
         elif state.budget.at_hard_threshold:
             kwargs["tools"] = [
                 t for t in TOOLS if t["function"]["name"] == "prune_chunks"
@@ -101,14 +102,16 @@ class AgenticRetriever:
 
         return choice
 
-    def _act(self, state: AgentState, choice) -> list[ToolResult]:
+    def _act(
+        self, state: AgentState, choice, force_conclude: bool = False,
+    ) -> list[ToolResult]:
         results = []
         content = choice.message.content or ""
 
         if content:
             self._parse_doc_references(state, content)
 
-        if choice.finish_reason == "stop" or not choice.message.tool_calls:
+        if force_conclude or choice.finish_reason == "stop" or not choice.message.tool_calls:
             state.is_done = True
             return results
 
@@ -214,7 +217,7 @@ class AgenticRetriever:
 
             try:
                 choice = await self._infer(state, force_conclude=is_last_turn)
-                self._act(state, choice)
+                self._act(state, choice, force_conclude=is_last_turn)
             except Exception as e:
                 state.error = str(e)
                 state.is_done = True
