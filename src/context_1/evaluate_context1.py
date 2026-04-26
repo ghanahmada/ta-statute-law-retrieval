@@ -163,6 +163,8 @@ async def main():
                         "(use cpu to leave GPU fully for vLLM)")
     parser.add_argument("--embeddings_dir", default="outputs/embeddings")
     parser.add_argument("--output_dir", default=None)
+    parser.add_argument("--debug_qid", default=None,
+                        help="Run a single query and dump full conversation")
     args = parser.parse_args()
 
     ds = DATASETS[args.dataset]
@@ -261,6 +263,37 @@ async def main():
 
     remaining_qids = [qid for qid in test_qids if qid not in done_qids]
     print(f"Queries to process: {len(remaining_qids)}")
+
+    # --- Debug mode: single query ---
+    if args.debug_qid:
+        qid = args.debug_qid
+        query_text = loader.queries[qid]["text"]
+        print(f"\n{'='*60}")
+        print(f"  DEBUG: Running single query {qid}")
+        print(f"  Query: {query_text[:200]}")
+        print(f"{'='*60}\n")
+        state = await retriever.run(query_text)
+        print(f"\n{'='*60}")
+        print(f"  CONVERSATION DUMP ({len(state.messages)} messages)")
+        print(f"{'='*60}")
+        for i, msg in enumerate(state.messages):
+            role = msg.get("role", "?")
+            content = msg.get("content", "")
+            tool_calls = msg.get("tool_calls", [])
+            print(f"\n--- [{i}] {role} ---")
+            if content:
+                print(content[:1000])
+            if tool_calls:
+                for tc in tool_calls:
+                    fn = tc.get("function", {})
+                    print(f"  TOOL CALL: {fn.get('name')}({fn.get('arguments', '')[:200]})")
+        print(f"\n{'='*60}")
+        print(f"  Selected: {len(state.selected_doc_ids)} docs")
+        print(f"  Seen: {len(state.seen_doc_ids)} docs")
+        print(f"  Turns: {state.turn_count}")
+        print(f"  Ground truth: {list(loader.qrels.get(qid, {}).keys())}")
+        print(f"{'='*60}")
+        return
 
     # --- Run ---
     if remaining_qids:
