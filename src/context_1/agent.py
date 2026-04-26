@@ -37,11 +37,13 @@ class AgenticRetriever:
         tool_executor: ToolExecutor,
         max_turns: int = 10,
         budget_size: int = 32_768,
+        pad_to_k: int = 0,
     ):
         self.client = client
         self.model = model
         self.tool_executor = tool_executor
         self.max_turns = max_turns
+        self.pad_to_k = pad_to_k
         self.budget_size = budget_size
 
     def _new_state(self) -> AgentState:
@@ -226,11 +228,11 @@ class AgenticRetriever:
             for doc_id in list(state.seen_doc_ids)[:10]:
                 state.selected_doc_ids[doc_id] = "fallback: no final answer produced"
 
-        if len(state.selected_doc_ids) < 10:
+        if self.pad_to_k > 0 and len(state.selected_doc_ids) < self.pad_to_k:
             for doc_id in state.seen_doc_ids:
                 if doc_id not in state.selected_doc_ids:
                     state.selected_doc_ids[doc_id] = "padded from seen"
-                if len(state.selected_doc_ids) >= 10:
+                if len(state.selected_doc_ids) >= self.pad_to_k:
                     break
 
         return state

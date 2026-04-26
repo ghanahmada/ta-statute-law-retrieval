@@ -163,6 +163,9 @@ async def main():
                         "(use cpu to leave GPU fully for vLLM)")
     parser.add_argument("--embeddings_dir", default="outputs/embeddings")
     parser.add_argument("--output_dir", default=None)
+    parser.add_argument("--pad_to_k", type=int, default=0,
+                        help="Pad agent rankings to k docs using seen_doc_ids "
+                        "(0=no padding, 10=pad to 10 for fair comparison)")
     parser.add_argument("--debug_qid", default=None,
                         help="Run a single query and dump full conversation")
     args = parser.parse_args()
@@ -254,6 +257,7 @@ async def main():
         model=args.model,
         tool_executor=tool_executor,
         max_turns=args.max_turns,
+        pad_to_k=args.pad_to_k,
     )
 
     # --- Resume ---
