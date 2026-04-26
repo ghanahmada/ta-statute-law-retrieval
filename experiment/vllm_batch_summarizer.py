@@ -233,51 +233,53 @@ Tugas Anda adalah menyusun dua keluaran query:
 1. Pertanyaan dalam bahasa sehari-hari (humanized_query)
 2. Ringkasan kasus (summarized_case)
 
-KETENTUAN UMUM:
-- Fokuskan analisis hanya pada PRINSIP hukum perdata yang tercermin dari pasal KUHPerdata.
-- Jika perkara berasal dari konteks non-perdata (pengujian undang-undang, pidana, tata negara,
-  kebijakan publik), Anda WAJIB mengubah skenario menjadi sengketa perdata murni antara
-  orang/badan hukum swasta yang secara alami memunculkan pasal KUHPerdata yang sama.
-- Identifikasi prinsip hukum inti dari pasal yang dirujuk, lalu ciptakan situasi perdata
-  yang realistis di mana prinsip tersebut menjadi inti perselisihan.
+LANGKAH WAJIB SEBELUM MENULIS:
+- Untuk setiap pasal KUHPerdata yang dirujuk, identifikasi dulu PRINSIP HUKUM INTI-nya.
+- Pastikan skenario yang Anda tulis secara langsung memunculkan prinsip tersebut.
+- Jika perkara asli berasal dari konteks non-perdata (pengujian undang-undang, pidana,
+  tata negara, kebijakan publik), Anda WAJIB menciptakan skenario perdata BARU antara
+  orang/badan hukum swasta yang secara alami memunculkan prinsip pasal yang sama.
 
 KETENTUAN KHUSUS:
 1. "humanized_query"
-   - Ditulis dari sudut pandang orang biasa yang BUKAN sarjana hukum.
-   - Cukup 1-2 kalimat, langsung ke inti masalah.
-   - Jangan gunakan istilah formal/hukum, gunakan bahasa seperti dalam percakapan sehari-hari.
+   - DILARANG mengawali kalimat dengan kata "Apakah". Mulai langsung dengan situasi.
+   - Ditulis dari sudut pandang orang biasa, maksimal 1-2 kalimat pendek.
+   - Jangan gunakan istilah formal/hukum, gunakan bahasa percakapan sehari-hari.
 
 2. "summarized_case"
-   - Ditulis dalam paragraf berisi kronologi singkat yang menekankan hubungan hukum, hak, dan kewajiban para pihak.
-   - Semua pihak harus diabstraksikan menjadi pihak swasta (individu atau perusahaan).
-   - Jangan menyebutkan konteks pengadilan, jenis perkara, atau hasil putusan
+   - Ditulis dalam paragraf singkat, menekankan hubungan hukum, hak, dan kewajiban para pihak.
+   - Semua pihak harus individu atau perusahaan swasta.
+   - Jangan menyebutkan konteks pengadilan, jenis perkara, atau hasil putusan.
 
-3. Larangan keras dalam teks:
-   - DILARANG menyebut: Mahkamah Konstitusi, DPR, pengujian undang-undang, konstitusi,
-     pemilu, BPJS, kebijakan publik, tata negara, hukum pidana, atau lembaga pemerintah.
-   - Jika konteks asli melibatkan hal-hal tersebut, Anda harus mengganti dengan
-     skenario perdata yang setara, jangan hanya menghilangkan istilahnya.
+3. Larangan keras — jika dilanggar, output dianggap GAGAL:
+   - DILARANG menyebut: pemerintah, Mahkamah Konstitusi, DPR, pengujian undang-undang,
+     konstitusi, pemilu, BPJS, jaminan sosial, kebijakan publik, tata negara, hukum pidana,
+     jalan tol, atau lembaga/program pemerintah apapun.
+   - Jangan hanya menghilangkan istilahnya — ganti seluruh skenario menjadi perdata murni.
 
 FORMAT OUTPUT (JSON saja):
 {{
   "humanized_query": {{
     "text": "...",
-    "relevant_laws": ["Pasal XXX KUHPerdata"]
+    "relevant_laws": ["Pasal XXX KUHPerdata"],
+    "reasoning": "Mengapa pasal tersebut relevan dengan pertanyaan ini"
   }},
   "summarized_case": {{
     "text": "...",
-    "relevant_laws": ["Pasal XXX KUHPerdata"]
+    "relevant_laws": ["Pasal XXX KUHPerdata"],
+    "reasoning": "Mengapa pasal tersebut relevan dengan fakta kasus ini"
   }}
 }}
 
 Catatan:
 - "relevant_laws" harus diambil dari daftar pasal KUHPerdata di atas.
+- "reasoning" harus menjelaskan hubungan antara prinsip pasal dan skenario yang ditulis.
 - Pastikan output selalu berupa JSON valid.
 
 Hasil ekstraksi:
 {combined_extractions}
 """
-    final_summary, usage = await call_llm(client, model, synthesizer_prompt, max_tokens=2000)
+    final_summary, usage = await call_llm(client, model, synthesizer_prompt, max_tokens=3000)
     total_usage["prompt_tokens"] += usage["prompt_tokens"]
     total_usage["completion_tokens"] += usage["completion_tokens"]
 
