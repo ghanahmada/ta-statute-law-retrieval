@@ -226,52 +226,52 @@ Document text: {planner_context}
 
     # Phase 3: Synthesizer — scoped to KUHPerdata facts only
     synthesizer_prompt = f"""
-Dari catatan ekstraksi berikut, pasal KUHPerdata yang ditemukan dalam dokumen adalah:
+Berdasarkan hasil ekstraksi berikut, telah ditemukan rujukan pasal KUHPerdata:
 {pasal_list}
 
-TUGAS:
-Buat ringkasan dan pertanyaan HANYA jika terdapat sengketa hukum perdata MURNI.
+Tugas Anda adalah menyusun dua keluaran:
+1. Pertanyaan dalam bahasa sehari-hari (humanized_query)
+2. Ringkasan kasus (summarized_case)
 
-DEFINISI SENGKETA PERDATA MURNI:
-- Sengketa yang berdiri sendiri tanpa bergantung pada perkara lain
-- Contoh: perjanjian, utang piutang, jual beli, sewa, waris, kepemilikan, ganti rugi
+KETENTUAN UMUM:
+- Fokuskan analisis hanya pada prinsip hukum perdata yang tercermin dari pasal KUHPerdata.
+- Abaikan konteks lain di luar hukum perdata, termasuk namun tidak terbatas pada:
+  pengujian undang-undang, hukum pidana, hukum tata negara, dan kebijakan publik.
+- Jika suatu perkara berasal dari konteks non-perdata, lakukan abstraksi sehingga
+  permasalahan dapat dipahami sebagai sengketa antar subjek hukum dalam ranah perdata.
 
-KASUS YANG HARUS DIABAIKAN (WAJIB SKIP):
-- Jika KUHPerdata hanya digunakan sebagai ARGUMEN dalam perkara lain
-- Contoh:
-  - pengujian undang-undang (Mahkamah Konstitusi)
-  - perkara pidana
-  - perkara tata usaha negara
-  - sengketa pemilu (KPU, Bawaslu, dll)
+KETENTUAN KHUSUS:
+1. "humanized_query"
+   - Ditulis dalam 1 kalimat singkat, bahasa sehari-hari.
+   - Menggambarkan inti persoalan dari sudut pandang orang awam.
+   - Tidak menggunakan istilah teknis hukum.
 
-ATURAN KERAS:
-1. Jika fakta utama BUKAN sengketa perdata → KEMBALIKAN JSON KOSONG:
-   {{
-     "humanized_query": {{"text": "", "relevant_laws": []}},
-     "summarized_case": {{"text": "", "relevant_laws": []}}
-   }}
+2. "summarized_case"
+   - Ditulis dalam 3–5 kalimat.
+   - Berisi kronologi singkat yang menekankan hubungan hukum, hak, dan kewajiban para pihak.
+   - Tidak menyebut konteks institusi atau rezim hukum di luar perdata.
 
-2. HANYA gunakan fakta yang tetap masuk akal sebagai sengketa perdata TANPA konteks lain.
-
-3. DILARANG menyebut konteks berikut dalam "text":
-   - Mahkamah Konstitusi
-   - pengujian undang-undang
-   - KPU, Bawaslu
-   - pidana, tersangka, dakwaan
+3. Larangan dalam teks:
+   - Tidak menyebut nama lembaga negara atau proses pengujian undang-undang.
+   - Tidak menggunakan istilah pidana atau konteks non-perdata lainnya.
 
 FORMAT OUTPUT (JSON saja):
 {{
   "humanized_query": {{
-    "text": "Pertanyaan singkat dan natural dari orang awam",
+    "text": "...",
     "relevant_laws": ["Pasal XXX KUHPerdata"]
   }},
   "summarized_case": {{
-    "text": "Ringkasan fakta kasus perdata (3-5 kalimat)",
+    "text": "...",
     "relevant_laws": ["Pasal XXX KUHPerdata"]
   }}
 }}
 
-Extracted Notes:
+Catatan:
+- "relevant_laws" harus diambil dari daftar pasal KUHPerdata di atas.
+- Pastikan output selalu berupa JSON valid.
+
+Hasil ekstraksi:
 {combined_extractions}
 """
     final_summary, usage = await call_llm(client, model, synthesizer_prompt, max_tokens=2000)
