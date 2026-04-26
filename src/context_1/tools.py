@@ -5,6 +5,7 @@ read_document, prune_chunks.
 """
 
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -54,15 +55,57 @@ class ToolExecutor:
             lines.append(f"[{doc_id}] {title}: {text[:500]}")
             doc_ids.append(doc_id)
 
+        suggested = self._extract_key_terms(
+            [text for _, text, _ in results], query,
+        )
+        suffix = ""
+        if suggested:
+            suffix = "\nSuggested terms from results: " + ", ".join(suggested)
+
         content = (
             f"search_corpus({query!r}) returned {len(results)} results:\n"
             + "\n".join(lines)
+            + suffix
         )
         return ToolResult(
             content=content,
             doc_ids_seen=doc_ids,
             tokens_added=self.token_counter(content),
         )
+
+    @staticmethod
+    def _extract_key_terms(
+        doc_texts: list[str], query: str, top_n: int = 8,
+    ) -> list[str]:
+        query_tokens = set(query.lower().split())
+        stop = {
+            "yang", "dan", "atau", "di", "ke", "dari", "ini", "itu",
+            "dengan", "untuk", "pada", "adalah", "dalam", "tidak",
+            "akan", "telah", "oleh", "suatu", "jika", "bila", "maka",
+            "dapat", "harus", "wajib", "atas", "bagi", "sebagai",
+            "bahwa", "serta", "tersebut", "ia", "orang", "hal",
+            "pasal", "ayat", "huruf", "angka",
+        }
+        counts: Counter = Counter()
+        for text in doc_texts:
+            seen_in_doc = set()
+            words = text.lower().split()
+            for i, w in enumerate(words):
+                w = re.sub(r"[^a-z\-]", "", w)
+                if len(w) < 3 or w in stop or w in query_tokens:
+                    continue
+                if w not in seen_in_doc:
+                    counts[w] += 1
+                    seen_in_doc.add(w)
+                bigram_parts = []
+                if i + 1 < len(words):
+                    w2 = re.sub(r"[^a-z\-]", "", words[i + 1].lower())
+                    if len(w2) >= 3 and w2 not in stop:
+                        bg = f"{w} {w2}"
+                        if bg not in seen_in_doc:
+                            counts[bg] += 1
+                            seen_in_doc.add(bg)
+        return [term for term, _ in counts.most_common(top_n)]
 
     def grep_corpus(
         self, pattern: str, max_results: int = 5,
