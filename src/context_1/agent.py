@@ -58,19 +58,26 @@ class AgenticRetriever:
         state.messages.append({"role": role, "content": text})
         state.budget.add(text)
 
-    async def _infer(self, state: AgentState):
-        tools = TOOLS
-        if state.budget.at_hard_threshold:
-            tools = [t for t in TOOLS if t["function"]["name"] == "prune_chunks"]
-
-        response = await self.client.chat.completions.create(
+    async def _infer(self, state: AgentState, force_conclude: bool = False):
+        kwargs = dict(
             model=self.model,
             messages=state.messages,
-            tools=tools,
-            tool_choice="auto",
             temperature=0,
             max_tokens=2048,
         )
+
+        if force_conclude:
+            pass
+        elif state.budget.at_hard_threshold:
+            kwargs["tools"] = [
+                t for t in TOOLS if t["function"]["name"] == "prune_chunks"
+            ]
+            kwargs["tool_choice"] = "auto"
+        else:
+            kwargs["tools"] = TOOLS
+            kwargs["tool_choice"] = "auto"
+
+        response = await self.client.chat.completions.create(**kwargs)
         choice = response.choices[0]
 
         assistant_content = choice.message.content or ""
@@ -96,11 +103,12 @@ class AgenticRetriever:
 
     def _act(self, state: AgentState, choice) -> list[ToolResult]:
         results = []
+        content = choice.message.content or ""
+
+        if content:
+            self._parse_doc_references(state, content)
 
         if choice.finish_reason == "stop" or not choice.message.tool_calls:
-            content = choice.message.content or ""
-            if "<FinalAnswer>" in content:
-                self._parse_final_answer(state, content)
             state.is_done = True
             return results
 
@@ -159,7 +167,7 @@ class AgenticRetriever:
         else:
             return ToolResult(content=f"Unknown tool: {name}")
 
-    def _parse_final_answer(self, state: AgentState, text: str):
+    def _parse_doc_references(self, state: AgentState, text: str):
         pattern = (
             r'<Document\s+id=["\']?([^"\'>\s]+)["\']?\s*>'
             r'<Justification>(.*?)</Justification>'
@@ -168,7 +176,8 @@ class AgenticRetriever:
         for m in re.finditer(pattern, text, re.DOTALL):
             doc_id = m.group(1)
             justification = m.group(2).strip()
-            state.selected_doc_ids[doc_id] = justification
+            if doc_id in self.tool_executor.corpus:
+                state.selected_doc_ids[doc_id] = justification
 
     async def run(self, query: str) -> AgentState:
         state = self._new_state()
@@ -176,6 +185,7 @@ class AgenticRetriever:
 
         while not state.is_done and state.turn_count < state.max_turns:
             state.turn_count += 1
+            is_last_turn = state.turn_count >= state.max_turns
 
             if (
                 state.budget.at_soft_threshold
@@ -191,15 +201,26 @@ class AgenticRetriever:
                     ),
                 })
 
+            if is_last_turn:
+                state.messages.append({
+                    "role": "system",
+                    "content": (
+                        "FINAL TURN: You MUST provide your final answer NOW. "
+                        "List the most relevant documents using the "
+                        "<Document id=\"DOC_ID\"><Justification>...</Justification></Document> "
+                        "format. No more tool calls."
+                    ),
+                })
+
             try:
-                choice = await self._infer(state)
+                choice = await self._infer(state, force_conclude=is_last_turn)
                 self._act(state, choice)
             except Exception as e:
                 state.error = str(e)
                 state.is_done = True
 
         if not state.selected_doc_ids and state.seen_doc_ids:
-            for doc_id in state.seen_doc_ids:
+            for doc_id in list(state.seen_doc_ids)[:10]:
                 state.selected_doc_ids[doc_id] = "fallback: no final answer produced"
 
         return state
