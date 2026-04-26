@@ -8,7 +8,7 @@ Outputs BEIR-format dataset with original + expanded ground truth merged.
 
 Usage:
   1. Start vLLM server:
-     vllm serve Qwen/Qwen3.6-27B-FP8 \
+     vllm serve QuantTrio/Qwen3.6-27B-AWQ \
        --max-model-len 32768 \
        --gpu-memory-utilization 0.90 \
        --enable-prefix-caching
@@ -290,7 +290,7 @@ async def main():
                         help="Path to reformulated queries.jsonl (optional)")
     parser.add_argument("--top_k", type=int, default=50)
     parser.add_argument("--max_relevant", type=int, default=5)
-    parser.add_argument("--model", default="Qwen/Qwen3.6-27B-FP8")
+    parser.add_argument("--model", default="QuantTrio/Qwen3.6-27B-AWQ")
     parser.add_argument("--base_url", default="http://localhost:8000/v1")
     parser.add_argument("--concurrency", type=int, default=8)
     args = parser.parse_args()
