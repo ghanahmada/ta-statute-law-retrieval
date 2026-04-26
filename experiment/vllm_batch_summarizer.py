@@ -1,9 +1,9 @@
 """
-Batch judgement summarization using vLLM + Qwen 3.5 9B.
+Batch judgement summarization using vLLM + Qwen 3.5 27B FP8.
 
 Usage:
   1. Start vLLM server:
-     vllm serve Qwen/Qwen3.5-9B-Instruct \
+     vllm serve Qwen/Qwen3.5-27B-FP8 \
        --max-model-len 32768 \
        --gpu-memory-utilization 0.90 \
        --enable-prefix-caching
@@ -234,7 +234,7 @@ Buat DUA jenis query yang HANYA membahas fakta-fakta terkait pasal KUHPerdata di
 FORMAT OUTPUT (JSON saja):
 {{
   "humanized_query": {{
-    "text": "Pertanyaan singkat dari perspektif orang awam (1-2 kalimat, tanpa istilah hukum)",
+    "text": "Pertanyaan singkat dan natural dari orang awam, 1 kalimat, bahasa sehari-hari",
     "relevant_laws": ["Pasal XXX KUHPerdata", ...]
   }},
   "summarized_case": {{
@@ -244,12 +244,28 @@ FORMAT OUTPUT (JSON saja):
 }}
 
 ATURAN KRITIS:
-1. DILARANG menyebut nomor pasal, nama undang-undang, atau referensi hukum di dalam "text". Teks harus murni fakta dan kejadian. Contoh SALAH: "melanggar Pasal 1365". Contoh BENAR: "melakukan perbuatan yang merugikan pihak lain".
+1. DILARANG menyebut nomor pasal, nama undang-undang, atau referensi hukum di dalam "text". Teks harus murni fakta dan kejadian.
 2. "relevant_laws" harus HANYA berisi pasal dari daftar KUHPerdata di atas.
 3. Setiap query punya relevant_laws SENDIRI sesuai cakupan faktanya.
-4. Ganti istilah Belanda/Latin ke Bahasa Indonesia.
-5. Anonimkan: [Penggugat], [Tergugat], [Objek Sengketa].
-6. Kembalikan HANYA JSON valid.
+4. Kembalikan HANYA JSON valid.
+
+PANDUAN humanized_query:
+- Tulis dari sudut pandang orang biasa yang BUKAN sarjana hukum. Gunakan "saya", "tetangga saya", "teman saya", dll. JANGAN gunakan [Penggugat]/[Tergugat].
+- Cukup 1-2 kalimat, langsung ke inti masalah.
+- DILARANG mengawali dengan "Apakah". Mulai langsung dengan situasi atau pertanyaan.
+- JANGAN gunakan istilah hukum. Ganti ke bahasa yang dipahami orang awam:
+  * "kawin/perkawinan" → "nikah/menikah"
+  * "perikatan" → "perjanjian" atau "kesepakatan"
+  * "wanprestasi" → "tidak menepati janji"
+  * "perbuatan melawan hukum" → jelaskan perbuatannya langsung
+  * "debitur/kreditur" → "yang punya utang"/"yang meminjamkan uang"
+  * "objek sengketa" → sebutkan bendanya langsung
+  * "menggugat" → "menuntut"
+  * "ahli waris" → "keluarga yang dapat warisan"
+  * "hibah" → "pemberian"
+  * "hak milik" → "milik"
+  * "cakap hukum" → "dianggap dewasa"
+  * "somasi" → "surat peringatan"
 
 Extracted Notes:
 {combined_extractions}
@@ -381,7 +397,7 @@ async def main():
     parser = argparse.ArgumentParser(description="Batch vLLM judgement summarizer")
     parser.add_argument("--input_dir", default="experiment/cleaned_downloads")
     parser.add_argument("--output", default="experiment/vllm_summarizer_results.jsonl")
-    parser.add_argument("--model", default="Qwen/Qwen3.5-9B-Instruct")
+    parser.add_argument("--model", default="Qwen/Qwen3.5-27B-FP8")
     parser.add_argument("--base_url", default="http://localhost:8000/v1")
     parser.add_argument("--concurrency", type=int, default=8,
                         help="Max concurrent PDF pipelines")

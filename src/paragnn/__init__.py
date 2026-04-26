@@ -93,6 +93,8 @@ class ParaGNNConfig:
 DATASETS = {
     "kuhperdata-humanized": {"path": "data/kuhperdata-humanized", "lang": "id"},
     "kuhperdata-summarized": {"path": "data/kuhperdata-summarized", "lang": "id"},
+    "kuhperdata-exp": {"path": "data/kuhperdata-exp", "lang": "id"},
+    "kuhperdata-summ-exp": {"path": "data/kuhperdata-summ-exp", "lang": "id"},
     "bsard": {"path": "data/bsard", "lang": "fr"},
     "ilpcsr": {"path": "data/ilpcsr", "lang": "en"},
     "stard": {"path": "data/stard", "lang": "zh"},
