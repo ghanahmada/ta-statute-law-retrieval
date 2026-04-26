@@ -4,6 +4,8 @@ import os
 import re
 import shutil
 
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
+
 import pandas as pd
 from huggingface_hub import hf_hub_download, list_repo_files, login, snapshot_download
 

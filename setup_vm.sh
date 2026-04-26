@@ -10,6 +10,11 @@ SAILER_DIR="$(dirname "$PROJECT_DIR")/SAILER"
 echo "Project dir: ${PROJECT_DIR}"
 echo "SAILER dir: ${SAILER_DIR}"
 
+# 0. System-level dependencies (for vllm_batch_summarizer + fast HF downloads)
+echo "Installing system-level Python deps..."
+pip install pymupdf hf_transfer huggingface_hub[cli]
+export HF_HUB_ENABLE_HF_TRANSFER=1
+
 # 1. Clone SAILER repo as sibling directory
 if [ ! -d "$SAILER_DIR" ]; then
     echo "Cloning SAILER repo..."
@@ -44,6 +49,7 @@ echo "Setting up JNLP virtual environment (Python 3.12)..."
 uv venv .venv-jnlp --python 3.12
 source .venv-jnlp/bin/activate
 uv pip install -r requirements-jnlp.txt
+uv pip install pymupdf hf_transfer
 deactivate
 
 echo ""

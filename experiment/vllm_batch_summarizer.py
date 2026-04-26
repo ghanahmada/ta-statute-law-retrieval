@@ -1,9 +1,9 @@
 """
-Batch judgement summarization using vLLM + Qwen 3.5 27B FP8.
+Batch judgement summarization using vLLM + Qwen 3.6 27B FP8.
 
 Usage:
   1. Start vLLM server:
-     vllm serve Qwen/Qwen3.5-27B-FP8 \
+     vllm serve Qwen/Qwen3.6-27B-FP8 \
        --max-model-len 32768 \
        --gpu-memory-utilization 0.90 \
        --enable-prefix-caching
@@ -397,7 +397,7 @@ async def main():
     parser = argparse.ArgumentParser(description="Batch vLLM judgement summarizer")
     parser.add_argument("--input_dir", default="experiment/cleaned_downloads")
     parser.add_argument("--output", default="experiment/vllm_summarizer_results.jsonl")
-    parser.add_argument("--model", default="Qwen/Qwen3.5-27B-FP8")
+    parser.add_argument("--model", default="Qwen/Qwen3.6-27B-FP8")
     parser.add_argument("--base_url", default="http://localhost:8000/v1")
     parser.add_argument("--concurrency", type=int, default=8,
                         help="Max concurrent PDF pipelines")
