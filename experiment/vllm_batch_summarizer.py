@@ -229,43 +229,47 @@ Document text: {planner_context}
 Dari catatan ekstraksi berikut, pasal KUHPerdata yang ditemukan dalam dokumen adalah:
 {pasal_list}
 
-Buat DUA jenis query yang HANYA membahas fakta-fakta terkait pasal KUHPerdata di atas. Abaikan fakta yang hanya terkait regulasi lain (UUD, UU, KUHP, dll).
+TUGAS:
+Buat ringkasan dan pertanyaan HANYA jika terdapat sengketa hukum perdata MURNI.
+
+DEFINISI SENGKETA PERDATA MURNI:
+- Sengketa yang berdiri sendiri tanpa bergantung pada perkara lain
+- Contoh: perjanjian, utang piutang, jual beli, sewa, waris, kepemilikan, ganti rugi
+
+KASUS YANG HARUS DIABAIKAN (WAJIB SKIP):
+- Jika KUHPerdata hanya digunakan sebagai ARGUMEN dalam perkara lain
+- Contoh:
+  - pengujian undang-undang (Mahkamah Konstitusi)
+  - perkara pidana
+  - perkara tata usaha negara
+  - sengketa pemilu (KPU, Bawaslu, dll)
+
+ATURAN KERAS:
+1. Jika fakta utama BUKAN sengketa perdata → KEMBALIKAN JSON KOSONG:
+   {{
+     "humanized_query": {{"text": "", "relevant_laws": []}},
+     "summarized_case": {{"text": "", "relevant_laws": []}}
+   }}
+
+2. HANYA gunakan fakta yang tetap masuk akal sebagai sengketa perdata TANPA konteks lain.
+
+3. DILARANG menyebut konteks berikut dalam "text":
+   - Mahkamah Konstitusi
+   - pengujian undang-undang
+   - KPU, Bawaslu
+   - pidana, tersangka, dakwaan
 
 FORMAT OUTPUT (JSON saja):
 {{
   "humanized_query": {{
-    "text": "Pertanyaan singkat dan natural dari orang awam, 1 kalimat, bahasa sehari-hari",
-    "relevant_laws": ["Pasal XXX KUHPerdata", ...]
+    "text": "Pertanyaan singkat dan natural dari orang awam",
+    "relevant_laws": ["Pasal XXX KUHPerdata"]
   }},
   "summarized_case": {{
-    "text": "Ringkasan fakta kasus secara naratif (3-5 kalimat, fokus pada kronologi dan perikatan)",
-    "relevant_laws": ["Pasal XXX KUHPerdata", ...]
+    "text": "Ringkasan fakta kasus perdata (3-5 kalimat)",
+    "relevant_laws": ["Pasal XXX KUHPerdata"]
   }}
 }}
-
-ATURAN KRITIS:
-1. DILARANG menyebut nomor pasal, nama undang-undang, atau referensi hukum di dalam "text". Teks harus murni fakta dan kejadian.
-2. "relevant_laws" harus HANYA berisi pasal dari daftar KUHPerdata di atas.
-3. Setiap query punya relevant_laws SENDIRI sesuai cakupan faktanya.
-4. Kembalikan HANYA JSON valid.
-
-PANDUAN humanized_query:
-- Tulis dari sudut pandang orang biasa yang BUKAN sarjana hukum. Gunakan "saya", "tetangga saya", "teman saya", dll. JANGAN gunakan [Penggugat]/[Tergugat].
-- Cukup 1-2 kalimat, langsung ke inti masalah.
-- DILARANG mengawali dengan "Apakah". Mulai langsung dengan situasi atau pertanyaan.
-- JANGAN gunakan istilah hukum. Ganti ke bahasa yang dipahami orang awam:
-  * "kawin/perkawinan" → "nikah/menikah"
-  * "perikatan" → "perjanjian" atau "kesepakatan"
-  * "wanprestasi" → "tidak menepati janji"
-  * "perbuatan melawan hukum" → jelaskan perbuatannya langsung
-  * "debitur/kreditur" → "yang punya utang"/"yang meminjamkan uang"
-  * "objek sengketa" → sebutkan bendanya langsung
-  * "menggugat" → "menuntut"
-  * "ahli waris" → "keluarga yang dapat warisan"
-  * "hibah" → "pemberian"
-  * "hak milik" → "milik"
-  * "cakap hukum" → "dianggap dewasa"
-  * "somasi" → "surat peringatan"
 
 Extracted Notes:
 {combined_extractions}
