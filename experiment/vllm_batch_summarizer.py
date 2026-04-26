@@ -390,7 +390,7 @@ def upload_to_hf(output_path: str, hf_repo: str) -> bool:
         api = HfApi()
         api.upload_file(
             path_or_fileobj=output_path,
-            path_in_repo="extraction/vllm_summarizer_results.jsonl",
+            path_in_repo=f"extraction/v2-pidana-abstraction/{Path(output_path).name}",
             repo_id=hf_repo,
             repo_type="dataset",
         )
