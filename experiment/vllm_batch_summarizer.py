@@ -269,7 +269,7 @@ Document text: {planner_context}
         statute_text = format_statute_context(kuhperdata_pasal, statute)
         if statute_text:
             statute_section = f"""
-ISI PASAL YANG DIRUJUK:
+REFERENSI ISI PASAL (gunakan HANYA untuk memahami relevansi, JANGAN disebut dalam output):
 {statute_text}
 """
 
@@ -278,24 +278,25 @@ Anda akan menghasilkan dua output berdasarkan ekstraksi fakta hukum dari putusan
 
 PASAL KUHPerdata YANG DITEMUKAN: {pasal_list}
 {statute_section}
-
 FAKTA YANG DIEKSTRAK:
 {combined_extractions}
 
 TUGAS: Hasilkan JSON dengan dua objek.
 
 ATURAN KETAT UNTUK humanized_query:
-- HARUS dalam sudut pandang orang pertama ("saya"), sebagai orang awam yang bertanya/meminta informasi hukum
-- HARUS berupa pertanyaan (diakhiri tanda tanya "?")
-- HARUS 1-2 kalimat saja
-- DILARANG memulai dengan "Apakah"
+- Tulis seperti orang biasa yang CURHAT atau BERTANYA tentang masalah pribadinya, bukan bertanya tentang aturan hukum
+- Gunakan bahasa sehari-hari/kasual: "Kalau...", "Gimana kalau...", "Saya punya masalah..."
+- HARUS sudut pandang orang pertama ("saya") dan berupa pertanyaan (diakhiri "?")
+- HARUS 1-2 kalimat saja, langsung ke masalahnya
+- DILARANG memulai dengan "Apakah" atau "Saya ingin tahu"
+- DILARANG bertanya tentang "aturan hukum", "dasar hukum", atau "aturan apa yang mengatur"
 - DILARANG menggunakan istilah formal hukum (wanprestasi, somasi, gugatan, tergugat, penggugat, objek sengketa)
 - DILARANG menyebutkan nomor pasal, KUHPerdata, atau referensi undang-undang apapun
 
 ATURAN KETAT UNTUK summarized_case:
 - Tulis sebagai satu paragraf narasi kasus perdata antar pihak SWASTA/pribadi
 - DILARANG menyebutkan nomor pasal, referensi undang-undang, atau konteks pengadilan
-- DILARANG menyebutkan pemerintah, instansi negara, BUMN, atau badan publik. jika kasus asli melibatkan pihak publik, ganti dengan pihak swasta/pribadi yang realistis
+- DILARANG menyebutkan pemerintah, instansi negara, BUMN, atau badan publik — jika kasus asli melibatkan pihak publik, ganti dengan pihak swasta/pribadi yang realistis
 - Fokus pada fakta sengketa: siapa, apa yang terjadi, kerugian apa
 
 ATURAN UNTUK relevant_laws:
@@ -304,7 +305,7 @@ ATURAN UNTUK relevant_laws:
 - DILARANG memasukkan UU, KUHP, KUHAP, PP, atau regulasi lainnya
 
 DAFTAR ISTILAH TERLARANG (jangan gunakan dalam humanized_query maupun summarized_case):
-pemerintah, negara, instansi, kementerian, dinas, badan, BUMN, BUMD, BPJS, anggaran, APBN, APBD, jalan tol, infrastruktur publik, kebijakan, regulasi, peraturan, undang-undang, pasal, ayat, KUHPerdata, BW, hukum acara, somasi, gugatan, tergugat, penggugat, turut tergugat, objek sengketa, petitum, posita, eksepsi, replik, duplik, verstek, wanprestasi
+pemerintah, negara, instansi, kementerian, dinas, badan, BUMN, BUMD, BPJS, anggaran, APBN, APBD, jalan tol, infrastruktur publik, kebijakan, regulasi, peraturan, undang-undang, pasal, ayat, KUHPerdata, BW, hukum acara, somasi, gugatan, tergugat, penggugat, turut tergugat, objek sengketa, petitum, posita, eksepsi, replik, duplik, verstek, wanprestasi, aturan hukum, dasar hukum, kekuatan hukum, prinsip hukum, aturan perikatan
 
 FORMAT OUTPUT (JSON saja, tanpa penjelasan apapun):
 {{
