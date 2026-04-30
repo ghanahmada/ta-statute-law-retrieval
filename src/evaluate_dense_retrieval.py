@@ -8,7 +8,8 @@ from util.metrics import calculate_mrr, calculate_recall_at_k, calculate_precisi
 
 
 def encode_with_bge(texts, model, batch_size=64, max_length=1024):
-    output = model.encode(texts, batch_size=batch_size, max_length=max_length)
+    safe_texts = [t if t.strip() else "empty" for t in texts]
+    output = model.encode(safe_texts, batch_size=batch_size, max_length=max_length)
     if isinstance(output, dict):
         return np.array(output["dense_vecs"])
     return np.array(output)
