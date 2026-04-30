@@ -284,8 +284,8 @@ FAKTA YANG DIEKSTRAK:
 TUGAS: Hasilkan JSON dengan dua objek.
 
 ATURAN KETAT UNTUK humanized_query:
-- Tulis seperti orang biasa yang CURHAT atau BERTANYA tentang masalah pribadinya, bukan bertanya tentang aturan hukum
-- Gunakan bahasa sehari-hari/kasual: "Kalau...", "Gimana kalau...", "Saya punya masalah..."
+- Tulis seperti orang biasa yang curhat atau bertanya tentang masalah pribadinya, bukan bertanya tentang aturan hukum
+- Gunakan bahasa sehari-hari/kasual, variasikan cara memulai kalimat agar tidak monoton
 - HARUS sudut pandang orang pertama ("saya") dan berupa pertanyaan (diakhiri "?")
 - HARUS 1-2 kalimat saja, langsung ke masalahnya
 - DILARANG memulai dengan "Apakah" atau "Saya ingin tahu"
