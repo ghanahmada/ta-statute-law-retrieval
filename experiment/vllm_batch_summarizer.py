@@ -242,14 +242,14 @@ LANGKAH WAJIB SEBELUM MENULIS:
 
 KETENTUAN KHUSUS:
 1. "humanized_query"
-   - DILARANG mengawali kalimat dengan kata "Apakah". Mulai langsung dengan situasi.
+   - Mulai dengan situasi atau langsung dengan pertanyaan yang ingin diajukan orang biasa tentang kasus ini.
    - Ditulis dari sudut pandang orang biasa, maksimal 1-2 kalimat pendek.
    - Jangan gunakan istilah formal/hukum, gunakan bahasa percakapan sehari-hari.
 
 2. "summarized_case"
    - Ditulis dalam paragraf singkat, menekankan hubungan hukum, hak, dan kewajiban para pihak.
    - Semua pihak harus individu atau perusahaan swasta.
-   - Jangan menyebutkan konteks pengadilan, jenis perkara, atau hasil putusan.
+   - Jangan menyebutkan nomor pasal, pernyataan pasal, konteks pengadilan, jenis perkara, atau hasil putusan.
 
 3. Larangan keras — jika dilanggar, output dianggap GAGAL:
    - DILARANG menyebut: pemerintah, Mahkamah Konstitusi, DPR, pengujian undang-undang,
@@ -261,13 +261,13 @@ FORMAT OUTPUT (JSON saja):
 {{
   "humanized_query": {{
     "text": "...",
-    "relevant_laws": ["Pasal XXX KUHPerdata"],
-    "reasoning": "Mengapa pasal tersebut relevan dengan pertanyaan ini"
+    "relevant_laws": ["Pasal XXX KUHPerdata", ...],
+    "reasoning": "Mengapa pasal tersebut relevan dengan fakta kasus ini secara singkat dalam 1-2 kalimat"
   }},
   "summarized_case": {{
     "text": "...",
-    "relevant_laws": ["Pasal XXX KUHPerdata"],
-    "reasoning": "Mengapa pasal tersebut relevan dengan fakta kasus ini"
+    "relevant_laws": ["Pasal XXX KUHPerdata", ...],
+    "reasoning": "Mengapa pasal tersebut relevan dengan fakta kasus ini secara singkat dalam 1-2 kalimat"
   }}
 }}
 
