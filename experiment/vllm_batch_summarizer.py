@@ -183,87 +183,6 @@ TEKS CHUNK #{chunk_id}:
         return f"\n--- CHUNK {chunk_id} ---\n{text}", usage
 
 
-def _build_synthesizer_prompt(
-    substantive_pasal: list[str],
-    evidence_pasal: list[str],
-    combined_extractions: str,
-) -> str:
-    pasal_context = ""
-    if substantive_pasal:
-        pasal_context += f"""
-Pasal SUBSTANTIF (inti sengketa hak dan kewajiban):
-{', '.join(substantive_pasal)}
-→ Buat skenario perdata murni di mana pasal ini menjadi DASAR SENGKETA antara dua pihak swasta.
-"""
-    if evidence_pasal:
-        pasal_context += f"""
-Pasal PEMBUKTIAN (cara membuktikan di persidangan):
-{', '.join(evidence_pasal)}
-→ Buat skenario di mana dua pihak swasta BERSELISIH TENTANG ALAT BUKTI dalam sengketa mereka.
-  Fokus pada masalah pembuktiannya, bukan substansi sengketanya.
-"""
-
-    all_pasal = substantive_pasal + evidence_pasal
-    all_pasal_json = json.dumps(all_pasal, ensure_ascii=False)
-
-    return f"""
-Berdasarkan hasil ekstraksi berikut, telah ditemukan rujukan pasal KUHPerdata:
-
-{pasal_context}
-
-Tugas Anda adalah menyusun dua keluaran query:
-1. Pertanyaan dalam bahasa sehari-hari (humanized_query)
-2. Ringkasan kasus (summarized_case)
-
-LANGKAH WAJIB SEBELUM MENULIS:
-- Untuk pasal SUBSTANTIF: identifikasi prinsip hak/kewajiban intinya, buat skenario yang langsung memunculkan prinsip tersebut.
-- Untuk pasal PEMBUKTIAN: identifikasi jenis alat bukti atau beban pembuktian yang diatur, buat skenario di mana masalah pembuktian itu muncul secara alami dalam sengketa perdata.
-- Jika ada CAMPURAN keduanya: humanized_query boleh fokus pada salah satu, summarized_case harus mencakup keduanya secara koheren.
-- Jika perkara asli berasal dari konteks non-perdata, Anda WAJIB menciptakan skenario perdata BARU.
-
-KETENTUAN KHUSUS:
-1. "humanized_query"
-   - Ditulis sebagai pertanyaan atau permintaan bantuan dari orang awam yang sedang mengalami masalah hukum.
-   - Gunakan sudut pandang orang pertama: "saya", "tetangga saya", "teman saya", dll.
-   - DILARANG menggunakan nama fiktif (Budi, Ani, dll). Gunakan "saya" atau relasi ("adik saya", "pemilik toko").
-   - Maksimal 1-2 kalimat pendek. Ini adalah pertanyaan, BUKAN cerita.
-   - Jangan gunakan istilah formal/hukum, gunakan bahasa percakapan sehari-hari.
-
-2. "summarized_case"
-   - Ditulis dalam paragraf singkat, menekankan hubungan hukum, hak, kewajiban, dan/atau masalah pembuktian para pihak.
-   - Semua pihak harus individu atau perusahaan swasta.
-   - Jangan menyebutkan nomor pasal, konteks pengadilan, jenis perkara, atau hasil putusan.
-
-3. Larangan keras — jika dilanggar, output dianggap GAGAL:
-   - DILARANG menyebut: pemerintah, Mahkamah Konstitusi, DPR, pengujian undang-undang,
-     konstitusi, pemilu, BPJS, jaminan sosial, kebijakan publik, tata negara, hukum pidana,
-     pengadilan agama, perceraian, jalan tol, atau lembaga/program pemerintah apapun.
-   - Jangan hanya menghilangkan istilahnya — ganti seluruh skenario menjadi perdata murni.
-
-FORMAT OUTPUT (JSON saja):
-{{
-  "humanized_query": {{
-    "text": "...",
-    "relevant_laws": {all_pasal_json},
-    "reasoning": "Mengapa pasal tersebut relevan dengan pertanyaan ini"
-  }},
-  "summarized_case": {{
-    "text": "...",
-    "relevant_laws": {all_pasal_json},
-    "reasoning": "Mengapa pasal tersebut relevan dengan fakta kasus ini"
-  }}
-}}
-
-Catatan:
-- "relevant_laws" harus diambil dari daftar pasal di atas.
-- "reasoning" harus menjelaskan hubungan antara prinsip pasal dan skenario yang ditulis.
-- Pastikan output selalu berupa JSON valid.
-
-Hasil ekstraksi:
-{combined_extractions}
-""".strip()
-
-
 async def run_pipeline(
     client: AsyncOpenAI,
     model: str,
@@ -271,7 +190,7 @@ async def run_pipeline(
     worker_batch_size: int = 10,
     chunk_size_words: int = 10000,
     overlap_words: int = 200,
-) -> tuple[str, str, dict]:
+) -> tuple[str, dict]:
     """Returns (final_summary, total_usage)."""
     total_usage = {"prompt_tokens": 0, "completion_tokens": 0}
     full_text = " ".join(pages)
@@ -324,58 +243,53 @@ Document text: {planner_context}
 
     pasal_list = ", ".join(kuhperdata_pasal)
 
-    regulasi_lines = "\n".join(
-        line for line in combined_extractions.split("\n")
-        if line.strip().upper().startswith("REGULASI")
-        or re.search(r'Pasal\s+\d+', line)
-    )
+    synthesizer_prompt = f"""
+Anda akan menghasilkan dua output berdasarkan ekstraksi fakta hukum dari putusan pengadilan.
 
-    classifier_prompt = f"""
-Berikut adalah daftar pasal KUHPerdata yang ditemukan dalam dokumen:
-{pasal_list}
+PASAL KUHPerdata YANG DITEMUKAN: {pasal_list}
 
-Konteks regulasi dari dokumen:
-{regulasi_lines}
+FAKTA YANG DIEKSTRAK:
+{combined_extractions}
 
-Untuk setiap pasal, tentukan bagaimana pasal tersebut DIGUNAKAN dalam dokumen ini:
-- "substantif": pasal menjadi dasar hak, kewajiban, atau sengketa pokok perkara
-- "pembuktian": pasal hanya digunakan sebagai dasar cara membuktikan sesuatu di persidangan
+TUGAS: Hasilkan JSON dengan dua objek.
 
-FORMAT OUTPUT (JSON saja, tanpa preamble):
+ATURAN KETAT UNTUK humanized_query:
+- HARUS dalam sudut pandang orang pertama ("saya"), sebagai orang awam yang bertanya/meminta informasi hukum
+- HARUS berupa pertanyaan (diakhiri tanda tanya "?")
+- HARUS 1-2 kalimat saja
+- DILARANG menggunakan nama fiktif (Budi, Ani, Siti, dll) — gunakan "saya", "tetangga saya", "pihak lain"
+- DILARANG memulai dengan "Apakah"
+- DILARANG menggunakan istilah formal hukum (wanprestasi, somasi, gugatan, tergugat, penggugat, objek sengketa)
+- DILARANG menyebutkan nomor pasal, KUHPerdata, atau referensi undang-undang apapun
+
+ATURAN KETAT UNTUK summarized_case:
+- Tulis sebagai satu paragraf narasi kasus perdata antar pihak SWASTA/pribadi
+- DILARANG menyebutkan nomor pasal, referensi undang-undang, atau konteks pengadilan
+- DILARANG menyebutkan pemerintah, instansi negara, BUMN, atau badan publik — jika kasus asli melibatkan pihak publik, ganti dengan pihak swasta/pribadi yang realistis
+- Fokus pada fakta sengketa: siapa, apa yang terjadi, kerugian apa
+
+ATURAN UNTUK relevant_laws:
+- HANYA pasal KUHPerdata dari daftar di atas
+- Sertakan "reasoning" yang menjelaskan MENGAPA pasal tersebut relevan dengan kasus ini
+- DILARANG memasukkan UU, KUHP, KUHAP, PP, atau regulasi lainnya
+
+DAFTAR ISTILAH TERLARANG (jangan gunakan dalam humanized_query maupun summarized_case):
+pemerintah, negara, instansi, kementerian, dinas, badan, BUMN, BUMD, BPJS, anggaran, APBN, APBD, jalan tol, infrastruktur publik, kebijakan, regulasi, peraturan, undang-undang, pasal, ayat, KUHPerdata, BW, hukum acara, somasi, gugatan, tergugat, penggugat, turut tergugat, objek sengketa, petitum, posita, eksepsi, replik, duplik, verstek, wanprestasi
+
+FORMAT OUTPUT (JSON saja, tanpa penjelasan apapun):
 {{
-  "classifications": [
-    {{
-      "pasal": "Pasal XXX KUHPerdata",
-      "tipe": "substantif" atau "pembuktian",
-      "alasan": "satu kalimat singkat mengapa"
-    }}
-  ]
+  "humanized_query": {{
+    "text": "...",
+    "relevant_laws": ["Pasal X KUHPerdata", ...],
+    "reasoning": "penjelasan singkat mengapa pasal-pasal tersebut relevan"
+  }},
+  "summarized_case": {{
+    "text": "...",
+    "relevant_laws": ["Pasal X KUHPerdata", ...],
+    "reasoning": "penjelasan singkat mengapa pasal-pasal tersebut relevan"
+  }}
 }}
 """
-
-    classification_raw, usage_cls = await call_llm(
-        client, model, classifier_prompt, max_tokens=500
-    )
-    total_usage["prompt_tokens"] += usage_cls["prompt_tokens"]
-    total_usage["completion_tokens"] += usage_cls["completion_tokens"]
-
-    substantive_pasal = []
-    evidence_pasal = []
-    clf = _parse_json(classification_raw)
-    if clf:
-        for item in clf.get("classifications", []):
-            tipe = item.get("tipe")
-            if tipe == "substantif":
-                substantive_pasal.append(item["pasal"])
-            elif tipe == "pembuktian":
-                evidence_pasal.append(item["pasal"])
-
-    if not substantive_pasal and not evidence_pasal:
-        substantive_pasal = kuhperdata_pasal
-
-    synthesizer_prompt = _build_synthesizer_prompt(
-        substantive_pasal, evidence_pasal, combined_extractions
-    )
     final_summary, usage = await call_llm(client, model, synthesizer_prompt, max_tokens=1500)
     total_usage["prompt_tokens"] += usage["prompt_tokens"]
     total_usage["completion_tokens"] += usage["completion_tokens"]
