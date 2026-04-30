@@ -333,7 +333,7 @@ Berikut adalah daftar pasal KUHPerdata yang ditemukan dalam dokumen:
 {pasal_list}
 
 Konteks regulasi dari dokumen:
-{regulasi_lines[:4000]}
+{regulasi_lines}
 
 Untuk setiap pasal, tentukan bagaimana pasal tersebut DIGUNAKAN dalam dokumen ini:
 - "substantif": pasal menjadi dasar hak, kewajiban, atau sengketa pokok perkara
