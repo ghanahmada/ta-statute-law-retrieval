@@ -102,6 +102,26 @@ async def call_llm(
     return "", usage_dict
 
 
+def _parse_json(raw: str) -> dict | None:
+    clean = raw.strip()
+    if clean.startswith("```"):
+        lines = clean.split("\n")
+        clean = "\n".join(lines[1:])
+        clean = clean.rsplit("```", 1)[0].strip()
+    try:
+        return json.loads(clean)
+    except (json.JSONDecodeError, ValueError):
+        pass
+    start = clean.find('{')
+    end = clean.rfind('}')
+    if start != -1 and end != -1:
+        try:
+            return json.loads(clean[start:end+1])
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return None
+
+
 # ── KUHPerdata regex filter ──────────────────────────────────────────────────
 
 _KUHPERDATA_PATTERN = re.compile(
@@ -250,7 +270,7 @@ async def run_pipeline(
     chunk_size_words: int = 10000,
     overlap_words: int = 200,
 ) -> tuple[str, str, dict]:
-    """Returns (final_summary, worker_extractions, total_usage)."""
+    """Returns (final_summary, total_usage)."""
     total_usage = {"prompt_tokens": 0, "completion_tokens": 0}
     full_text = " ".join(pages)
     words = full_text.split()
@@ -290,7 +310,6 @@ Document text: {planner_context}
         total_usage["completion_tokens"] += usage["completion_tokens"]
     combined_extractions = "\n".join(worker_texts)
 
-    # Phase 2.5: Regex-extract KUHPerdata pasal from raw PDF + worker output
     kuhperdata_pasal = extract_kuhperdata_pasal(full_text + "\n" + combined_extractions)
 
     if not kuhperdata_pasal:
@@ -299,17 +318,22 @@ Document text: {planner_context}
             "humanized_query": {"text": "", "relevant_laws": []},
             "summarized_case": {"text": "", "relevant_laws": []},
         })
-        return empty, combined_extractions, total_usage
+        return empty, total_usage
 
     pasal_list = ", ".join(kuhperdata_pasal)
 
-    # Phase 2.6: Classify how each pasal was used
+    regulasi_lines = "\n".join(
+        line for line in combined_extractions.split("\n")
+        if line.strip().upper().startswith("REGULASI")
+        or re.search(r'Pasal\s+\d+', line)
+    )
+
     classifier_prompt = f"""
 Berikut adalah daftar pasal KUHPerdata yang ditemukan dalam dokumen:
 {pasal_list}
 
-Dan berikut adalah hasil ekstraksi dari dokumen:
-{combined_extractions[:3000]}
+Konteks regulasi dari dokumen:
+{regulasi_lines[:4000]}
 
 Untuk setiap pasal, tentukan bagaimana pasal tersebut DIGUNAKAN dalam dokumen ini:
 - "substantif": pasal menjadi dasar hak, kewajiban, atau sengketa pokok perkara
@@ -335,24 +359,18 @@ FORMAT OUTPUT (JSON saja, tanpa preamble):
 
     substantive_pasal = []
     evidence_pasal = []
-    try:
-        clean = classification_raw.strip()
-        start = clean.find('{')
-        end = clean.rfind('}')
-        if start != -1 and end != -1:
-            clf = json.loads(clean[start:end+1])
-            for item in clf.get("classifications", []):
-                if item.get("tipe") == "substantif":
-                    substantive_pasal.append(item["pasal"])
-                else:
-                    evidence_pasal.append(item["pasal"])
-    except (json.JSONDecodeError, KeyError):
-        substantive_pasal = kuhperdata_pasal
+    clf = _parse_json(classification_raw)
+    if clf:
+        for item in clf.get("classifications", []):
+            tipe = item.get("tipe")
+            if tipe == "substantif":
+                substantive_pasal.append(item["pasal"])
+            elif tipe == "pembuktian":
+                evidence_pasal.append(item["pasal"])
 
     if not substantive_pasal and not evidence_pasal:
         substantive_pasal = kuhperdata_pasal
 
-    # Phase 3: Synthesizer — routed by pasal classification
     synthesizer_prompt = _build_synthesizer_prompt(
         substantive_pasal, evidence_pasal, combined_extractions
     )
@@ -360,7 +378,7 @@ FORMAT OUTPUT (JSON saja, tanpa preamble):
     total_usage["prompt_tokens"] += usage["prompt_tokens"]
     total_usage["completion_tokens"] += usage["completion_tokens"]
 
-    return final_summary, combined_extractions, total_usage
+    return final_summary, total_usage
 
 
 # ── Batch runner ─────────────────────────────────────────────────────────────
@@ -412,20 +430,8 @@ async def process_one(
 
         pages = [p.markdown for p in response.pages]
         try:
-            raw_output, worker_extractions, usage = await run_pipeline(
-                client, model, pages
-            )
-            # Try to parse JSON from LLM output
-            parsed = None
-            try:
-                # Strip markdown code fences if present
-                clean = raw_output.strip()
-                if clean.startswith("```"):
-                    clean = clean.split("\n", 1)[1] if "\n" in clean else clean[3:]
-                    clean = clean.rsplit("```", 1)[0]
-                parsed = json.loads(clean)
-            except (json.JSONDecodeError, IndexError):
-                pass
+            raw_output, usage = await run_pipeline(client, model, pages)
+            parsed = _parse_json(raw_output)
 
             # Post-process: ensure relevant_laws only contains KUHPerdata
             if parsed:
