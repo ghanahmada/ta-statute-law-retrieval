@@ -159,7 +159,7 @@ TEKS CHUNK #{chunk_id}:
 {chunk_text}
 """
     async with sem:
-        text, usage = await call_llm(client, model, prompt, max_tokens=1000)
+        text, usage = await call_llm(client, model, prompt, max_tokens=750)
         return f"\n--- CHUNK {chunk_id} ---\n{text}", usage
 
 
@@ -279,7 +279,7 @@ Catatan:
 Hasil ekstraksi:
 {combined_extractions}
 """
-    final_summary, usage = await call_llm(client, model, synthesizer_prompt, max_tokens=2000)
+    final_summary, usage = await call_llm(client, model, synthesizer_prompt, max_tokens=1500)
     total_usage["prompt_tokens"] += usage["prompt_tokens"]
     total_usage["completion_tokens"] += usage["completion_tokens"]
 
