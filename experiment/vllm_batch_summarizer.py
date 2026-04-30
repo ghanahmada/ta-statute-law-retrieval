@@ -223,8 +223,10 @@ LANGKAH WAJIB SEBELUM MENULIS:
 
 KETENTUAN KHUSUS:
 1. "humanized_query"
-   - DILARANG mengawali kalimat dengan kata "Apakah". Mulai langsung dengan situasi.
-   - Ditulis dari sudut pandang orang biasa, maksimal 1-2 kalimat pendek.
+   - Ditulis sebagai pertanyaan atau permintaan bantuan dari orang awam yang sedang mengalami masalah hukum.
+   - Gunakan sudut pandang orang pertama: "saya", "tetangga saya", "teman saya", dll.
+   - DILARANG menggunakan nama fiktif (Budi, Ani, dll). Gunakan "saya" atau relasi ("adik saya", "pemilik toko").
+   - Maksimal 1-2 kalimat pendek. Ini adalah pertanyaan, BUKAN cerita.
    - Jangan gunakan istilah formal/hukum, gunakan bahasa percakapan sehari-hari.
 
 2. "summarized_case"
