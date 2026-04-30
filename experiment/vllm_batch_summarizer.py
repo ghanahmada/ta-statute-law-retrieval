@@ -163,6 +163,85 @@ TEKS CHUNK #{chunk_id}:
         return f"\n--- CHUNK {chunk_id} ---\n{text}", usage
 
 
+def _build_synthesizer_prompt(
+    substantive_pasal: list[str],
+    evidence_pasal: list[str],
+    combined_extractions: str,
+) -> str:
+    pasal_context = ""
+    if substantive_pasal:
+        pasal_context += f"""
+Pasal SUBSTANTIF (inti sengketa hak dan kewajiban):
+{', '.join(substantive_pasal)}
+→ Buat skenario perdata murni di mana pasal ini menjadi DASAR SENGKETA antara dua pihak swasta.
+"""
+    if evidence_pasal:
+        pasal_context += f"""
+Pasal PEMBUKTIAN (cara membuktikan di persidangan):
+{', '.join(evidence_pasal)}
+→ Buat skenario di mana dua pihak swasta BERSELISIH TENTANG ALAT BUKTI dalam sengketa mereka.
+  Fokus pada masalah pembuktiannya, bukan substansi sengketanya.
+"""
+
+    all_pasal = substantive_pasal + evidence_pasal
+    all_pasal_json = json.dumps(all_pasal, ensure_ascii=False)
+
+    return f"""
+Berdasarkan hasil ekstraksi berikut, telah ditemukan rujukan pasal KUHPerdata:
+
+{pasal_context}
+
+Tugas Anda adalah menyusun dua keluaran query:
+1. Pertanyaan dalam bahasa sehari-hari (humanized_query)
+2. Ringkasan kasus (summarized_case)
+
+LANGKAH WAJIB SEBELUM MENULIS:
+- Untuk pasal SUBSTANTIF: identifikasi prinsip hak/kewajiban intinya, buat skenario yang langsung memunculkan prinsip tersebut.
+- Untuk pasal PEMBUKTIAN: identifikasi jenis alat bukti atau beban pembuktian yang diatur, buat skenario di mana masalah pembuktian itu muncul secara alami dalam sengketa perdata.
+- Jika ada CAMPURAN keduanya: humanized_query boleh fokus pada salah satu, summarized_case harus mencakup keduanya secara koheren.
+- Jika perkara asli berasal dari konteks non-perdata, Anda WAJIB menciptakan skenario perdata BARU.
+
+KETENTUAN KHUSUS:
+1. "humanized_query"
+   - DILARANG mengawali kalimat dengan kata "Apakah". Mulai langsung dengan situasi.
+   - Ditulis dari sudut pandang orang biasa, maksimal 1-2 kalimat pendek.
+   - Jangan gunakan istilah formal/hukum, gunakan bahasa percakapan sehari-hari.
+
+2. "summarized_case"
+   - Ditulis dalam paragraf singkat, menekankan hubungan hukum, hak, kewajiban, dan/atau masalah pembuktian para pihak.
+   - Semua pihak harus individu atau perusahaan swasta.
+   - Jangan menyebutkan nomor pasal, konteks pengadilan, jenis perkara, atau hasil putusan.
+
+3. Larangan keras — jika dilanggar, output dianggap GAGAL:
+   - DILARANG menyebut: pemerintah, Mahkamah Konstitusi, DPR, pengujian undang-undang,
+     konstitusi, pemilu, BPJS, jaminan sosial, kebijakan publik, tata negara, hukum pidana,
+     pengadilan agama, perceraian, jalan tol, atau lembaga/program pemerintah apapun.
+   - Jangan hanya menghilangkan istilahnya — ganti seluruh skenario menjadi perdata murni.
+
+FORMAT OUTPUT (JSON saja):
+{{
+  "humanized_query": {{
+    "text": "...",
+    "relevant_laws": {all_pasal_json},
+    "reasoning": "Mengapa pasal tersebut relevan dengan pertanyaan ini"
+  }},
+  "summarized_case": {{
+    "text": "...",
+    "relevant_laws": {all_pasal_json},
+    "reasoning": "Mengapa pasal tersebut relevan dengan fakta kasus ini"
+  }}
+}}
+
+Catatan:
+- "relevant_laws" harus diambil dari daftar pasal di atas.
+- "reasoning" harus menjelaskan hubungan antara prinsip pasal dan skenario yang ditulis.
+- Pastikan output selalu berupa JSON valid.
+
+Hasil ekstraksi:
+{combined_extractions}
+""".strip()
+
+
 async def run_pipeline(
     client: AsyncOpenAI,
     model: str,
@@ -224,61 +303,59 @@ Document text: {planner_context}
 
     pasal_list = ", ".join(kuhperdata_pasal)
 
-    # Phase 3: Synthesizer — scoped to KUHPerdata facts only
-    synthesizer_prompt = f"""
-Berdasarkan hasil ekstraksi berikut, telah ditemukan rujukan pasal KUHPerdata:
+    # Phase 2.6: Classify how each pasal was used
+    classifier_prompt = f"""
+Berikut adalah daftar pasal KUHPerdata yang ditemukan dalam dokumen:
 {pasal_list}
 
-Tugas Anda adalah menyusun dua keluaran query:
-1. Pertanyaan dalam bahasa sehari-hari (humanized_query)
-2. Ringkasan kasus (summarized_case)
+Dan berikut adalah hasil ekstraksi dari dokumen:
+{combined_extractions[:3000]}
 
-LANGKAH WAJIB SEBELUM MENULIS:
-- Untuk setiap pasal KUHPerdata yang dirujuk, identifikasi dulu PRINSIP HUKUM INTI-nya.
-- Pastikan skenario yang Anda tulis secara langsung memunculkan prinsip tersebut.
-- Jika perkara asli berasal dari konteks non-perdata (pengujian undang-undang, pidana,
-  tata negara, kebijakan publik), Anda WAJIB menciptakan skenario perdata BARU antara
-  orang/badan hukum swasta yang secara alami memunculkan prinsip pasal yang sama.
+Untuk setiap pasal, tentukan bagaimana pasal tersebut DIGUNAKAN dalam dokumen ini:
+- "substantif": pasal menjadi dasar hak, kewajiban, atau sengketa pokok perkara
+- "pembuktian": pasal hanya digunakan sebagai dasar cara membuktikan sesuatu di persidangan
 
-KETENTUAN KHUSUS:
-1. "humanized_query"
-   - Mulai dengan situasi atau langsung dengan pertanyaan yang ingin diajukan orang biasa tentang kasus ini.
-   - Ditulis dari sudut pandang orang biasa, maksimal 1-2 kalimat pendek.
-   - Jangan gunakan istilah formal/hukum, gunakan bahasa percakapan sehari-hari.
-
-2. "summarized_case"
-   - Ditulis dalam paragraf singkat, menekankan hubungan hukum, hak, dan kewajiban para pihak.
-   - Semua pihak harus individu atau perusahaan swasta.
-   - Jangan menyebutkan nomor pasal, pernyataan pasal, konteks pengadilan, jenis perkara, atau hasil putusan.
-
-3. Larangan keras — jika dilanggar, output dianggap GAGAL:
-   - DILARANG menyebut: pemerintah, Mahkamah Konstitusi, DPR, pengujian undang-undang,
-     konstitusi, pemilu, BPJS, jaminan sosial, kebijakan publik, tata negara, hukum pidana,
-     jalan tol, atau lembaga/program pemerintah apapun.
-   - Jangan hanya menghilangkan istilahnya — ganti seluruh skenario menjadi perdata murni.
-
-FORMAT OUTPUT (JSON saja):
+FORMAT OUTPUT (JSON saja, tanpa preamble):
 {{
-  "humanized_query": {{
-    "text": "...",
-    "relevant_laws": ["Pasal XXX KUHPerdata", ...],
-    "reasoning": "Mengapa pasal tersebut relevan dengan fakta kasus ini secara singkat dalam 1-2 kalimat"
-  }},
-  "summarized_case": {{
-    "text": "...",
-    "relevant_laws": ["Pasal XXX KUHPerdata", ...],
-    "reasoning": "Mengapa pasal tersebut relevan dengan fakta kasus ini secara singkat dalam 1-2 kalimat"
-  }}
+  "classifications": [
+    {{
+      "pasal": "Pasal XXX KUHPerdata",
+      "tipe": "substantif" atau "pembuktian",
+      "alasan": "satu kalimat singkat mengapa"
+    }}
+  ]
 }}
-
-Catatan:
-- "relevant_laws" harus diambil dari daftar pasal KUHPerdata di atas.
-- "reasoning" harus menjelaskan hubungan antara prinsip pasal dan skenario yang ditulis.
-- Pastikan output selalu berupa JSON valid.
-
-Hasil ekstraksi:
-{combined_extractions}
 """
+
+    classification_raw, usage_cls = await call_llm(
+        client, model, classifier_prompt, max_tokens=500
+    )
+    total_usage["prompt_tokens"] += usage_cls["prompt_tokens"]
+    total_usage["completion_tokens"] += usage_cls["completion_tokens"]
+
+    substantive_pasal = []
+    evidence_pasal = []
+    try:
+        clean = classification_raw.strip()
+        start = clean.find('{')
+        end = clean.rfind('}')
+        if start != -1 and end != -1:
+            clf = json.loads(clean[start:end+1])
+            for item in clf.get("classifications", []):
+                if item.get("tipe") == "substantif":
+                    substantive_pasal.append(item["pasal"])
+                else:
+                    evidence_pasal.append(item["pasal"])
+    except (json.JSONDecodeError, KeyError):
+        substantive_pasal = kuhperdata_pasal
+
+    if not substantive_pasal and not evidence_pasal:
+        substantive_pasal = kuhperdata_pasal
+
+    # Phase 3: Synthesizer — routed by pasal classification
+    synthesizer_prompt = _build_synthesizer_prompt(
+        substantive_pasal, evidence_pasal, combined_extractions
+    )
     final_summary, usage = await call_llm(client, model, synthesizer_prompt, max_tokens=1500)
     total_usage["prompt_tokens"] += usage["prompt_tokens"]
     total_usage["completion_tokens"] += usage["completion_tokens"]
