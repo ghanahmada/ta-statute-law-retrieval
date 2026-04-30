@@ -19,6 +19,7 @@ Usage:
 
 import os
 import re
+import csv
 import json
 import fitz
 import asyncio
@@ -122,6 +123,25 @@ def _parse_json(raw: str) -> dict | None:
     return None
 
 
+# ── Statute lookup ──────────────────────────────────────────────────────────
+
+def load_statute_lookup(csv_path: str) -> dict[str, str]:
+    lookup = {}
+    with open(csv_path, "r", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            lookup[str(row["pasal_nomor"]).strip()] = row["pasal_text"].strip()
+    return lookup
+
+
+def format_statute_context(pasal_refs: list[str], statute: dict[str, str]) -> str:
+    lines = []
+    for ref in pasal_refs:
+        m = re.search(r'\d+[a-zA-Z]?', ref)
+        if m and m.group() in statute:
+            lines.append(f"- {ref}: {statute[m.group()]}")
+    return "\n".join(lines)
+
+
 # ── KUHPerdata regex filter ──────────────────────────────────────────────────
 
 _KUHPERDATA_PATTERN = re.compile(
@@ -187,6 +207,7 @@ async def run_pipeline(
     client: AsyncOpenAI,
     model: str,
     pages: list[str],
+    statute: dict[str, str] | None = None,
     worker_batch_size: int = 10,
     chunk_size_words: int = 10000,
     overlap_words: int = 200,
@@ -243,10 +264,20 @@ Document text: {planner_context}
 
     pasal_list = ", ".join(kuhperdata_pasal)
 
+    statute_section = ""
+    if statute:
+        statute_text = format_statute_context(kuhperdata_pasal, statute)
+        if statute_text:
+            statute_section = f"""
+ISI PASAL YANG DIRUJUK:
+{statute_text}
+"""
+
     synthesizer_prompt = f"""
 Anda akan menghasilkan dua output berdasarkan ekstraksi fakta hukum dari putusan pengadilan.
 
 PASAL KUHPerdata YANG DITEMUKAN: {pasal_list}
+{statute_section}
 
 FAKTA YANG DIEKSTRAK:
 {combined_extractions}
@@ -257,7 +288,6 @@ ATURAN KETAT UNTUK humanized_query:
 - HARUS dalam sudut pandang orang pertama ("saya"), sebagai orang awam yang bertanya/meminta informasi hukum
 - HARUS berupa pertanyaan (diakhiri tanda tanya "?")
 - HARUS 1-2 kalimat saja
-- DILARANG menggunakan nama fiktif (Budi, Ani, Siti, dll) — gunakan "saya", "tetangga saya", "pihak lain"
 - DILARANG memulai dengan "Apakah"
 - DILARANG menggunakan istilah formal hukum (wanprestasi, somasi, gugatan, tergugat, penggugat, objek sengketa)
 - DILARANG menyebutkan nomor pasal, KUHPerdata, atau referensi undang-undang apapun
@@ -265,7 +295,7 @@ ATURAN KETAT UNTUK humanized_query:
 ATURAN KETAT UNTUK summarized_case:
 - Tulis sebagai satu paragraf narasi kasus perdata antar pihak SWASTA/pribadi
 - DILARANG menyebutkan nomor pasal, referensi undang-undang, atau konteks pengadilan
-- DILARANG menyebutkan pemerintah, instansi negara, BUMN, atau badan publik — jika kasus asli melibatkan pihak publik, ganti dengan pihak swasta/pribadi yang realistis
+- DILARANG menyebutkan pemerintah, instansi negara, BUMN, atau badan publik. jika kasus asli melibatkan pihak publik, ganti dengan pihak swasta/pribadi yang realistis
 - Fokus pada fakta sengketa: siapa, apa yang terjadi, kerugian apa
 
 ATURAN UNTUK relevant_laws:
@@ -328,6 +358,7 @@ async def process_one(
     model: str,
     filepath: str,
     output_path: str,
+    statute: dict[str, str] | None = None,
 ) -> bool:
     """Process a single PDF. Returns True on success."""
     async with sem:
@@ -346,7 +377,7 @@ async def process_one(
 
         pages = [p.markdown for p in response.pages]
         try:
-            raw_output, usage = await run_pipeline(client, model, pages)
+            raw_output, usage = await run_pipeline(client, model, pages, statute=statute)
             parsed = _parse_json(raw_output)
 
             # Post-process: ensure relevant_laws only contains KUHPerdata
@@ -415,7 +446,15 @@ async def main():
                         help="HuggingFace repo for checkpoint uploads")
     parser.add_argument("--checkpoint_every", type=int, default=50,
                         help="Upload to HF every N completed PDFs")
+    parser.add_argument("--statute_csv", default="data/statute/kuh_perdata.csv",
+                        help="Path to KUHPerdata statute CSV for article text lookup")
     args = parser.parse_args()
+
+    # Load statute lookup
+    statute = None
+    if args.statute_csv and Path(args.statute_csv).exists():
+        statute = load_statute_lookup(args.statute_csv)
+        print(f"Loaded {len(statute)} KUHPerdata articles from {args.statute_csv}")
 
     # Connect to vLLM
     client = AsyncOpenAI(base_url=args.base_url, api_key="EMPTY")
@@ -453,7 +492,7 @@ async def main():
 
     async def process_and_count(filepath):
         nonlocal completed, since_last_upload, success, failed
-        result = await process_one(sem, client, args.model, filepath, args.output)
+        result = await process_one(sem, client, args.model, filepath, args.output, statute=statute)
         completed += 1
         since_last_upload += 1
         if result:
