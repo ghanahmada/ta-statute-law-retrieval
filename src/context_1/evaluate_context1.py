@@ -22,6 +22,7 @@ Usage:
 import argparse
 import asyncio
 import json
+import logging
 import os
 import sys
 import time
@@ -30,6 +31,11 @@ from pathlib import Path
 import numpy as np
 from openai import AsyncOpenAI
 from tqdm.asyncio import tqdm_asyncio
+
+logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("FlagEmbedding").setLevel(logging.ERROR)
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
