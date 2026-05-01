@@ -20,7 +20,9 @@ from .token_budget import TokenBudgetTracker
 class AgentState:
     messages: list[dict] = field(default_factory=list)
     seen_doc_ids: set[str] = field(default_factory=set)
+    read_doc_ids: set[str] = field(default_factory=set)
     selected_doc_ids: OrderedDict = field(default_factory=OrderedDict)
+    doc_scores: dict[str, float] = field(default_factory=dict)
     is_done: bool = False
     turn_count: int = 0
     max_turns: int = 10
@@ -143,6 +145,9 @@ class AgenticRetriever:
             })
             state.budget.add(result.content)
             state.seen_doc_ids.update(result.doc_ids_seen)
+            for did, score in result.doc_scores.items():
+                if did not in state.doc_scores or score > state.doc_scores[did]:
+                    state.doc_scores[did] = score
 
         return results
 
@@ -150,18 +155,19 @@ class AgenticRetriever:
         self, state: AgentState, name: str, args: dict,
     ) -> ToolResult:
         if name == "search_corpus":
+            exclude = state.read_doc_ids | set(state.selected_doc_ids.keys())
             return self.tool_executor.search_corpus(
                 args.get("query", ""),
-                exclude_ids=state.seen_doc_ids,
+                exclude_ids=exclude,
             )
         elif name == "grep_corpus":
             return self.tool_executor.grep_corpus(
                 args.get("pattern", ""),
             )
         elif name == "read_document":
-            return self.tool_executor.read_document(
-                args.get("doc_id", ""),
-            )
+            doc_id = args.get("doc_id", "")
+            state.read_doc_ids.add(doc_id)
+            return self.tool_executor.read_document(doc_id)
         elif name == "prune_chunks":
             result = self.tool_executor.prune_chunks(
                 args.get("doc_ids", []),
@@ -227,12 +233,18 @@ class AgenticRetriever:
                 state.error = str(e)
                 state.is_done = True
 
-        if not state.selected_doc_ids and state.seen_doc_ids:
-            for doc_id in list(state.seen_doc_ids)[:10]:
+        ranked_seen = sorted(
+            state.seen_doc_ids,
+            key=lambda d: state.doc_scores.get(d, 0),
+            reverse=True,
+        )
+
+        if not state.selected_doc_ids and ranked_seen:
+            for doc_id in ranked_seen[:10]:
                 state.selected_doc_ids[doc_id] = "fallback: no final answer produced"
 
         if self.pad_to_k > 0 and len(state.selected_doc_ids) < self.pad_to_k:
-            for doc_id in state.seen_doc_ids:
+            for doc_id in ranked_seen:
                 if doc_id not in state.selected_doc_ids:
                     state.selected_doc_ids[doc_id] = "padded from seen"
                 if len(state.selected_doc_ids) >= self.pad_to_k:

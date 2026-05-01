@@ -16,6 +16,7 @@ from .hybrid_search import HybridSearcher
 class ToolResult:
     content: str
     doc_ids_seen: list[str] = field(default_factory=list)
+    doc_scores: dict[str, float] = field(default_factory=dict)
     tokens_added: int = 0
     tokens_removed: int = 0
 
@@ -67,9 +68,11 @@ class ToolExecutor:
             + "\n".join(lines)
             + suffix
         )
+        scores = {doc_id: score for doc_id, _, score in results}
         return ToolResult(
             content=content,
             doc_ids_seen=doc_ids,
+            doc_scores=scores,
             tokens_added=self.token_counter(content),
         )
 
