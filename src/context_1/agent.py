@@ -53,8 +53,6 @@ class AgenticRetriever:
             max_turns=self.max_turns,
             budget=TokenBudgetTracker(self.budget_size),
         )
-        state.messages.append({"role": "system", "content": SYSTEM_PROMPT})
-        state.budget.add(SYSTEM_PROMPT)
         return state
 
     def _observe(self, state: AgentState, content: str, role: str = "user"):
@@ -209,7 +207,9 @@ class AgenticRetriever:
 
         bootstrap = self._bootstrap_search(state, query)
         user_content = (
-            query
+            SYSTEM_PROMPT
+            + "\n\n--- USER QUERY ---\n"
+            + query
             + "\n\n--- INITIAL SEARCH RESULTS (top 20 from full query) ---\n"
             + bootstrap.content
             + "\n\n"
