@@ -4,7 +4,16 @@ Mirrors Context-1's search_corpus tool backend: parallel BM25 and dense
 queries fused via reciprocal rank fusion, then reranked with a cross-encoder.
 """
 
+import functools
+import os
+
 import numpy as np
+from tqdm import tqdm as _tqdm
+
+
+def _silent_tqdm(*args, **kwargs):
+    kwargs["disable"] = True
+    return _tqdm(*args, **kwargs)
 
 
 class HybridSearcher:
@@ -30,7 +39,7 @@ class HybridSearcher:
 
     def _encode_query(self, query: str) -> np.ndarray:
         output = self.query_encoder.encode(
-            [query], batch_size=1, max_length=1024, show_progress_bar=False,
+            [query], batch_size=1, max_length=1024,
         )
         if isinstance(output, dict):
             vec = np.array(output["dense_vecs"])
