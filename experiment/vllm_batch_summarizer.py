@@ -347,6 +347,59 @@ def load_done(output_path: str) -> set[str]:
     return done
 
 
+def load_retry_filenames(output_path: str) -> set[str]:
+    """Find filenames that need retry: errors, empty output, or missing relevant_laws."""
+    retry = set()
+    if not os.path.exists(output_path):
+        return retry
+    with open(output_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            fn = rec.get("filename", "")
+            if rec.get("error"):
+                retry.add(fn)
+                continue
+            hq = rec.get("humanized_query")
+            if hq is None or (isinstance(hq, dict) and not hq.get("text")):
+                retry.add(fn)
+                continue
+            if isinstance(hq, dict) and not hq.get("relevant_laws"):
+                retry.add(fn)
+    return retry
+
+
+def remove_filenames_from_jsonl(output_path: str, filenames: set[str]) -> int:
+    """Remove entries for given filenames from the JSONL. Returns count removed."""
+    if not os.path.exists(output_path):
+        return 0
+    with open(output_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    kept = []
+    removed = 0
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rec = json.loads(line)
+            if rec.get("filename") in filenames:
+                removed += 1
+                continue
+        except json.JSONDecodeError:
+            pass
+        kept.append(line)
+    with open(output_path, "w", encoding="utf-8") as f:
+        for line in kept:
+            f.write(line + "\n")
+    return removed
+
+
 def append_result(output_path: str, record: dict) -> None:
     """Append a single result to the output JSONL (atomic per-file checkpoint)."""
     with open(output_path, "a", encoding="utf-8") as f:
@@ -449,6 +502,8 @@ async def main():
                         help="Upload to HF every N completed PDFs")
     parser.add_argument("--statute_csv", default="data/statute/kuh_perdata.csv",
                         help="Path to KUHPerdata statute CSV for article text lookup")
+    parser.add_argument("--retry", action="store_true",
+                        help="Re-process files with errors, empty output, or missing relevant_laws")
     args = parser.parse_args()
 
     # Load statute lookup
@@ -464,10 +519,18 @@ async def main():
     pdf_files = sorted(Path(args.input_dir).glob("*.pdf"))
     print(f"Found {len(pdf_files)} PDFs in {args.input_dir}")
 
-    # Resume from checkpoint
-    done = load_done(args.output)
-    todo = [p for p in pdf_files if p.name not in done]
-    print(f"Already done: {len(done)}, remaining: {len(todo)}")
+    if args.retry:
+        retry_fns = load_retry_filenames(args.output)
+        if not retry_fns:
+            print("No files to retry.")
+            return
+        removed = remove_filenames_from_jsonl(args.output, retry_fns)
+        print(f"Retry mode: {len(retry_fns)} files to re-process ({removed} entries removed from JSONL)")
+        todo = [p for p in pdf_files if p.name in retry_fns]
+    else:
+        done = load_done(args.output)
+        todo = [p for p in pdf_files if p.name not in done]
+        print(f"Already done: {len(done)}, remaining: {len(todo)}")
 
     if args.limit > 0:
         todo = todo[: args.limit]
