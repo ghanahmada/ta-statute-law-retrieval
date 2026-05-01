@@ -21,7 +21,11 @@ import sys
 import zipfile
 from pathlib import Path
 
-DATASETS = ["kuhperdata-humanized", "kuhperdata-summarized", "bsard", "stard"]
+DATASETS = [
+    "kuhperdata-humanized", "kuhperdata-summarized",
+    "kuhperdata-exp", "kuhperdata-summ-exp",
+    "bsard", "stard",
+]
 
 METHODS = {
     "adapted_struct": "StructGNN",
@@ -33,6 +37,9 @@ MODEL_FILES = [
     "best_model.pt",
     "resume_checkpoint.pt",
     "training_log.json",
+    "rankings_top100.jsonl",
+    "rankings_top100_original.jsonl",
+    "rankings_top100_debiased.jsonl",
 ]
 
 STAGING_DIR = "outputs/export_staging"
