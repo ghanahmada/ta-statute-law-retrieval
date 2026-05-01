@@ -30,7 +30,7 @@ class HybridSearcher:
 
     def _encode_query(self, query: str) -> np.ndarray:
         output = self.query_encoder.encode(
-            [query], batch_size=1, max_length=1024,
+            [query], batch_size=1, max_length=1024, show_progress_bar=False,
         )
         if isinstance(output, dict):
             vec = np.array(output["dense_vecs"])
