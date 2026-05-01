@@ -202,6 +202,7 @@ class AgenticRetriever:
                         "[SYSTEM] WARNING: Token budget is running low. "
                         "Consider pruning irrelevant documents or providing "
                         "your final answer now. "
+                        f"Original query: \"{query}\"\n"
                         + state.budget.status_message()
                     ),
                 })
@@ -211,7 +212,9 @@ class AgenticRetriever:
                     "role": "user",
                     "content": (
                         "[SYSTEM] FINAL TURN: You MUST provide your final "
-                        "answer NOW. List the most relevant documents using "
+                        "answer NOW. Remember the original query:\n\n"
+                        f"\"{query}\"\n\n"
+                        "List the most relevant documents using "
                         "the <Document id=\"DOC_ID\"><Justification>..."
                         "</Justification></Document> format. No more tool calls."
                     ),
