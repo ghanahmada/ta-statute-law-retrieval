@@ -267,15 +267,22 @@ async def expand_split(
         return {}
 
     print(f"  {split_name}: judging {len(tasks)} queries ({concurrency} concurrent)...")
-    results = await tqdm_asyncio.gather(*tasks, desc=f"Expanding {split_name}")
 
     expansions = {}
-    with open(log_path, "a", encoding="utf-8") as f:
-        for result in results:
-            result["split"] = split_name
-            f.write(json.dumps(result, ensure_ascii=False) + "\n")
-            if result["new_relevant"]:
-                expansions[result["qid"]] = result["new_relevant"]
+    log_file = open(log_path, "a", encoding="utf-8")
+    pbar = tqdm_asyncio(total=len(tasks), desc=f"Expanding {split_name}")
+
+    for coro in asyncio.as_completed(tasks):
+        result = await coro
+        result["split"] = split_name
+        log_file.write(json.dumps(result, ensure_ascii=False) + "\n")
+        log_file.flush()
+        if result["new_relevant"]:
+            expansions[result["qid"]] = result["new_relevant"]
+        pbar.update(1)
+
+    pbar.close()
+    log_file.close()
 
     return expansions
 
