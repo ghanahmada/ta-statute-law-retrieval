@@ -4,8 +4,8 @@
 |-------|-------|
 | **Author** | Ghana Ahmada |
 | **Repository** | [ghanahmada/kuhperdata](https://huggingface.co/datasets/ghanahmada/kuhperdata) |
-| **Version** | 2.0 |
-| **Date** | 2026-03-08 |
+| **Version** | 3.0 |
+| **Date** | 2026-05-01 |
 | **Language** | Python 3.12 |
 | **Package Manager** | uv |
 
@@ -15,9 +15,9 @@
 
 Statute law retrieval — the task of finding relevant legal articles given a natural-language description of a legal situation — remains underserved for non-English languages. While English-centric benchmarks exist (e.g., COLIEE), there is no standardized Indonesian statute retrieval dataset, and cross-lingual comparisons across legal systems are scarce.
 
-This project makes two contributions. **First**, we construct **KUHPerdata**, a novel Indonesian statute law retrieval dataset derived from the *Kitab Undang-Undang Hukum Perdata* (Indonesian Civil Code) and real Supreme Court decisions. It comprises 2,127 statute articles, 1,368 queries, and 4,372 relevance judgments in BEIR format. **Second**, we propose a **language-agnostic retrieval methodology** benchmarked across four datasets spanning Indonesian, French, English, and Chinese legal systems. Our approach adapts the JNLP COLIEE 2025 pipeline — combining BGE-M3 embeddings, CatBoost classification, QLoRA-finetuned LLMs, and Optuna-optimized ensembles — and evaluates whether techniques designed for English/Japanese legal text transfer to typologically diverse languages.
+This project makes three contributions. **First**, we construct **KUHPerdata**, a novel Indonesian statute law retrieval dataset derived from the *Kitab Undang-Undang Hukum Perdata* (Indonesian Civil Code) and real Supreme Court decisions. It comprises 2,127 statute articles, 1,847 queries (humanized and summarized variants), and relevance judgments in BEIR format, with a scalable ground truth expansion pipeline using LLM-based legal element subsumption analysis. **Second**, we propose **StructGNN**, a paragraph-level graph neural network with structural encoding (act hash + positional features) that improves retrieval by ~460% over BM25 and ~19% over learned baselines (JNLP Stage 1) on KUHPerdata, generalizing across French and Chinese legal datasets without language-specific tuning. **Third**, we design an **agentic retrieval system** (Context-1) that performs multi-turn hybrid search (BM25 + StructGNN) with LLM reasoning for iterative document discovery.
 
-Results show the JNLP pipeline is effective but language-dependent. Stage 1 (BGE-M3 + CatBoost) achieves a 2.7× improvement over BM25 on KUHPerdata (MRR@10: 0.40 vs. 0.15) and 1.3× on BSARD, while Stage 2 (QLoRA-finetuned Qwen2.5-7B) further improves recall (+5.4%). However, the pipeline regresses on IL-PCSR and STARD, revealing sensitivity to query length and corpus scale. SAILER, an English structure-aware legal encoder, proves unsuitable for non-English retrieval even with vocabulary extension — multilingual-e5-base outperforms it by 33× on Indonesian text.
+Results show StructGNN achieves MRR@10 = 0.5176 on KUHPerdata-humanized, outperforming all baselines. Para-GNN generalizes strongly across datasets: +24% to +94% over JNLP Stage 1 on KUHPerdata, BSARD, and STARD. The JNLP pipeline is effective but language-dependent — it regresses on IL-PCSR (-68%) and STARD (-20%) due to query length and corpus scale sensitivity.
 
 ---
 
@@ -41,38 +41,37 @@ Reproduce and extend state-of-the-art retrieval methods across four multilingual
 1. Establish BM25 baselines across all four languages
 2. Evaluate dense retrieval (BGE-M3) as a multilingual baseline
 3. Adapt the JNLP COLIEE 2025 pipeline (3-stage hybrid) to all datasets
-4. Evaluate SAILER (structure-aware pre-trained legal encoder) as an alternative
-5. Identify which techniques transfer across languages and which are language-specific
+4. Propose StructGNN — Para-GNN with structural encoding for language-agnostic statute graph features
+5. Evaluate graph-based reranking (GAR, QUAM) and BM25+reranker ablations
+6. Design agentic retrieval (Context-1) combining hybrid search with LLM reasoning
+7. Identify which techniques transfer across languages and which are language-specific
 
-### 2.3 Query Humanization (Planned)
+### 2.3 Query Humanization (Done)
 
-Current queries average ~1,900 characters (LLM-generated summaries of full court decisions). Real judges and lawyers type much shorter queries. A detailed planning document exists at `documentation/PLANNING-HumanizeQuery.md` with a 4-step pipeline:
+Original queries averaged ~1,900 characters (LLM-generated summaries). Two query variants were created via LLM pipeline:
 
-1. **Fact Extraction** — LLM extracts discrete legal facts guided by relevant articles
-2. **Alignment Verification** — Ensure each relevant article has supporting facts
-3. **Query Synthesis** — Generate short (~100–200 char) queries in non-professional language
-4. **Coverage Check** — Verify all relevant articles still have retrieval signals
+- **Humanized**: Casual first-person queries (~100–200 chars) synthesized by LLM, simulating how non-lawyers describe legal situations
+- **Summarized**: LLM-summarized case facts in third-person formal style
 
-Research questions: (RQ1) How much does shortening degrade retrieval? (RQ2) Which methods are robust to short queries? (RQ3) Does fact-aware shortening preserve more quality than naive summarization?
+Both variants are available as separate datasets (`kuhperdata-humanized`, `kuhperdata-summarized`) with independent qrels and test splits.
 
-**Status**: Planning complete, implementation pending (~3,000 LLM calls estimated).
+**Status**: Complete. See `experiment/vllm_batch_summarizer.py` for the pipeline.
 
 ---
 
 ## 3. Benchmark Datasets
 
-| Property | KUHPerdata | BSARD | IL-PCSR | STARD |
-|----------|-----------|-------|---------|-------|
-| **Language** | Indonesian (id) | French (fr) | English (en) | Chinese (zh) |
-| **Legal System** | Civil (Dutch-derived) | Civil (Belgian) | Common (Indian) | Civil (Chinese) |
-| **Corpus Size** | 2,127 | 22,633 | 936 | 55,348 |
-| **Queries** | 1,368 | 1,108 | 6,271 | 1,543 |
-| **Train / Test** | 1,089 / 279 | 886 / 222 | 5,017 / 1,254 | 1,235 / 308 |
-| **Judgments** | 4,372 | 6,845 | 24,317 | 2,717 |
-| **Train / Test** | 3,512 / 860 | 5,784 / 1,061 | 19,482 / 4,835 | 2,205 / 512 |
-| **Avg Rel/Query** | 3.20 | 6.18 | 3.88 | 1.76 |
-| **Source** | Constructed (this work) | Louis et al., 2022 | Parikh et al., 2023 | Li et al., 2023 |
-| **Prepare Script** | `prepare_kuhperdata.py` | `prepare_bsard.py` | `prepare_ilpcsr.py` | `prepare_stard.py` |
+| Property | KUHPerdata-humanized | KUHPerdata-summarized | BSARD | IL-PCSR | STARD |
+|----------|---------------------|----------------------|-------|---------|-------|
+| **Language** | Indonesian (id) | Indonesian (id) | French (fr) | English (en) | Chinese (zh) |
+| **Legal System** | Civil (Dutch-derived) | Civil (Dutch-derived) | Civil (Belgian) | Common (Indian) | Civil (Chinese) |
+| **Corpus Size** | 2,127 | 2,127 | 22,633 | 936 | 55,348 |
+| **Queries** | 1,847 | 1,847 | 1,108 | 6,271 | 1,543 |
+| **Test Queries** | 383 | 373 | 222 | 1,254 | 308 |
+| **Query Style** | Casual first-person | Formal third-person | Legal questions | Case paragraphs | Legal scenarios |
+| **Avg Rel/Query** | ~2.2 | ~2.2 | 6.18 | 3.88 | 1.76 |
+| **Source** | Constructed (this work) | Constructed (this work) | Louis et al., 2022 | Parikh et al., 2023 | Li et al., 2023 |
+| **Prepare Script** | `prepare_kuhperdata.py` | `prepare_kuhperdata.py` | `prepare_bsard.py` | `prepare_ilpcsr.py` | `prepare_stard.py` |
 
 All datasets are normalized to **BEIR format**:
 
@@ -200,13 +199,19 @@ flowchart TB
         DL --> BM25["BM25<br/>(src/evaluate_bm25.py)"]
         DL --> DENSE["Dense Retrieval<br/>(src/evaluate_dense_retrieval.py)"]
         DL --> JNLP["JNLP Pipeline<br/>(src/jnlp/)"]
-        DL --> SAILER["SAILER<br/>(src/scripts/sailer/)"]
+        DL --> PARAGNN["Para-GNN / StructGNN<br/>(src/paragnn/)"]
+        DL --> GAR["GAR / Rerank / QUAM<br/>(src/gar/, src/quam/)"]
+        DL --> CONTEXT1["Context-1 Agentic<br/>(src/context_1/)"]
+        DL --> SAILER["SAILER (legacy)<br/>(src/scripts/sailer/)"]
     end
 
     subgraph Eval ["Evaluation Layer"]
         BM25 --> METRICS["Metrics<br/>(src/util/metrics.py)"]
         DENSE --> METRICS
         JNLP --> METRICS
+        PARAGNN --> METRICS
+        GAR --> METRICS
+        CONTEXT1 --> METRICS
         SAILER --> PYTREC["pytrec_eval<br/>(NDCG, MAP)"]
         METRICS --> LOGS["logs/{2,3}/*.txt"]
         PYTREC --> LOGS
@@ -218,7 +223,10 @@ flowchart TB
 ```
 TA/
 ├── data/                          # All datasets in BEIR format (.gitignored)
-│   ├── kuhperdata/                # Primary dataset (Indonesian)
+│   ├── kuhperdata-humanized/      # Primary dataset — casual first-person queries
+│   ├── kuhperdata-summarized/     # Formal third-person summarized queries
+│   ├── kuhperdata-exp/            # Expanded ground truth (humanized)
+│   ├── kuhperdata-summ-exp/       # Expanded ground truth (summarized)
 │   ├── bsard/                     # French statute retrieval
 │   ├── ilpcsr/                    # English statute retrieval
 │   ├── stard/                     # Chinese statute retrieval
@@ -227,57 +235,91 @@ TA/
 ├── documentation/                 # Design and planning documents
 │   ├── HLD.md                     # This document
 │   ├── benchmark-implementation-guide.md
-│   └── PLANNING-HumanizeQuery.md  # Query humanization strategy
-├── experiment/                    # Jupyter notebooks (data collection pipeline)
+│   ├── EVAL-Baseline-Results.md   # All evaluation results
+│   ├── EVAL-ParaGNN.md            # Para-GNN detailed results
+│   ├── EVAL-StructGNN.md          # StructGNN detailed results
+│   ├── PIPELINE-QrelsExpansion.md # Ground truth expansion methodology
+│   └── PLANNING-*.md             # Various planning documents
+├── experiment/                    # Jupyter notebooks + data collection
 │   ├── 1_statute_parser.ipynb
 │   ├── 2_judgement_parser.ipynb
 │   ├── 3_judgement_summarizer.ipynb
-│   ├── 4_bsard_dataset.ipynb
-│   ├── 5_ilpcsr_dataset.ipynb
-│   ├── 6_stard_dataset.ipynb
-│   ├── 7_split_visualization.ipynb
+│   ├── 3b_vllm_judgement_summarizer.ipynb
+│   ├── 4-7_*_dataset.ipynb        # External dataset preparation
+│   ├── vllm_batch_summarizer.py   # Query humanization/summarization pipeline
+│   ├── annotate_subsumption.py    # Ground truth expansion annotation
 │   ├── judgement_scraper.py
 │   └── claude-assistance/         # Auxiliary scraping scripts
 ├── src/
 │   ├── dataset.py                 # KUHPerdata dataset builder
-│   ├── evaluate_bm25.py           # BM25 evaluation (all datasets)
+│   ├── evaluate_bm25.py           # BM25 evaluation
 │   ├── evaluate_dense_retrieval.py # BGE-M3 cosine similarity
 │   ├── evaluate_jnlp.py           # JNLP pipeline entry point
+│   ├── evaluate_paragnn.py        # Para-GNN / StructGNN evaluation
+│   ├── evaluate_gar.py            # Graph Adaptive Reranking
+│   ├── evaluate_rerank.py         # BM25 + Reranker ablation
+│   ├── evaluate_quam.py           # QUAM evaluation
+│   ├── analysis_bm25_errors.py    # BM25 error analysis
+│   ├── analysis_structgnn_errors.py # StructGNN error analysis
+│   ├── context_1/                 # Agentic retrieval system
+│   │   ├── agent.py               # AgenticRetriever (observe-reason-act loop)
+│   │   ├── evaluate_context1.py   # Async evaluation harness
+│   │   ├── hybrid_search.py       # BM25 + Dense + RRF fusion
+│   │   ├── prompts.py             # LLM system prompt + tool definitions
+│   │   ├── token_budget.py        # Token budget management
+│   │   └── tools.py               # ToolExecutor (search, grep, read, prune)
+│   ├── paragnn/                   # Paragraph-level GNN
+│   │   ├── __init__.py            # ParaGNNConfig, DATASETS
+│   │   ├── model.py               # GNN model
+│   │   ├── eugat.py               # Edge-Updated Graph Attention Network
+│   │   ├── graph_builder.py       # Query-document graph construction
+│   │   ├── structure.py           # Structural features (act hash, positional)
+│   │   ├── dataset.py             # GNN dataset/dataloader
+│   │   ├── precompute.py          # BGE-M3 embedding precomputation
+│   │   └── trainer.py             # Training loop with alpha grid search
 │   ├── jnlp/                      # JNLP 3-stage pipeline
-│   │   ├── __init__.py            # Config, constants, base classes
-│   │   ├── pipeline.py            # Orchestrator
+│   │   ├── __init__.py            # Config dataclass
+│   │   ├── pipeline.py            # PipelineOrchestrator
 │   │   ├── stage1_retriever.py    # BGE-M3 + CatBoost
 │   │   ├── stage2_finetuner.py    # QLoRA Qwen fine-tuning
 │   │   └── stage3_ensemble.py     # Optuna weighted ensemble
+│   ├── gar/                       # Graph Adaptive Reranking
+│   │   ├── adaptive_reranker.py   # GAR reranker
+│   │   └── corpus_graph.py        # Corpus graph construction
+│   ├── quam/                      # QUAM (SetAff variant)
+│   │   └── adaptive_reranker.py   # SetAff update rule
+│   ├── data/                      # Ground truth expansion
+│   │   ├── expand_qrels.py        # LLM subsumption judgment pipeline
+│   │   └── RUBRIK-PERDATA.md      # Legal element analysis rubric
+│   ├── inference/                 # Model export and demo
+│   │   ├── export_hf.py           # Export to HuggingFace
+│   │   ├── import_hf.py           # Import from HuggingFace
+│   │   ├── infer_paragnn.py       # Para-GNN inference
+│   │   └── prepare_demo_data.py   # Demo data preparation
+│   ├── analysis/                  # Bias and distribution analysis
+│   │   ├── diagnose_hub_bias.py   # Hub article bias analysis
+│   │   └── training_distribution.py
 │   ├── scripts/
 │   │   ├── prepare_kuhperdata.py  # Download + BEIR conversion
 │   │   ├── prepare_bsard.py
 │   │   ├── prepare_ilpcsr.py
 │   │   ├── prepare_stard.py
 │   │   ├── push_kuhperdata.py     # Upload to HuggingFace
-│   │   └── sailer/                # SAILER fine-tuning + evaluation
-│   │       ├── build_finetune_data.py
-│   │       ├── build_encode_data.py
-│   │       ├── extend_vocab.py    # Indonesian vocab extension for SAILER
-│   │       ├── run_finetune.sh
-│   │       ├── run_encode.sh
-│   │       └── evaluate_retrieval.py
+│   │   ├── run_evaluate_multilingual.sh
+│   │   └── sailer/                # SAILER fine-tuning + evaluation (legacy)
 │   └── util/
 │       ├── bm25.py                # Custom BM25 implementation
+│       ├── compat.py              # Compatibility utilities
 │       ├── dataloader.py          # BEIR format loader
 │       └── metrics.py             # MRR, Recall, Precision, Hit Rate
 ├── logs/                          # Evaluation results
-│   ├── 2/                         # BM25, dense retrieval, initial Stage 1
-│   └── 3/                         # Cross-dataset Stage 1, Stage 2, SAILER
 ├── outputs/                       # Model outputs (.gitignored)
 ├── setup_vm.sh                    # GPU VM one-time setup
 ├── requirements.txt               # Full dependencies
-├── requirements-jnlp.txt         # JNLP-specific deps (Python 3.12)
-├── requirements-sailer.txt       # SAILER-specific deps (Python 3.10)
-└── pyproject.toml                 # Minimal dependencies (data collection)
+└── pyproject.toml                 # Project configuration
 ```
 
-**Sibling directory**: `../SAILER/` — Full SAILER repository (converted from git submodule to plain code for easier modification).
+**Sibling directory**: `../SAILER/` — Full SAILER repository (legacy, converted from git submodule).
 
 ### 5.2 Key Design Decisions
 
@@ -448,11 +490,112 @@ SAILER (Structure-Aware pre-trained language model for legal text retrieval) is 
 
 **Conclusion**: SAILER_en is unsuitable for non-English statute retrieval. Vocabulary extension alone cannot overcome English-only pre-training weights. Multilingual-e5-base outperforms by **33×** (NDCG@10: 0.149 vs. 0.0045), confirming that multilingual pre-training is essential for cross-lingual legal IR.
 
+### 6.5 Para-GNN
+
+**Package**: `src/paragnn/`
+
+Adapted from IL-PCSR (Paul et al., EMNLP 2025). Builds a graph per query-document pair:
+
+- **Document nodes**: query + statute candidates (embedding = mean of paragraph embeddings)
+- **Paragraph nodes**: per-sentence embeddings (BGE-M3, 1024d)
+- **Edges**: paragraph → parent document, with rhetorical role embedding as edge feature
+- **GNN**: 2-layer Edge-Updated Graph Attention Network (EUGAT)
+- **Scoring**: `alpha × GNN_score + (1-alpha) × BM25_score` with post-training alpha grid search
+
+Two method variants:
+- **Adapted**: query as single paragraph (no LLM needed) — default
+- **Full**: query split into sentences, each labeled with rhetorical role by LLM
+
+Key engineering improvements over IL-PCSR:
+1. **Post-training alpha grid search** — decouples GNN quality from BM25 blend ratio
+2. **Early stopping** (patience=10) — prevents overfitting
+3. **BGE-M3 embeddings** — replaces original encoders for multilingual support
+
+### 6.6 StructGNN
+
+**Package**: `src/paragnn/` (structure_mode=structural)
+
+StructGNN extends Para-GNN with **structural node features** as a language-agnostic alternative to proximity edges:
+
+- **Act hash** (`act_dim`): deterministic hash vector identifying which legal instrument (act/code) an article belongs to — enables the GNN to distinguish articles from different statutes in multi-act corpora like BSARD
+- **Positional encoding** (`pos_dim`): sinusoidal encoding of normalized sequential position within the act (index / total articles)
+
+These features are language-agnostic: for multi-act datasets (BSARD, STARD), the act hash differentiates statutes; for single-act datasets (KUHPerdata), positional encoding captures sequential proximity between articles.
+
+**CLI**:
+```bash
+python src/evaluate_paragnn.py --dataset kuhperdata-humanized --structure_mode structural
+```
+
+### 6.7 GAR (Graph-based Adaptive Re-ranking)
+
+**Package**: `src/gar/`
+
+Builds a corpus similarity graph and iteratively expands the retrieval set by following edges from high-scoring documents. Uses MonoT5, mT5, or BGE cross-encoder as scorer.
+
+**CLI**:
+```bash
+python src/evaluate_gar.py --dataset kuhperdata-humanized --scorer bge
+```
+
+### 6.8 Rerank (BM25 + Reranker Ablation)
+
+**File**: `src/evaluate_rerank.py`
+
+Ablation isolating the reranker contribution: BM25 top-N → reranker re-scores all N → re-sort. No graph expansion. Compares with GAR to measure graph expansion value.
+
+### 6.9 QUAM
+
+**Package**: `src/quam/`
+
+QUAM uses a SetAff (Set Affinity) update rule instead of GAR's simple max for graph frontier expansion. The `top_s` parameter controls frontier expansion aggressiveness.
+
+### 6.10 Context-1 (Agentic Retrieval)
+
+**Package**: `src/context_1/`
+
+An agentic retrieval system where an LLM performs multi-turn reasoning with tool calls:
+
+1. **Observe**: LLM receives query + current document set
+2. **Reason**: LLM identifies gaps in coverage, formulates search strategies
+3. **Act**: LLM calls tools (search_corpus, grep_corpus, read_document, prune_chunks)
+4. **Repeat**: Up to 10 turns with token budget management
+
+**Architecture**:
+- **Hybrid search**: BM25 + BGE-M3 dense retrieval with RRF fusion (k=60)
+- **Optional cross-encoder reranking**: BGE-reranker-v2-m3
+- **Token budget**: Limits total context to prevent runaway costs
+- **Resumable**: Results streamed to `agent_log.jsonl` per query
+
+**CLI**:
+```bash
+python src/context_1/evaluate_context1.py --dataset kuhperdata-humanized \
+  --base_url http://127.0.0.1:8000/v1 --model qwen3.6-27b --concurrency 4
+```
+
 ---
 
-## 7. Evaluation Framework
+## 7. Ground Truth Expansion Pipeline
 
-### 7.1 Metrics
+**Files**: `src/data/expand_qrels.py`, `src/data/RUBRIK-PERDATA.md`
+
+The original KUHPerdata dataset has sparse ground truth (~2.2 relevant articles per query). We use LLM-based legal element subsumption analysis to expand relevance judgments.
+
+**Method** (adapted from Rubrik Pidana → Rubrik Perdata):
+1. For each query, retrieve BM25 top-50 candidate articles (excluding existing ground truth)
+2. LLM performs *unsur analysis* per article: identify core legal elements, check if each is discussed in the case facts
+3. An article is **RELEVAN** if all core elements are discussed (even if the court rejected the claim)
+4. An article is **TIDAK RELEVAN** if core elements are absent or the legal domain doesn't match
+
+**Implementation**: Qwen 3.6 27B AWQ via vLLM, 16-24 concurrent queries, streamed to `expansion_log.jsonl` for resumability.
+
+**Documentation**: See `documentation/PIPELINE-QrelsExpansion.md` for full methodology, worked examples, and rubric design.
+
+---
+
+## 8. Evaluation Framework
+
+### 8.1 Metrics
 
 | Metric | Description | Implementation |
 |--------|-------------|----------------|
@@ -460,84 +603,59 @@ SAILER (Structure-Aware pre-trained language model for legal text retrieval) is 
 | **Recall@K** | Fraction of relevant docs retrieved in top-K | `src/util/metrics.py` |
 | **Precision@K** | Fraction of top-K docs that are relevant | `src/util/metrics.py` |
 | **Hit Rate** | Fraction of queries with ≥1 relevant doc in top-K | `src/util/metrics.py` |
-| **NDCG@10** | Normalized Discounted Cumulative Gain | `pytrec_eval` (SAILER) |
-| **MAP** | Mean Average Precision | `pytrec_eval` (SAILER) |
+| **NDCG@10** | Normalized Discounted Cumulative Gain | `pytrec_eval` (SAILER legacy) |
+| **MAP** | Mean Average Precision | `pytrec_eval` (SAILER legacy) |
 | **F2-Score** | F-beta with beta=2 (recall-biased) | `src/jnlp/stage3_ensemble.py` |
 
-### 7.2 BM25 Baseline Results (All Datasets)
+### 8.2 KUHPerdata Method Comparison (Humanized, test split, max_relevant=5)
 
-> Source: `logs/2/bm25.txt`
+| Method | MRR@10 | Recall@10 | Hit Rate |
+|--------|--------|-----------|----------|
+| BM25 (stemmer+stopwords) | 0.0601 | 0.1032 | 14.6% |
+| Dense (BGE-M3) | 0.0926 | 0.1451 | 20.4% |
+| JNLP Stage 1 | 0.4356 | 0.6024 | 71.8% |
+| Para-GNN (base, alpha=0.8) | 0.4857 | 0.5375 | 70.2% |
+| **StructGNN (alpha=0.9)** | **0.5176** | **0.6213** | **77.3%** |
 
-| Dataset | Language | MRR@10 | Recall@10 | Precision@10 | Hit Rate | N Queries |
-|---------|----------|--------|-----------|--------------|----------|-----------|
-| **KUHPerdata** | id | 0.1467 | 0.0858 | 0.0316 | 24.06% | 212 |
-| **BSARD** | fr | 0.2488 | 0.2664 | 0.0716 | 42.34% | 222 |
-| **IL-PCSR** | en | 0.1558 | 0.1017 | 0.0332 | 25.04% | 1,254 |
-| **STARD** | zh | 0.3382 | 0.4272 | 0.0643 | 53.25% | 308 |
+### 8.3 Cross-Dataset Results
 
-### 7.3 KUHPerdata Method Comparison
+#### BM25 (source: `logs/2/bm25.txt`)
 
-> Sources: `logs/2/`, `logs/3/jnlp_stage1.txt`, `logs/3/jnlp_stage2.txt`, `logs/3/sailer_comparison.txt`
+| Dataset | Lang | MRR@10 | Recall@10 | Hit Rate |
+|---------|------|--------|-----------|----------|
+| KUHPerdata | id | 0.1467 | 0.0858 | 24.1% |
+| BSARD | fr | 0.2488 | 0.2664 | 42.3% |
+| IL-PCSR | en | 0.1558 | 0.1017 | 25.0% |
+| STARD | zh | 0.3382 | 0.4272 | 53.3% |
 
-| Method | MRR@10 | Recall@10 | Precision@10 | Hit Rate | Status |
-|--------|--------|-----------|--------------|----------|--------|
-| BM25 (b=0.7, k1=1.6) | 0.1467 | 0.0858 | 0.0316 | 24.06% | Done |
-| BGE-M3 Dense (cosine) | 0.1625 | 0.1300 | 0.0500 | 27.83% | Done |
-| me5-base (fine-tuned) | 0.1603 | 0.2660 | — | — | Done |
-| SAILER_en + vocab ext. + fine-tune | 0.0104 | 0.0058 | — | — | Done |
-| JNLP Stage 1 (product) | **0.3997** | 0.3939 | — | 62.0% | Done |
-| JNLP Stage 2 (QLoRA Qwen2.5-7B) | 0.3945 | **0.4151** | — | **64.5%** | Done |
-| JNLP Stage 1 + Re-ranker | — | — | — | — | TBD |
-| JNLP Stage 3 (Ensemble) | — | — | — | — | TBD |
+#### JNLP Stage 1 (source: `logs/3/jnlp_stage1.txt`)
 
-**Note**: Stage 1 MRR@10 differs between `logs/2/` (0.4681, 212 queries) and `logs/3/` (0.3997, 279 queries) due to different test query counts. The `logs/3/` run uses the full 279 test queries and is the canonical result.
+| Dataset | Lang | MRR@10 | Recall@10 | Hit Rate | vs BM25 |
+|---------|------|--------|-----------|----------|---------|
+| KUHPerdata | id | 0.3997 | 0.3939 | 62.0% | +173% |
+| BSARD | fr | 0.3284 | 0.3047 | 44.6% | +32% |
+| IL-PCSR | en | 0.0493 | 0.0323 | 12.9% | -68% |
+| STARD | zh | 0.2705 | 0.3895 | 49.4% | -20% |
 
-### 7.4 JNLP Stage 1 Cross-Dataset Results
+#### Para-GNN (source: `documentation/EVAL-ParaGNN.md`)
 
-> Source: `logs/3/jnlp_stage1.txt`
+| Dataset | Lang | MRR@10 | Recall@10 | Hit Rate | Alpha | vs JNLP S1 |
+|---------|------|--------|-----------|----------|-------|-------------|
+| KUHPerdata-humanized | id | 0.456 | 0.542 | 67.8% | 0.9 | +24% |
+| KUHPerdata-summarized | id | 0.458 | 0.522 | 71.1% | 0.8 | +36% |
+| BSARD | fr | 0.493 | 0.487 | 68.5% | 0.7 | +50% |
+| STARD | zh | 0.527 | 0.617 | 72.4% | 0.8 | +94% |
 
-| Dataset | Language | N Queries | MRR@10 | Recall@10 | Hit Rate | vs BM25 MRR |
-|---------|----------|-----------|--------|-----------|----------|-------------|
-| **KUHPerdata** | id | 279 | **0.3997** | 0.3939 | 62.0% | **+173%** |
-| **BSARD** | fr | 222 | **0.3284** | 0.3047 | 44.6% | **+32%** |
-| **IL-PCSR** | en | 1,254 | 0.0493 | 0.0323 | 12.9% | -68% |
-| **STARD** | zh | 308 | 0.2705 | 0.3895 | 49.4% | -20% |
+#### GAR (source: `logs/3/gar.txt`)
 
-**Key finding**: JNLP Stage 1 excels on small-to-medium corpora (KUHPerdata: 2,127 docs, BSARD: 22,633 docs) but **regresses** on IL-PCSR and STARD. Root causes:
+| Dataset | Lang | MRR@10 | Recall@10 | Hit Rate |
+|---------|------|--------|-----------|----------|
+| KUHPerdata | id | 0.1909 | 0.2450 | 37.3% |
+| BSARD | fr | 0.1938 | 0.2058 | 36.5% |
+| IL-PCSR | en | 0.1558 | 0.1017 | 25.0% |
+| STARD | zh | 0.3728 | 0.4562 | 55.2% |
 
-- **IL-PCSR**: Extremely long queries (avg ~3,396 words) cause BGE-M3 to produce generic vectors with near-zero separability. BM25 benefits from raw token overlap. Also, 5,017 train queries over only 936 docs means BM25 top-100 negatives cover 10.7% of the entire corpus, reducing hard negative informativeness.
-- **STARD**: Large Chinese corpus (55,348 docs) where BGE-M3 product features don't discriminate well at scale.
-
-### 7.5 Dense Retrieval Detailed Results (KUHPerdata)
-
-> Source: `logs/2/dense_bge_fulldim_cossim.txt`
-
-| K | MRR@K | Recall@K | Precision@K | Hit Rate |
-|---|-------|----------|-------------|----------|
-| 10 | 0.1625 | 0.1300 | 0.0500 | 27.83% |
-| 50 | 0.1703 | 0.2369 | 0.0206 | 46.23% |
-| 100 | 0.1714 | 0.3082 | 0.0135 | 54.25% |
-
-**Score Distribution Analysis**:
-- Relevant pair mean cosine: 0.5526
-- Non-relevant pair mean cosine: 0.4851
-- Separability index: 0.5043 (barely above chance)
-
-### 7.6 Stage 2 Detailed Results (KUHPerdata)
-
-> Source: `logs/3/jnlp_stage2.txt`
-
-| Metric | Stage 1 Only | Stage 1 + Stage 2 | Change |
-|--------|-------------|-------------------|--------|
-| MRR@10 | 0.3997 | 0.3945 | -0.005 (-0.1%) |
-| Recall@10 | 0.3939 | 0.4151 | +0.021 (+5.4%) |
-| Hit Rate | 62.0% | 64.5% | +2.5% |
-
-**Configuration**: Qwen2.5-7B-Instruct, 4-bit QLoRA via Unsloth, hard negative mining (4 hard + 1 random per query), 1 epoch, 988 training steps.
-
-**Interpretation**: MRR@10 slightly drops but Recall@10 improves significantly. Stage 2 trades top-1 precision for broader recall — appropriate for legal retrieval where missing a relevant article is more costly than imprecise ranking.
-
-### 7.7 Evaluation Protocol
+### 8.4 Evaluation Protocol
 
 | Protocol | Detail |
 |----------|--------|
@@ -546,154 +664,139 @@ SAILER (Structure-Aware pre-trained language model for legal text retrieval) is 
 | **Leakage prevention** | Statute references stripped from queries |
 | **Random seed** | 42 (fixed for reproducibility) |
 | **Metrics computed** | Per-query, then averaged (macro) |
+| **max_relevant** | 5 (queries with >5 relevant docs filtered out) |
 
 ---
 
-## 8. Research Findings and Open Questions
+## 9. Research Findings and Open Questions
 
-### 8.1 BM25 Struggles with Legal Text
+### 9.1 BM25 Struggles with Legal Text
 
-BM25 achieves only MRR@10 = 0.15 on KUHPerdata (and similarly on IL-PCSR at 0.16). Legal statutes use formal, archaic language that diverges significantly from how legal situations are described in court decisions. Term overlap between queries and relevant articles is low.
+BM25 achieves only MRR@10 = 0.06 on KUHPerdata-humanized. Legal statutes use formal, archaic language that diverges significantly from casual first-person queries. Summarized queries perform better (0.09) due to more formal vocabulary.
 
-STARD performs notably better (MRR@10 = 0.34), possibly because Chinese statute text has higher lexical overlap with case descriptions, or because STARD's avg 1.76 relevant docs/query makes the task inherently easier.
+### 9.2 Dense Retrieval Marginal Over BM25
 
-### 8.2 Dense Retrieval Marginal Over BM25
+Raw BGE-M3 cosine retrieval improves only marginally over BM25 on KUHPerdata (+0.03 MRR). The separability index of 0.50 suggests embeddings alone cannot distinguish relevant from non-relevant pairs.
 
-Raw BGE-M3 cosine retrieval improves only marginally over BM25 on KUHPerdata (+0.016 MRR, +0.044 Recall@10). The separability index of 0.50 suggests embeddings alone cannot distinguish relevant from non-relevant pairs — the cosine similarity distributions overlap almost entirely.
+### 9.3 JNLP Stage 1: Effective but Language-Dependent
 
-### 8.3 JNLP Stage 1: Effective but Language-Dependent
-
-The CatBoost classifier over product features achieves MRR@10 = 0.40 on KUHPerdata, a **2.7× improvement over BM25**. However, cross-dataset evaluation reveals this is **not universal**:
+The CatBoost classifier over product features achieves MRR@10 = 0.44 on KUHPerdata-humanized, a significant improvement over BM25. However, cross-dataset evaluation reveals this is **not universal**:
 
 - **Works well**: KUHPerdata (+173% vs BM25), BSARD (+32%)
 - **Regresses**: IL-PCSR (-68%), STARD (-20%)
 
 This suggests element-wise product features and BM25 hard negatives are most effective when: (a) queries are moderate length, (b) corpus is small-to-medium, and (c) BGE-M3 embeddings have sufficient separability. When queries are extremely long (IL-PCSR) or the corpus is very large (STARD), the approach breaks down.
 
-### 8.4 Stage 2 Improves Recall at Cost of MRR
+### 9.4 Para-GNN Generalizes, StructGNN Leads
 
-QLoRA-finetuned Qwen2.5-7B on KUHPerdata shows a recall-precision tradeoff: MRR@10 drops marginally (-0.1%) while Recall@10 improves meaningfully (+5.4%). This is desirable for legal retrieval where coverage matters more than top-1 precision.
+Para-GNN with post-training alpha grid search consistently outperforms JNLP Stage 1 across all tested datasets (+24% to +94%). StructGNN adds structural features that further improve performance on KUHPerdata (MRR: 0.4857 → 0.5176) and reduce hub bias (debiased MRR drops less: 0.2272 vs 0.1881).
 
-### 8.5 SAILER Fails Cross-Lingually
+### 9.5 Hub Bias in Graph Methods
 
-SAILER_en with vocabulary extension (2,232 Indonesian tokens) and fine-tuning achieves only NDCG@10 = 0.0045 on KUHPerdata — **33× worse** than multilingual-e5-base. English pre-training weights dominate despite tokenization extension, confirming that multilingual pre-training (not just multilingual tokenization) is essential for cross-lingual legal IR.
+Para-GNN exhibits hub bias — frequently-cited articles like Pasal 1365 (PMH) achieve high scores regardless of actual relevance. Debiased MRR drops from 0.4857 → 0.1881 (humanized). StructGNN's positional encoding partially mitigates this (0.5176 → 0.2272).
 
-### 8.6 Answered Questions
+### 9.6 SAILER Fails Cross-Lingually
+
+SAILER_en with vocabulary extension and fine-tuning achieves only NDCG@10 = 0.0045 on KUHPerdata — **33× worse** than multilingual-e5-base. Multilingual pre-training (not just tokenization) is essential.
+
+### 9.7 Answered Questions
 
 | Question | Answer |
 |----------|--------|
 | Does Stage 1 transfer across datasets? | Partially — works on KUHPerdata and BSARD, regresses on IL-PCSR and STARD |
 | Can Stage 2 improve Stage 1? | Yes, +5.4% Recall@10 on KUHPerdata (minor MRR trade-off) |
-| Does SAILER complement BGE-M3? | No — SAILER is unsuitable for non-English legal text |
+| Does SAILER complement BGE-M3? | No — unsuitable for non-English legal text |
+| Does Para-GNN generalize? | Yes — +24% to +94% over JNLP S1 across ID, FR, ZH datasets |
+| Does StructGNN reduce hub bias? | Partially — debiased scores drop less than base Para-GNN |
+| Does query humanization change which methods are best? | BM25/Dense degrade more with casual queries; GNN methods are more robust |
 
-### 8.7 Open Questions
+### 9.8 Open Questions
 
-- **IL-PCSR/STARD remediation**: Can query truncation, corpus chunking, or alternative negative sampling fix the regressions?
-- **Stage 2 on other datasets**: Will QLoRA improve recall on BSARD, IL-PCSR, STARD similarly?
-- **Stage 3 ensemble**: Can combining multiple Stage 2 models (Qwen2, Qwen2.5, Qwen3) push F2 further?
-- **Feature type ablation**: How does product feature performance compare to histogram across languages?
-- **Query humanization impact**: Does shortening queries to realistic lengths change which methods are best?
+- **StructGNN cross-dataset**: Run StructGNN on BSARD, IL-PCSR, STARD
+- **Expanded ground truth evaluation**: Re-run all methods on expanded qrels (kuhperdata-exp, kuhperdata-summ-exp)
+- **Context-1 full evaluation**: Run agentic retrieval on all datasets
+- **Exhaustive judgment**: All 2127 articles per query for complete qrels (zero pooling bias)
 
 ---
 
-## 9. Infrastructure and Reproducibility
+## 10. Infrastructure and Reproducibility
 
-### 9.1 Environment
+### 10.1 Environment
 
 | Component | Version/Tool |
 |-----------|-------------|
-| **Python (JNLP)** | 3.12 (`.venv-jnlp`) |
-| **Python (SAILER)** | 3.10 (`.venv-sailer`) |
+| **Python** | 3.12 |
 | **Package Manager** | uv |
+| **GPU (VM)** | NVIDIA RTX PRO 5000 Blackwell (sm_120) |
+| **Torch** | 2.7.0+cu128 |
+| **DGL** | 2.4+cu124 (compatible with torch 2.7 despite version warning) |
+| **vLLM** | 0.20.0 (for ground truth expansion + agentic retrieval) |
 | **GPU Setup** | `setup_vm.sh` (one-time VM provisioning) |
 | **Random Seed** | 42 |
 
-### 9.2 Key Dependencies
+### 10.2 Key Dependencies
 
 | Category | Packages |
 |----------|----------|
 | **Data Processing** | PyMuPDF, pandas, beautifulsoup4, cloudscraper, tqdm |
-| **LLM APIs** | mistralai, openai, python-dotenv |
+| **LLM APIs** | openai, vllm |
 | **ML Core** | scikit-learn, jieba, datasets |
-| **JNLP Pipeline** | torch, transformers (<5.0), sentence-transformers, accelerate, peft, bitsandbytes, FlagEmbedding, catboost, imbalanced-learn, optuna |
-| **SAILER** | rank-bm25, pytrec-eval-terrier, faiss (1.7.3) |
+| **JNLP Pipeline** | torch, transformers, sentence-transformers, accelerate, peft, bitsandbytes, FlagEmbedding, catboost, imbalanced-learn, optuna |
+| **Para-GNN** | torch, dgl, FlagEmbedding |
 | **Unsloth** | unsloth (QLoRA 4-bit quantization) |
+| **SAILER (legacy)** | rank-bm25, pytrec-eval-terrier, faiss |
 
-### 9.3 VM Setup and Data Regeneration
+### 10.3 VM Setup and Data Regeneration
 
-The `setup_vm.sh` script performs complete environment setup with **two separate virtual environments**:
+The `setup_vm.sh` script performs complete environment setup:
 
-1. Clones the SAILER repository as a sibling directory (`../SAILER/`)
-2. Creates `.venv-sailer` (Python 3.10) — data preparation + SAILER fine-tuning
-3. Creates `.venv-jnlp` (Python 3.12) — JNLP pipeline evaluation
-4. Installs dependencies from `requirements-sailer.txt` and `requirements-jnlp.txt` respectively
-5. Regenerates all 4 datasets via prepare scripts:
+1. Creates virtual environment (Python 3.12)
+2. Installs dependencies from `requirements.txt`
+3. Regenerates all datasets via prepare scripts:
    - `python src/scripts/prepare_kuhperdata.py`
    - `python src/scripts/prepare_bsard.py`
    - `python src/scripts/prepare_ilpcsr.py`
    - `python src/scripts/prepare_stard.py`
-6. Builds SAILER fine-tuning and encoding data
 
 All data can be regenerated from scratch — no data files need to be committed to git.
 
 ---
 
-## 10. Appendix
+## 11. Appendix
 
-### 10.1 CLI Reference
+### 11.1 CLI Reference
 
 | Command | Description |
 |---------|-------------|
-| `python src/evaluate_bm25.py --dataset <name> --top_k 10` | Run BM25 evaluation |
-| `python src/evaluate_dense_retrieval.py` | Run BGE-M3 dense retrieval on KUHPerdata |
-| `python src/evaluate_jnlp.py --dataset <name> --stage 1 --feature_type product` | JNLP Stage 1 only |
+| `python src/evaluate_bm25.py --dataset <name> --top_k 10` | BM25 evaluation |
+| `python src/evaluate_dense_retrieval.py --dataset <name>` | BGE-M3 dense retrieval |
+| `python src/evaluate_jnlp.py --dataset <name> --stage 1` | JNLP Stage 1 |
 | `python src/evaluate_jnlp.py --dataset <name> --stage 2 --llm_model qwen2.5` | JNLP Stage 1+2 |
-| `python src/scripts/prepare_kuhperdata.py` | Regenerate KUHPerdata from HuggingFace |
+| `python src/paragnn/precompute.py --dataset <name> --method adapted` | Precompute embeddings for Para-GNN |
+| `python src/evaluate_paragnn.py --dataset <name> --structure_mode none` | Para-GNN evaluation |
+| `python src/evaluate_paragnn.py --dataset <name> --structure_mode structural` | StructGNN evaluation |
+| `python src/evaluate_gar.py --dataset <name> --scorer bge` | GAR evaluation |
+| `python src/evaluate_rerank.py --dataset <name> --scorer bge` | Rerank evaluation |
+| `python src/evaluate_quam.py --dataset <name>` | QUAM evaluation |
+| `python src/context_1/evaluate_context1.py --dataset <name> --base_url <url>` | Context-1 agentic evaluation |
+| `python src/data/expand_qrels.py --dataset <name> --model <model>` | Ground truth expansion |
+| `python src/scripts/prepare_kuhperdata.py` | Regenerate KUHPerdata |
 | `python src/scripts/prepare_bsard.py` | Regenerate BSARD |
 | `python src/scripts/prepare_ilpcsr.py` | Regenerate IL-PCSR |
 | `python src/scripts/prepare_stard.py` | Regenerate STARD |
-| `python src/scripts/sailer/extend_vocab.py` | Extend SAILER tokenizer with Indonesian tokens |
-| `python src/scripts/sailer/build_finetune_data.py` | Build SAILER fine-tuning data |
-| `python src/scripts/sailer/build_encode_data.py` | Build SAILER encoding data |
-| `bash src/scripts/sailer/run_finetune.sh` | Fine-tune SAILER model |
-| `bash src/scripts/sailer/run_encode.sh` | Encode with fine-tuned SAILER |
-| `python src/scripts/sailer/evaluate_retrieval.py` | Evaluate SAILER retrieval |
 | `python src/scripts/push_kuhperdata.py` | Upload KUHPerdata to HuggingFace |
 | `bash setup_vm.sh` | Full VM setup (one-time) |
 
-### 10.2 BM25 CLI Options
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--dataset` | `kuhperdata` | Dataset name (`kuhperdata`, `bsard`, `ilpcsr`, `stard`) |
-| `--split` | `test` | Evaluation split |
-| `--top_k` | `10` | Number of top documents to retrieve |
-| `--bm25_b` | `0.75` | BM25 b parameter (document length normalization) |
-| `--bm25_k1` | `1.5` | BM25 k1 parameter (term frequency saturation) |
-| `--n_gram` | `(1, 1)` | N-gram range for TF-IDF |
-| `--verbose` | `False` | Show per-query results |
-
-### 10.3 JNLP CLI Options
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--dataset` | `kuhperdata` | Dataset name |
-| `--stage` | `1` | Pipeline stage (1, 2, or 3) |
-| `--feature_type` | `product` | Feature extraction (`product` or `histogram`) |
-| `--llm_model` | `qwen2.5` | LLM shorthand: `qwen2`, `qwen2.5`, `qwen3`, `qwen3.5` |
-| `--no-reranker` | `False` | Disable re-ranker in Stage 1 |
-
-### 10.4 Model Cards
+### 11.2 Model Cards
 
 | Model | HuggingFace ID | Usage |
 |-------|---------------|-------|
-| **BGE-M3** | `BAAI/bge-m3` | Multilingual embeddings (1024-dim) for JNLP Stage 1 and dense retrieval |
-| **BGE Reranker v2 M3** | `BAAI/bge-reranker-v2-m3` | Optional re-ranker in JNLP Stage 1 |
-| **RankLLaMA** | `castorini/rankllama-v1-7b-lora-passage` | Alternative re-ranker |
-| **Qwen2-7B-Instruct** | `Qwen/Qwen2-7B-Instruct` | LLM for JNLP Stage 2 |
-| **Qwen2.5-7B-Instruct** | `Qwen/Qwen2.5-7B-Instruct` | Default LLM for JNLP Stage 2 |
+| **BGE-M3** | `BAAI/bge-m3` | Multilingual embeddings (1024-dim) for all methods |
+| **BGE Reranker v2 M3** | `BAAI/bge-reranker-v2-m3` | Cross-encoder reranker (GAR, Rerank, Context-1) |
+| **MonoT5** | `castorini/monot5-base-msmarco` | Seq2seq reranker (GAR, Rerank) |
+| **mT5** | `unicamp-dl/mt5-base-mmarco-v2` | Multilingual seq2seq reranker |
+| **Qwen2.5-7B-Instruct** | `Qwen/Qwen2.5-7B-Instruct` | Default LLM for JNLP Stage 2 (QLoRA via Unsloth) |
+| **Qwen3.6-27B-AWQ** | `QuantTrio/Qwen3.6-27B-AWQ` | Ground truth expansion + agentic retrieval (vLLM) |
 | **Qwen3-8B** | `Qwen/Qwen3-8B` | Alternative LLM for Stage 2 |
-| **Qwen3.5-4B** | `Qwen/Qwen3.5-4B` | Lightweight alternative LLM for Stage 2 |
-| **multilingual-e5-base** | `intfloat/multilingual-e5-base` | Multilingual dense retrieval (SAILER comparison baseline) |
-| **SAILER_en** | `CSHaitao/SAILER_en` | Structure-aware legal encoder (unsuitable for non-English) |
+| **Qwen3.5-4B** | `Qwen/Qwen3.5-4B` | Lightweight alternative LLM |
 | **MiniLM** | `paraphrase-multilingual-MiniLM-L12-v2` | Query embedding for semantic splitting |
