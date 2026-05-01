@@ -319,14 +319,18 @@ async def main():
             for qid in remaining_qids
         ]
 
-        results = await tqdm_asyncio.gather(
-            *tasks, desc="Agentic retrieval",
-        )
-
-        with open(log_path, "a", encoding="utf-8") as f:
-            for result in results:
-                f.write(json.dumps(result, ensure_ascii=False) + "\n")
-                prev_rankings[result["qid"]] = result["ranked_doc_ids"]
+        results = []
+        log_file = open(log_path, "a", encoding="utf-8")
+        pbar = tqdm_asyncio(total=len(tasks), desc="Agentic retrieval")
+        for coro in asyncio.as_completed(tasks):
+            result = await coro
+            results.append(result)
+            prev_rankings[result["qid"]] = result["ranked_doc_ids"]
+            log_file.write(json.dumps(result, ensure_ascii=False) + "\n")
+            log_file.flush()
+            pbar.update(1)
+        pbar.close()
+        log_file.close()
 
         errors = [r for r in results if r["error"]]
         if errors:
