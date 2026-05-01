@@ -1,6 +1,6 @@
 # Rubrik Analisis Unsur Hukum Perdata (KUHPerdata)
 
-Dokumen ini merupakan adaptasi dari **rubrik analisis unsur tindak pidana** yang diberikan oleh Pak Panca untuk domain hukum pidana. Rubrik ini diterjemahkan ke domain **hukum perdata** (KUHPerdata) dengan tujuan:
+Dokumen ini merupakan adaptasi dari **rubrik analisis unsur tindak pidana** yang diberikan oleh Law Supervisor untuk domain hukum pidana. Rubrik ini diterjemahkan ke domain **hukum perdata** (KUHPerdata) dengan tujuan:
 
 1. Memberikan kerangka sistematis untuk menilai relevansi pasal KUHPerdata terhadap fakta kasus
 2. Digunakan sebagai template prompt LLM untuk ekspansi ground truth dataset
@@ -322,7 +322,7 @@ Penting:
 
 ## Lampiran: Perbandingan Format Rubrik Pidana vs Perdata
 
-### Format Rubrik Pidana (Pak Panca)
+### Format Rubrik Pidana (https://aclc.kpk.go.id/materi-pembelajaran/hukum/buku/buku-saku-memahami-untuk-membasmi)
 
 ```
 Pasal 2 UU No. 31 Tahun 1999 jo. UU No. 20 Tahun 2001:

@@ -140,7 +140,7 @@ For the final benchmark, exhaustive judgment over all 2127 articles per query el
 
 ## Validation Plan
 
-1. **Human agreement study**: Sample 100 query-article pairs, have a legal expert (Pak Panca) judge independently, compute Cohen's kappa
+1. **Human agreement study**: Sample 100 query-article pairs, have a legal expert judge independently, compute Cohen's kappa
 2. **Error analysis**: Categorize disagreements into false positives (LLM too lenient) vs false negatives (LLM too strict)
 3. **Cross-model validation**: Run with a different LLM family, measure inter-model agreement
 
