@@ -62,6 +62,8 @@ def evaluate_cosine_retrieval(
 DATASETS = {
     "kuhperdata-humanized": "data/kuhperdata-humanized",
     "kuhperdata-summarized": "data/kuhperdata-summarized",
+    "kuhperdata-exp": "data/kuhperdata-exp",
+    "kuhperdata-summ-exp": "data/kuhperdata-summ-exp",
     "bsard": "data/bsard",
     "ilpcsr": "data/ilpcsr",
     "stard": "data/stard",
