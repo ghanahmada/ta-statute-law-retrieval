@@ -41,6 +41,7 @@ All 383 humanized / 373 summarized test queries included.
 | Para-GNN | summ-exp | 0.5197 | 0.5119 | — | 82.8% | 0.2939 |
 | **StructGNN** | **exp** | **0.6297** | **0.5970** | — | **85.1%** | **0.3163** |
 | **StructGNN** | **summ-exp** | **0.5418** | **0.5276** | — | **82.1%** | **0.3154** |
+| Agentic (BGE+BM25) | exp | 0.2238 | 0.1423 | 0.0567 | 37.9% | — |
 
 ### GNN Alpha Values (Expanded)
 
@@ -65,7 +66,8 @@ All 383 humanized / 373 summarized test queries included.
 ### Pending (Expanded)
 
 - [x] GAR (exp + summ-exp) — done, mt5 scorer underperforms on Indonesian
-- [ ] Agentic (Qwen 3.5 9B + BGE+BM25) on exp + summ-exp
+- [x] Agentic (Qwen 3.5 9B + BGE+BM25) on exp — done, MRR 0.2238 (beats BM25/Dense, below Rerank)
+- [ ] Agentic (Qwen 3.5 9B + BGE+BM25) on summ-exp
 - [ ] Agentic Context-1 (StructGNN dense) on exp + summ-exp — requires GNN embedding export (see note below)
 - [ ] Re-run original datasets with max_relevant=0 for fair comparison
 
