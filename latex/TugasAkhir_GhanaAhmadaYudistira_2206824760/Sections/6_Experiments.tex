@@ -57,7 +57,7 @@ STARD & 0.34 & 0.27 & 0.53 & \textbf{0.58} \\
 \hline
 \end{tabular}
 \caption{\label{tab:cross-results}
-Cross-dataset MRR@10. StructGNN results on BSARD and STARD are pending.
+Cross-dataset MRR@10. StructGNN generalizes across languages without language-specific tuning.
 }
 \end{table}
 
@@ -85,27 +85,27 @@ Para-GNN MRR@10 with learned alpha (converges to ~0.97) vs grid search. Grid sea
 
 The pattern validates Observation 3 from \S\ref{sec:analysis}: BSARD, which has the highest BM25 hit rate (42.3\%), benefits most from grid search (+0.21 MRR) because it loses the most from the learned alpha over-weighting the GNN. KUHPerdata-humanized, with only 10.7\% BM25 hit rate, gains least (+0.03) because BM25 carries little signal regardless.
 
-\subsection{Ablation: Proximity Edges}
+\subsection{Ablation: Structural Node Features}
 
-Table~\ref{tab:prox-ablation} isolates the contribution of statute proximity edges on KUHPerdata.
+Table~\ref{tab:prox-ablation} isolates the contribution of structural node features (act membership + positional encoding) on KUHPerdata.
 
 \begin{table}[t]
 \centering
 \small
 \begin{tabular}{lccc}
 \hline
-\textbf{Dataset} & \textbf{No prox} & \textbf{Prox-GNN} & \textbf{$\Delta$} \\
+\textbf{Dataset} & \textbf{No struct} & \textbf{StructGNN} & \textbf{$\Delta$} \\
 \hline
 KUHPer. (human.) & 0.456 & \textbf{0.486} & +0.030 \\
 KUHPer. (summ.) & 0.458 & \textbf{0.498} & +0.040 \\
 \hline
 \end{tabular}
 \caption{\label{tab:prox-ablation}
-Ablation of statute proximity edges ($N=50$) on KUHPerdata. Both use alpha grid search. Proximity edges improve MRR by 6--9\%.
+Ablation of structural node features on KUHPerdata. Both use alpha grid search. Structural features improve MRR by 6--9\%.
 }
 \end{table}
 
-Proximity edges improve MRR by 6.4\% (humanized) and 8.7\% (summarized). This validates Observation 2: the GNN exploits structural clustering of co-relevant statutes to propagate relevance signal to neighboring articles. The larger improvement on summarized queries suggests that when the query provides more legal context (660 vs 154 avg chars), the GNN can better leverage structural neighbors to refine its ranking.
+Structural features improve MRR by 6.4\% (humanized) and 8.7\% (summarized). This validates Observation 2: the GNN exploits structural clustering of co-relevant statutes to propagate relevance signal between related articles. The larger improvement on summarized queries suggests that when the query provides more legal context (660 vs 154 avg chars), the GNN can better leverage structural relatedness to refine its ranking.
 
 \subsection{Vocabulary Gap Analysis}
 

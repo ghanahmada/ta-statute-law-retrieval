@@ -67,3 +67,25 @@ Optimal blending weight $\alpha$ (in $\alpha \cdot \text{GNN} + (1-\alpha) \cdot
 \end{table}
 
 The correlation between optimal alpha and BM25 hit rate indicates that the right signal balance is a function of dataset-level lexical characteristics. A fixed or blindly-learned alpha misses this, systematically over-weighting the GNN signal.
+
+\noindent\textbf{Relevance Judgment Sparsity:} Citation-based relevance judgments in KUHPerdata average only 2.2 relevant articles per query. This sparsity is not uniform: a small set of frequently cited articles (e.g., Pasal 1365 on unlawful acts, Pasal 1320 on contract validity) appear as positive labels in a disproportionate share of training pairs, while most articles appear rarely or never. Any learned method---whether CatBoost (JNLP) or GNN (Para-GNN)---trained on these labels fits the head of the distribution well but receives little supervision for the long tail.
+
+We quantify this effect via debiased evaluation: after training, we subtract the per-candidate mean score across all queries from the GNN output, removing the bias toward articles that receive uniformly high scores regardless of query relevance. Table~\ref{tab:debiased} shows the result.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\hline
+\textbf{Method} & \textbf{MRR@10} & \textbf{Debiased} & \textbf{$\Delta$} \\
+\hline
+Para-GNN & 0.486 & 0.188 & $-$61\% \\
+StructGNN & 0.518 & 0.227 & $-$56\% \\
+\hline
+\end{tabular}
+\caption{\label{tab:debiased}
+Original vs.\ debiased MRR@10 on KUHPerdata-humanized. Debiasing removes per-candidate score bias, isolating the model's ability to rank articles based on query-specific relevance rather than global popularity. StructGNN's structural features reduce the debiased drop.
+}
+\end{table}
+
+The 56--61\% drop after debiasing reveals that a substantial portion of the aggregate MRR comes from ranking frequently cited articles high by default. StructGNN's structural features partially mitigate this: by encoding act membership and positional rank, the GNN can distinguish between articles in the same legal domain rather than treating all candidates in a popular domain equally. This observation motivates our ground truth expansion (\S\ref{sec:gte}): enriching relevance judgments for infrequently cited articles improves both training signal quality and evaluation fairness.
