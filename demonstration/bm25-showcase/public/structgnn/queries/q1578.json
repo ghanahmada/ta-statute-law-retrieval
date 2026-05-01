@@ -1,0 +1,264 @@
+{
+  "qid": "q1578",
+  "query_text": "Apakah seseorang wajib mengganti kerugian jika menjual harta bersama tanpa izin pasangannya?",
+  "case_name": "Putusan_PN_JAKARTA_TIMUR_Nomor_173_Pdt.G_2022_PN_Jkt.Tim.pdf",
+  "n_gt": 1,
+  "gt_doc_ids": [
+    "1239"
+  ],
+  "gt_ranks": {
+    "1239": 10
+  },
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 8.9431,
+      "gnn_score": 9.3475,
+      "bm25_score": 5.3038,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "1366",
+      "title": "Pasal 1366",
+      "score": 6.968,
+      "gnn_score": 7.1999,
+      "bm25_score": 4.8806,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 6.3472,
+      "gnn_score": 6.7261,
+      "bm25_score": 2.9372,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 6.3146,
+      "gnn_score": 6.7853,
+      "bm25_score": 2.0781,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 6.1179,
+      "gnn_score": 6.4995,
+      "bm25_score": 2.6836,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 4.9398,
+      "gnn_score": 5.4887,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 4.9236,
+      "gnn_score": 5.4707,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "1321",
+      "title": "Pasal 1321",
+      "score": 4.7052,
+      "gnn_score": 4.9791,
+      "bm25_score": 2.2399,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 4.6614,
+      "gnn_score": 5.1793,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "1239",
+      "title": "Pasal 1239",
+      "score": 4.4457,
+      "gnn_score": 4.2293,
+      "bm25_score": 6.3941,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "1243",
+      "title": "Pasal 1243",
+      "score": 4.3199,
+      "gnn_score": 4.291,
+      "bm25_score": 4.5809,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "1166",
+      "title": "Pasal 1166",
+      "score": 4.3045,
+      "gnn_score": 4.7828,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "1335",
+      "title": "Pasal 1335",
+      "score": 4.2939,
+      "gnn_score": 4.4498,
+      "bm25_score": 2.8913,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "1338",
+      "title": "Pasal 1338",
+      "score": 4.2534,
+      "gnn_score": 4.726,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "1329",
+      "title": "Pasal 1329",
+      "score": 3.9603,
+      "gnn_score": 4.1482,
+      "bm25_score": 2.2694,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "330",
+      "title": "Pasal 330",
+      "score": 3.7914,
+      "gnn_score": 4.2127,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "1313",
+      "title": "Pasal 1313",
+      "score": 3.6806,
+      "gnn_score": 4.0896,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "1868",
+      "title": "Pasal 1868",
+      "score": 3.6405,
+      "gnn_score": 4.045,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "1367",
+      "title": "Pasal 1367",
+      "score": 3.566,
+      "gnn_score": 3.2293,
+      "bm25_score": 6.5968,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "1238",
+      "title": "Pasal 1238",
+      "score": 3.5225,
+      "gnn_score": 3.9139,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "13",
+      "title": "Pasal 13",
+      "score": 3.504,
+      "gnn_score": 3.8933,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "1131",
+      "title": "Pasal 1131",
+      "score": 3.499,
+      "gnn_score": 3.8878,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "1339",
+      "title": "Pasal 1339",
+      "score": 3.4663,
+      "gnn_score": 3.8515,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "1888",
+      "title": "Pasal 1888",
+      "score": 3.4202,
+      "gnn_score": 3.8002,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "433",
+      "title": "Pasal 433",
+      "score": 3.3855,
+      "gnn_score": 3.7617,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    }
+  ]
+}

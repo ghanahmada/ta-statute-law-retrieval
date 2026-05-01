@@ -1,0 +1,275 @@
+{
+  "qid": "q1462",
+  "query_text": "Mengapa pemilik tempat usaha diizinkan oleh pengelola untuk digembok dan ditutup paksa oleh pihak lain, padahal sedang dalam masa sewa?",
+  "case_name": "Putusan_PN_JAKARTA_BARAT_Nomor_783_Pdt.G_2023_PN_Jkt.Brt.pdf",
+  "n_gt": 2,
+  "gt_doc_ids": [
+    "1365",
+    "1367"
+  ],
+  "gt_ranks": {
+    "1365": 1
+  },
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 7.2066,
+      "gnn_score": 7.5568,
+      "bm25_score": 4.0555,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 6.6296,
+      "gnn_score": 7.164,
+      "bm25_score": 1.82,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "433",
+      "title": "Pasal 433",
+      "score": 5.8036,
+      "gnn_score": 6.3539,
+      "bm25_score": 0.8503,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "436",
+      "title": "Pasal 436",
+      "score": 5.5762,
+      "gnn_score": 5.5376,
+      "bm25_score": 5.9235,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "1366",
+      "title": "Pasal 1366",
+      "score": 5.5088,
+      "gnn_score": 6.1209,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 5.3025,
+      "gnn_score": 5.7079,
+      "bm25_score": 1.6539,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 5.23,
+      "gnn_score": 5.8111,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 5.1173,
+      "gnn_score": 5.4502,
+      "bm25_score": 2.1212,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1338",
+      "title": "Pasal 1338",
+      "score": 5.0817,
+      "gnn_score": 5.2338,
+      "bm25_score": 3.7123,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 4.9605,
+      "gnn_score": 5.3968,
+      "bm25_score": 1.034,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "434",
+      "title": "Pasal 434",
+      "score": 4.9235,
+      "gnn_score": 5.0968,
+      "bm25_score": 3.3636,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 4.9104,
+      "gnn_score": 5.0862,
+      "bm25_score": 3.3282,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "1243",
+      "title": "Pasal 1243",
+      "score": 4.8444,
+      "gnn_score": 5.1337,
+      "bm25_score": 2.2398,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "1321",
+      "title": "Pasal 1321",
+      "score": 4.4537,
+      "gnn_score": 4.9486,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "1868",
+      "title": "Pasal 1868",
+      "score": 4.4066,
+      "gnn_score": 4.1041,
+      "bm25_score": 7.1294,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "1238",
+      "title": "Pasal 1238",
+      "score": 4.351,
+      "gnn_score": 4.8344,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "1313",
+      "title": "Pasal 1313",
+      "score": 4.2983,
+      "gnn_score": 4.519,
+      "bm25_score": 2.312,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "1166",
+      "title": "Pasal 1166",
+      "score": 4.2051,
+      "gnn_score": 4.6723,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "1330",
+      "title": "Pasal 1330",
+      "score": 3.9256,
+      "gnn_score": 3.8858,
+      "bm25_score": 4.2835,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "1323",
+      "title": "Pasal 1323",
+      "score": 3.842,
+      "gnn_score": 3.6849,
+      "bm25_score": 5.2556,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "1888",
+      "title": "Pasal 1888",
+      "score": 3.7948,
+      "gnn_score": 4.1113,
+      "bm25_score": 0.946,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "1329",
+      "title": "Pasal 1329",
+      "score": 3.7678,
+      "gnn_score": 4.0213,
+      "bm25_score": 1.4864,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "1335",
+      "title": "Pasal 1335",
+      "score": 3.7673,
+      "gnn_score": 4.1859,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "1339",
+      "title": "Pasal 1339",
+      "score": 3.7169,
+      "gnn_score": 4.1299,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "1239",
+      "title": "Pasal 1239",
+      "score": 3.7128,
+      "gnn_score": 3.892,
+      "bm25_score": 2.0998,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": null,
+      "doc_id": "1367",
+      "title": "Pasal 1367",
+      "score": 3.3517,
+      "gnn_score": 3.2786,
+      "bm25_score": 4.0103,
+      "is_relevant": true,
+      "beyond_topk": true
+    }
+  ]
+}

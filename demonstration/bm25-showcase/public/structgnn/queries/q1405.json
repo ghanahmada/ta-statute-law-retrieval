@@ -1,0 +1,283 @@
+{
+  "qid": "q1405",
+  "query_text": "Mengapa pengakuan para Tergugat bahwa ayah mereka memiliki enam anak sah tidak cukup untuk membatalkan akta notaris yang menyatakan hanya ada satu anak, padahal notaris yang membuat akta tersebut tidak hadir dalam persidangan?",
+  "case_name": "Putusan_PN_JAKARTA_BARAT_Nomor_661_Pdt.G_2023_PN_Jkt.Brt.pdf",
+  "n_gt": 2,
+  "gt_doc_ids": [
+    "1367",
+    "833"
+  ],
+  "gt_ranks": {},
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "1888",
+      "title": "Pasal 1888",
+      "score": 7.7232,
+      "gnn_score": 7.8037,
+      "bm25_score": 6.999,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 7.288,
+      "gnn_score": 6.8016,
+      "bm25_score": 11.6651,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 7.1579,
+      "gnn_score": 7.8065,
+      "bm25_score": 1.3209,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "1868",
+      "title": "Pasal 1868",
+      "score": 6.7001,
+      "gnn_score": 6.7009,
+      "bm25_score": 6.6923,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 5.8818,
+      "gnn_score": 6.2391,
+      "bm25_score": 2.6662,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 5.6663,
+      "gnn_score": 6.0602,
+      "bm25_score": 2.1212,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1338",
+      "title": "Pasal 1338",
+      "score": 5.6206,
+      "gnn_score": 5.9369,
+      "bm25_score": 2.7733,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 5.5764,
+      "gnn_score": 5.7907,
+      "bm25_score": 3.6477,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1870",
+      "title": "Pasal 1870",
+      "score": 5.5688,
+      "gnn_score": 5.213,
+      "bm25_score": 8.7706,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "1366",
+      "title": "Pasal 1366",
+      "score": 5.4232,
+      "gnn_score": 5.6882,
+      "bm25_score": 3.0373,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 5.273,
+      "gnn_score": 5.8589,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 5.255,
+      "gnn_score": 5.8389,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "1321",
+      "title": "Pasal 1321",
+      "score": 5.2184,
+      "gnn_score": 5.7982,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "1908",
+      "title": "Pasal 1908",
+      "score": 4.8912,
+      "gnn_score": 4.4891,
+      "bm25_score": 8.51,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "1329",
+      "title": "Pasal 1329",
+      "score": 4.8793,
+      "gnn_score": 4.6475,
+      "bm25_score": 6.9661,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "330",
+      "title": "Pasal 330",
+      "score": 4.8395,
+      "gnn_score": 4.3837,
+      "bm25_score": 8.9421,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "1238",
+      "title": "Pasal 1238",
+      "score": 4.7255,
+      "gnn_score": 4.9177,
+      "bm25_score": 2.9956,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "1243",
+      "title": "Pasal 1243",
+      "score": 4.6977,
+      "gnn_score": 4.7777,
+      "bm25_score": 3.9777,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "1166",
+      "title": "Pasal 1166",
+      "score": 4.6139,
+      "gnn_score": 5.1265,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "1330",
+      "title": "Pasal 1330",
+      "score": 4.5418,
+      "gnn_score": 4.0201,
+      "bm25_score": 9.2364,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "1313",
+      "title": "Pasal 1313",
+      "score": 4.5347,
+      "gnn_score": 4.6038,
+      "bm25_score": 3.9129,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "1866",
+      "title": "Pasal 1866",
+      "score": 4.3996,
+      "gnn_score": 4.1398,
+      "bm25_score": 6.7381,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "1339",
+      "title": "Pasal 1339",
+      "score": 4.3175,
+      "gnn_score": 4.3856,
+      "bm25_score": 3.7044,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "13",
+      "title": "Pasal 13",
+      "score": 4.2393,
+      "gnn_score": 3.6969,
+      "bm25_score": 9.1207,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "1917",
+      "title": "Pasal 1917",
+      "score": 4.1518,
+      "gnn_score": 4.1795,
+      "bm25_score": 3.9019,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": null,
+      "doc_id": "1367",
+      "title": "Pasal 1367",
+      "score": 3.1337,
+      "gnn_score": 2.5388,
+      "bm25_score": 8.4869,
+      "is_relevant": true,
+      "beyond_topk": true
+    },
+    {
+      "rank": null,
+      "doc_id": "833",
+      "title": "Pasal 833",
+      "score": 0.8959,
+      "gnn_score": 0.3503,
+      "bm25_score": 5.8066,
+      "is_relevant": true,
+      "beyond_topk": true
+    }
+  ]
+}

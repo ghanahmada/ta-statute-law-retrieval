@@ -1,0 +1,299 @@
+{
+  "qid": "q530",
+  "query_text": "Apakah perjanjian sewa menyewa yang sudah ditandatangani sebelumnya tetap berlaku dan mengikat pihak baru meskipun terjadi peralihan hak kepemilikan bangunan?",
+  "case_name": "Putusan_PN_DENPASAR_Nomor_1472_Pdt.G_2024_PN_Dps.pdf",
+  "n_gt": 5,
+  "gt_doc_ids": [
+    "1320",
+    "1338",
+    "1575",
+    "1576",
+    "1579"
+  ],
+  "gt_ranks": {
+    "1320": 1,
+    "1338": 3
+  },
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 7.0586,
+      "gnn_score": 7.4593,
+      "bm25_score": 3.4528,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 6.6236,
+      "gnn_score": 7.0417,
+      "bm25_score": 2.8608,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "1338",
+      "title": "Pasal 1338",
+      "score": 6.4953,
+      "gnn_score": 6.6844,
+      "bm25_score": 4.793,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "1888",
+      "title": "Pasal 1888",
+      "score": 5.7065,
+      "gnn_score": 6.3406,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 5.5441,
+      "gnn_score": 6.1602,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 5.3468,
+      "gnn_score": 5.8582,
+      "bm25_score": 0.7436,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 5.2214,
+      "gnn_score": 5.8015,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "1868",
+      "title": "Pasal 1868",
+      "score": 5.1788,
+      "gnn_score": 5.7542,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1321",
+      "title": "Pasal 1321",
+      "score": 5.1133,
+      "gnn_score": 5.6814,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 5.0586,
+      "gnn_score": 5.6207,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "1243",
+      "title": "Pasal 1243",
+      "score": 5.003,
+      "gnn_score": 5.1594,
+      "bm25_score": 3.5953,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "1238",
+      "title": "Pasal 1238",
+      "score": 4.8221,
+      "gnn_score": 5.3579,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "1313",
+      "title": "Pasal 1313",
+      "score": 4.6925,
+      "gnn_score": 5.2139,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "1339",
+      "title": "Pasal 1339",
+      "score": 4.6289,
+      "gnn_score": 4.416,
+      "bm25_score": 6.5444,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "1166",
+      "title": "Pasal 1166",
+      "score": 4.5968,
+      "gnn_score": 5.1075,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "1366",
+      "title": "Pasal 1366",
+      "score": 4.5692,
+      "gnn_score": 5.0769,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 4.5673,
+      "gnn_score": 5.0748,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "1917",
+      "title": "Pasal 1917",
+      "score": 4.3764,
+      "gnn_score": 4.3899,
+      "bm25_score": 4.2551,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "1870",
+      "title": "Pasal 1870",
+      "score": 4.3703,
+      "gnn_score": 4.3688,
+      "bm25_score": 4.3839,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "1131",
+      "title": "Pasal 1131",
+      "score": 4.2881,
+      "gnn_score": 4.1712,
+      "bm25_score": 5.34,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "330",
+      "title": "Pasal 330",
+      "score": 4.1487,
+      "gnn_score": 4.1009,
+      "bm25_score": 4.5795,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "1866",
+      "title": "Pasal 1866",
+      "score": 3.9198,
+      "gnn_score": 4.3554,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "1335",
+      "title": "Pasal 1335",
+      "score": 3.9067,
+      "gnn_score": 4.3408,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "1908",
+      "title": "Pasal 1908",
+      "score": 3.8848,
+      "gnn_score": 4.2129,
+      "bm25_score": 0.9312,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "1330",
+      "title": "Pasal 1330",
+      "score": 3.8275,
+      "gnn_score": 4.1829,
+      "bm25_score": 0.6286,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": null,
+      "doc_id": "1579",
+      "title": "Pasal 1579",
+      "score": 0.2164,
+      "gnn_score": -0.651,
+      "bm25_score": 8.0235,
+      "is_relevant": true,
+      "beyond_topk": true
+    },
+    {
+      "rank": null,
+      "doc_id": "1576",
+      "title": "Pasal 1576",
+      "score": 0.9323,
+      "gnn_score": -0.2746,
+      "bm25_score": 11.7942,
+      "is_relevant": true,
+      "beyond_topk": true
+    },
+    {
+      "rank": null,
+      "doc_id": "1575",
+      "title": "Pasal 1575",
+      "score": 1.9483,
+      "gnn_score": 0.1912,
+      "bm25_score": 17.7622,
+      "is_relevant": true,
+      "beyond_topk": true
+    }
+  ]
+}

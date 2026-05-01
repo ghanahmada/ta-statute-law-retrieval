@@ -1,0 +1,272 @@
+{
+  "qid": "q964",
+  "query_text": "Mengapa [Tergugat] harus membayar ganti rugi dan denda keterlambatan setelah gagal menyelesaikan pembuatan furniture kantor sesuai waktu yang disepakati dan menyebabkan [Penggugat] harus mempekerjakan vendor pengganti?",
+  "case_name": "Putusan_PN_DENPASAR_Nomor_9_Pdt.G.S_2025_PN_Dps.pdf",
+  "n_gt": 5,
+  "gt_doc_ids": [
+    "1234",
+    "1238",
+    "1243",
+    "1337",
+    "1865"
+  ],
+  "gt_ranks": {
+    "1243": 1,
+    "1238": 3,
+    "1337": 4,
+    "1234": 5,
+    "1865": 17
+  },
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "1243",
+      "title": "Pasal 1243",
+      "score": 7.5826,
+      "gnn_score": 7.9194,
+      "bm25_score": 4.5508,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 6.2507,
+      "gnn_score": 6.8626,
+      "bm25_score": 0.7436,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "1238",
+      "title": "Pasal 1238",
+      "score": 6.1184,
+      "gnn_score": 6.3924,
+      "bm25_score": 3.6521,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 6.0282,
+      "gnn_score": 6.698,
+      "bm25_score": 0.0,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 5.9159,
+      "gnn_score": 6.5732,
+      "bm25_score": 0.0,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 5.8938,
+      "gnn_score": 6.5486,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 5.5217,
+      "gnn_score": 6.1352,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "1338",
+      "title": "Pasal 1338",
+      "score": 5.5087,
+      "gnn_score": 5.5258,
+      "bm25_score": 5.355,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1239",
+      "title": "Pasal 1239",
+      "score": 5.4541,
+      "gnn_score": 5.9804,
+      "bm25_score": 0.7173,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "1366",
+      "title": "Pasal 1366",
+      "score": 5.4301,
+      "gnn_score": 6.0335,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "1246",
+      "title": "Pasal 1246",
+      "score": 5.1543,
+      "gnn_score": 4.618,
+      "bm25_score": 9.9809,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "1321",
+      "title": "Pasal 1321",
+      "score": 4.9335,
+      "gnn_score": 5.4817,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "1166",
+      "title": "Pasal 1166",
+      "score": 4.7295,
+      "gnn_score": 5.255,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "1131",
+      "title": "Pasal 1131",
+      "score": 4.7289,
+      "gnn_score": 5.1737,
+      "bm25_score": 0.7259,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "1339",
+      "title": "Pasal 1339",
+      "score": 4.5325,
+      "gnn_score": 5.0362,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "1313",
+      "title": "Pasal 1313",
+      "score": 4.4609,
+      "gnn_score": 4.9566,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 4.4142,
+      "gnn_score": 4.9046,
+      "bm25_score": 0.0,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "1236",
+      "title": "Pasal 1236",
+      "score": 4.3084,
+      "gnn_score": 4.2207,
+      "bm25_score": 5.0974,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "1335",
+      "title": "Pasal 1335",
+      "score": 4.1549,
+      "gnn_score": 4.6166,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "1250",
+      "title": "Pasal 1250",
+      "score": 4.1106,
+      "gnn_score": 3.8766,
+      "bm25_score": 6.2171,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "1233",
+      "title": "Pasal 1233",
+      "score": 3.8823,
+      "gnn_score": 4.3136,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "1330",
+      "title": "Pasal 1330",
+      "score": 3.8305,
+      "gnn_score": 4.1863,
+      "bm25_score": 0.6286,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 3.6686,
+      "gnn_score": 4.0762,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "1268",
+      "title": "Pasal 1268",
+      "score": 3.6181,
+      "gnn_score": 3.7202,
+      "bm25_score": 2.6993,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "1244",
+      "title": "Pasal 1244",
+      "score": 3.6065,
+      "gnn_score": 3.587,
+      "bm25_score": 3.7822,
+      "is_relevant": false,
+      "beyond_topk": false
+    }
+  ]
+}

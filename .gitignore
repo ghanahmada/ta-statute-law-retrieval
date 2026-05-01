@@ -46,5 +46,7 @@ bin/
 # Training outputs
 outputs/
 catboost_info/
-# Demonstration apps (local only)
-demonstration/
+# Demonstration apps (regenerable / build artifacts)
+demonstration/*/node_modules/
+demonstration/*/.next/
+demonstration/nextjs-temp/

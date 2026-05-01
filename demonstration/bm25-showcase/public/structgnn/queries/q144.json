@@ -1,0 +1,279 @@
+{
+  "qid": "q144",
+  "query_text": "Mengapa gugatan pembagian harta bersama yang diajukan oleh mantan istri ditolak oleh hakim karena batas-batas tanah yang digugat tidak jelas dan ada bangunan di atasnya?",
+  "case_name": "1697503701_54_Pdt.G_2023.pdf",
+  "n_gt": 4,
+  "gt_doc_ids": [
+    "1320",
+    "1865",
+    "1888",
+    "1925"
+  ],
+  "gt_ranks": {
+    "1865": 1,
+    "1320": 3,
+    "1888": 4
+  },
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 6.568,
+      "gnn_score": 7.2977,
+      "bm25_score": 0.0,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 6.2842,
+      "gnn_score": 6.7802,
+      "bm25_score": 1.82,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 6.2334,
+      "gnn_score": 6.8292,
+      "bm25_score": 0.8711,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "1888",
+      "title": "Pasal 1888",
+      "score": 5.9711,
+      "gnn_score": 6.4021,
+      "bm25_score": 2.0921,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "1868",
+      "title": "Pasal 1868",
+      "score": 5.8669,
+      "gnn_score": 6.1328,
+      "bm25_score": 3.4733,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "1338",
+      "title": "Pasal 1338",
+      "score": 5.8282,
+      "gnn_score": 5.9778,
+      "bm25_score": 4.481,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 5.7911,
+      "gnn_score": 6.051,
+      "bm25_score": 3.4519,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 5.6857,
+      "gnn_score": 6.2049,
+      "bm25_score": 1.0123,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1321",
+      "title": "Pasal 1321",
+      "score": 5.3127,
+      "gnn_score": 5.5826,
+      "bm25_score": 2.8841,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 5.2194,
+      "gnn_score": 5.473,
+      "bm25_score": 2.9372,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "1243",
+      "title": "Pasal 1243",
+      "score": 5.1592,
+      "gnn_score": 5.427,
+      "bm25_score": 2.7484,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 5.1582,
+      "gnn_score": 5.7314,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "1917",
+      "title": "Pasal 1917",
+      "score": 5.0737,
+      "gnn_score": 4.7243,
+      "bm25_score": 8.2176,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "1967",
+      "title": "Pasal 1967",
+      "score": 4.7042,
+      "gnn_score": 4.4633,
+      "bm25_score": 6.8721,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "1238",
+      "title": "Pasal 1238",
+      "score": 4.6807,
+      "gnn_score": 5.2008,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "1366",
+      "title": "Pasal 1366",
+      "score": 4.6269,
+      "gnn_score": 5.141,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "1339",
+      "title": "Pasal 1339",
+      "score": 4.5465,
+      "gnn_score": 4.7608,
+      "bm25_score": 2.6183,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "1908",
+      "title": "Pasal 1908",
+      "score": 4.4056,
+      "gnn_score": 4.3133,
+      "bm25_score": 5.2366,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "1166",
+      "title": "Pasal 1166",
+      "score": 4.3994,
+      "gnn_score": 4.8882,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "1870",
+      "title": "Pasal 1870",
+      "score": 4.3522,
+      "gnn_score": 4.6515,
+      "bm25_score": 1.6589,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "1335",
+      "title": "Pasal 1335",
+      "score": 4.3179,
+      "gnn_score": 4.7976,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "1131",
+      "title": "Pasal 1131",
+      "score": 4.0761,
+      "gnn_score": 4.1061,
+      "bm25_score": 3.8069,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "330",
+      "title": "Pasal 330",
+      "score": 4.0633,
+      "gnn_score": 4.0966,
+      "bm25_score": 3.7636,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "1330",
+      "title": "Pasal 1330",
+      "score": 4.059,
+      "gnn_score": 4.098,
+      "bm25_score": 3.7082,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "1313",
+      "title": "Pasal 1313",
+      "score": 4.0095,
+      "gnn_score": 4.455,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": null,
+      "doc_id": "1925",
+      "title": "Pasal 1925",
+      "score": 3.5646,
+      "gnn_score": 3.4161,
+      "bm25_score": 4.9006,
+      "is_relevant": true,
+      "beyond_topk": true
+    }
+  ]
+}

@@ -1,0 +1,272 @@
+{
+  "qid": "q946",
+  "query_text": "Apakah seorang anak yang lahir saat orang tuanya belum mendaftarkan perkawinannya tetap diakui sebagai anak sah dari ayah biologisnya setelah perkawinan tersebut didaftarkan?",
+  "case_name": "Putusan_PN_DENPASAR_Nomor_958_Pdt.P_2023_PN_Dps.pdf",
+  "n_gt": 1,
+  "gt_doc_ids": [
+    "280"
+  ],
+  "gt_ranks": {},
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 7.5185,
+      "gnn_score": 8.1207,
+      "bm25_score": 2.0986,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "1888",
+      "title": "Pasal 1888",
+      "score": 7.0806,
+      "gnn_score": 7.8673,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "1868",
+      "title": "Pasal 1868",
+      "score": 6.3127,
+      "gnn_score": 7.0141,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 6.0789,
+      "gnn_score": 6.5581,
+      "bm25_score": 1.7659,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "330",
+      "title": "Pasal 330",
+      "score": 6.0447,
+      "gnn_score": 5.4477,
+      "bm25_score": 11.4177,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "1870",
+      "title": "Pasal 1870",
+      "score": 5.8021,
+      "gnn_score": 5.99,
+      "bm25_score": 4.111,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 5.6229,
+      "gnn_score": 5.866,
+      "bm25_score": 3.4348,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "100",
+      "title": "Pasal 100",
+      "score": 5.0422,
+      "gnn_score": 4.4987,
+      "bm25_score": 9.9333,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1908",
+      "title": "Pasal 1908",
+      "score": 4.8223,
+      "gnn_score": 5.3581,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 4.45,
+      "gnn_score": 4.9445,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "1338",
+      "title": "Pasal 1338",
+      "score": 4.4241,
+      "gnn_score": 4.6411,
+      "bm25_score": 2.4714,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "16",
+      "title": "Pasal 16",
+      "score": 4.3775,
+      "gnn_score": 4.3057,
+      "bm25_score": 5.0234,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "1911",
+      "title": "Pasal 1911",
+      "score": 4.2894,
+      "gnn_score": 4.7659,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "299",
+      "title": "Pasal 299",
+      "score": 4.2206,
+      "gnn_score": 2.0559,
+      "bm25_score": 23.7029,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "1866",
+      "title": "Pasal 1866",
+      "score": 4.0322,
+      "gnn_score": 4.4802,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "345",
+      "title": "Pasal 345",
+      "score": 3.9885,
+      "gnn_score": 3.2848,
+      "bm25_score": 10.3217,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 3.9575,
+      "gnn_score": 4.3973,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 3.8986,
+      "gnn_score": 3.7971,
+      "bm25_score": 4.8121,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "1238",
+      "title": "Pasal 1238",
+      "score": 3.76,
+      "gnn_score": 3.9625,
+      "bm25_score": 1.9373,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 3.7539,
+      "gnn_score": 4.171,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "1867",
+      "title": "Pasal 1867",
+      "score": 3.7502,
+      "gnn_score": 4.1669,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "261",
+      "title": "Pasal 261",
+      "score": 3.736,
+      "gnn_score": 2.0852,
+      "bm25_score": 18.5933,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "13",
+      "title": "Pasal 13",
+      "score": 3.6607,
+      "gnn_score": 4.0674,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "1330",
+      "title": "Pasal 1330",
+      "score": 3.6588,
+      "gnn_score": 3.277,
+      "bm25_score": 7.0947,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "33",
+      "title": "Pasal 33",
+      "score": 3.5855,
+      "gnn_score": 1.7706,
+      "bm25_score": 19.919,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": null,
+      "doc_id": "280",
+      "title": "Pasal 280",
+      "score": 1.4763,
+      "gnn_score": 1.2361,
+      "bm25_score": 3.6384,
+      "is_relevant": true,
+      "beyond_topk": true
+    }
+  ]
+}

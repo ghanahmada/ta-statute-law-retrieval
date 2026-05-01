@@ -1,0 +1,272 @@
+{
+  "qid": "q74",
+  "query_text": "Apakah seorang yang berutang besar masih boleh menjadi calon pemimpin daerah?",
+  "case_name": "putusan_sidang_2631_20170427165804_29. GAYO LUES - SIAP CETAK doc 97 - SELA-KABUL SEBAGIAN-qrcode- wmActionWiz.pdf",
+  "n_gt": 1,
+  "gt_doc_ids": [
+    "1233"
+  ],
+  "gt_ranks": {},
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 6.2541,
+      "gnn_score": 6.949,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 5.6189,
+      "gnn_score": 6.2433,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 5.3936,
+      "gnn_score": 5.9929,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 5.2433,
+      "gnn_score": 5.8259,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "433",
+      "title": "Pasal 433",
+      "score": 5.128,
+      "gnn_score": 5.2387,
+      "bm25_score": 4.1324,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "436",
+      "title": "Pasal 436",
+      "score": 4.9026,
+      "gnn_score": 4.8704,
+      "bm25_score": 5.1921,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 4.8245,
+      "gnn_score": 5.3606,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "1888",
+      "title": "Pasal 1888",
+      "score": 4.7297,
+      "gnn_score": 5.2552,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1243",
+      "title": "Pasal 1243",
+      "score": 4.5467,
+      "gnn_score": 5.0519,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 4.5447,
+      "gnn_score": 5.0497,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "330",
+      "title": "Pasal 330",
+      "score": 4.457,
+      "gnn_score": 4.9522,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "1366",
+      "title": "Pasal 1366",
+      "score": 4.3867,
+      "gnn_score": 4.8741,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "1166",
+      "title": "Pasal 1166",
+      "score": 4.379,
+      "gnn_score": 4.8656,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "1338",
+      "title": "Pasal 1338",
+      "score": 4.3408,
+      "gnn_score": 4.8231,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "1911",
+      "title": "Pasal 1911",
+      "score": 4.3165,
+      "gnn_score": 4.7961,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "1131",
+      "title": "Pasal 1131",
+      "score": 4.1445,
+      "gnn_score": 4.2579,
+      "bm25_score": 3.1247,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "1238",
+      "title": "Pasal 1238",
+      "score": 4.0902,
+      "gnn_score": 4.5447,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "1868",
+      "title": "Pasal 1868",
+      "score": 4.0411,
+      "gnn_score": 4.4901,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "1908",
+      "title": "Pasal 1908",
+      "score": 3.9772,
+      "gnn_score": 4.4191,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 3.9598,
+      "gnn_score": 4.3997,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "434",
+      "title": "Pasal 434",
+      "score": 3.9538,
+      "gnn_score": 4.3931,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "1329",
+      "title": "Pasal 1329",
+      "score": 3.6512,
+      "gnn_score": 4.0568,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "1321",
+      "title": "Pasal 1321",
+      "score": 3.5666,
+      "gnn_score": 3.9629,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "1866",
+      "title": "Pasal 1866",
+      "score": 3.5239,
+      "gnn_score": 3.9154,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "1330",
+      "title": "Pasal 1330",
+      "score": 3.5167,
+      "gnn_score": 3.9074,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": null,
+      "doc_id": "1233",
+      "title": "Pasal 1233",
+      "score": 2.6664,
+      "gnn_score": 2.9627,
+      "bm25_score": 0.0,
+      "is_relevant": true,
+      "beyond_topk": true
+    }
+  ]
+}

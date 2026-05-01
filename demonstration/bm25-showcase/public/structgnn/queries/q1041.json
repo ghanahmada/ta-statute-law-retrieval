@@ -1,0 +1,272 @@
+{
+  "qid": "q1041",
+  "query_text": "Apakah pernikahan yang dilakukan secara adat Tionghoa tanpa dicatatkan di dinas sipil dianggap sah menurut hukum?",
+  "case_name": "Putusan_PN_JAKARTA_BARAT_Nomor_1178_Pdt.P_2023_PN_Jkt.Brt.pdf",
+  "n_gt": 1,
+  "gt_doc_ids": [
+    "50"
+  ],
+  "gt_ranks": {},
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 7.4874,
+      "gnn_score": 8.3194,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "1868",
+      "title": "Pasal 1868",
+      "score": 6.5041,
+      "gnn_score": 7.036,
+      "bm25_score": 1.7167,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "1888",
+      "title": "Pasal 1888",
+      "score": 6.3074,
+      "gnn_score": 7.0082,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 6.1755,
+      "gnn_score": 6.48,
+      "bm25_score": 3.4348,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 5.5019,
+      "gnn_score": 6.1132,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "1870",
+      "title": "Pasal 1870",
+      "score": 5.3756,
+      "gnn_score": 5.7886,
+      "bm25_score": 1.6589,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 5.248,
+      "gnn_score": 5.4668,
+      "bm25_score": 3.2793,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "1908",
+      "title": "Pasal 1908",
+      "score": 4.7866,
+      "gnn_score": 4.9975,
+      "bm25_score": 2.8883,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 4.7654,
+      "gnn_score": 5.2949,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 4.6962,
+      "gnn_score": 5.218,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "1911",
+      "title": "Pasal 1911",
+      "score": 4.6552,
+      "gnn_score": 4.8708,
+      "bm25_score": 2.715,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "1338",
+      "title": "Pasal 1338",
+      "score": 4.6278,
+      "gnn_score": 5.142,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "1321",
+      "title": "Pasal 1321",
+      "score": 4.4827,
+      "gnn_score": 4.9808,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "330",
+      "title": "Pasal 330",
+      "score": 4.4443,
+      "gnn_score": 4.8097,
+      "bm25_score": 1.1553,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 4.3374,
+      "gnn_score": 4.8193,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "100",
+      "title": "Pasal 100",
+      "score": 4.3243,
+      "gnn_score": 4.2528,
+      "bm25_score": 4.968,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "1366",
+      "title": "Pasal 1366",
+      "score": 4.3101,
+      "gnn_score": 4.789,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "1867",
+      "title": "Pasal 1867",
+      "score": 4.2798,
+      "gnn_score": 4.1961,
+      "bm25_score": 5.0334,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "1238",
+      "title": "Pasal 1238",
+      "score": 4.1459,
+      "gnn_score": 4.2505,
+      "bm25_score": 3.2047,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "1866",
+      "title": "Pasal 1866",
+      "score": 4.1404,
+      "gnn_score": 4.6005,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "1166",
+      "title": "Pasal 1166",
+      "score": 4.0979,
+      "gnn_score": 4.5532,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "16",
+      "title": "Pasal 16",
+      "score": 4.0177,
+      "gnn_score": 3.8118,
+      "bm25_score": 5.8704,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "1967",
+      "title": "Pasal 1967",
+      "score": 3.8274,
+      "gnn_score": 3.9654,
+      "bm25_score": 2.5859,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "1917",
+      "title": "Pasal 1917",
+      "score": 3.7429,
+      "gnn_score": 3.8742,
+      "bm25_score": 2.5613,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "1335",
+      "title": "Pasal 1335",
+      "score": 3.629,
+      "gnn_score": 3.711,
+      "bm25_score": 2.8913,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": null,
+      "doc_id": "50",
+      "title": "Pasal 50",
+      "score": 1.4367,
+      "gnn_score": 0.7773,
+      "bm25_score": 7.372,
+      "is_relevant": true,
+      "beyond_topk": true
+    }
+  ]
+}

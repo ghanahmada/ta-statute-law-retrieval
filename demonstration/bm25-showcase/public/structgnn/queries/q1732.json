@@ -1,0 +1,272 @@
+{
+  "qid": "q1732",
+  "query_text": "Apakah seorang saudara kandung yang telah kehilangan anggota keluarga lainnya dapat mengajukan permohonan penetapan orang hilang atas orang tersebut?",
+  "case_name": "Putusan_PN_JAKARTA_TIMUR_Nomor_617_Pdt.P_2024_PN_JKT.TIM.pdf",
+  "n_gt": 1,
+  "gt_doc_ids": [
+    "463"
+  ],
+  "gt_ranks": {},
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 7.1497,
+      "gnn_score": 7.4094,
+      "bm25_score": 4.8121,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 6.6295,
+      "gnn_score": 6.9869,
+      "bm25_score": 3.4132,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 6.0726,
+      "gnn_score": 6.5141,
+      "bm25_score": 2.0986,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "436",
+      "title": "Pasal 436",
+      "score": 6.0062,
+      "gnn_score": 6.4723,
+      "bm25_score": 1.8112,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "434",
+      "title": "Pasal 434",
+      "score": 5.6356,
+      "gnn_score": 5.5335,
+      "bm25_score": 6.5546,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "433",
+      "title": "Pasal 433",
+      "score": 5.5499,
+      "gnn_score": 5.7529,
+      "bm25_score": 3.7224,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1366",
+      "title": "Pasal 1366",
+      "score": 5.3989,
+      "gnn_score": 5.5308,
+      "bm25_score": 4.212,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "1888",
+      "title": "Pasal 1888",
+      "score": 4.9032,
+      "gnn_score": 5.2352,
+      "bm25_score": 1.9149,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1868",
+      "title": "Pasal 1868",
+      "score": 4.3281,
+      "gnn_score": 4.809,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "13",
+      "title": "Pasal 13",
+      "score": 4.214,
+      "gnn_score": 3.9341,
+      "bm25_score": 6.7331,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 4.1052,
+      "gnn_score": 4.5613,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 3.6273,
+      "gnn_score": 4.0304,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "330",
+      "title": "Pasal 330",
+      "score": 3.6049,
+      "gnn_score": 3.8047,
+      "bm25_score": 1.8069,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 3.581,
+      "gnn_score": 3.9789,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "1870",
+      "title": "Pasal 1870",
+      "score": 3.5536,
+      "gnn_score": 3.7118,
+      "bm25_score": 2.1302,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "14",
+      "title": "Pasal 14",
+      "score": 3.4306,
+      "gnn_score": 3.2876,
+      "bm25_score": 4.7184,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "16",
+      "title": "Pasal 16",
+      "score": 3.3809,
+      "gnn_score": 3.6073,
+      "bm25_score": 1.3435,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "435",
+      "title": "Pasal 435",
+      "score": 3.3339,
+      "gnn_score": 2.9902,
+      "bm25_score": 6.4274,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "1792",
+      "title": "Pasal 1792",
+      "score": 3.2249,
+      "gnn_score": 3.1275,
+      "bm25_score": 4.1017,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "454",
+      "title": "Pasal 454",
+      "score": 3.1959,
+      "gnn_score": 3.3618,
+      "bm25_score": 1.7021,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 3.1433,
+      "gnn_score": 3.4926,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "1166",
+      "title": "Pasal 1166",
+      "score": 3.081,
+      "gnn_score": 3.4233,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "439",
+      "title": "Pasal 439",
+      "score": 2.9519,
+      "gnn_score": 2.0001,
+      "bm25_score": 11.5181,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "100",
+      "title": "Pasal 100",
+      "score": 2.945,
+      "gnn_score": 3.1076,
+      "bm25_score": 1.4808,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "103",
+      "title": "Pasal 103",
+      "score": 2.9147,
+      "gnn_score": 3.2386,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": null,
+      "doc_id": "463",
+      "title": "Pasal 463",
+      "score": 2.21,
+      "gnn_score": 1.3644,
+      "bm25_score": 9.8209,
+      "is_relevant": true,
+      "beyond_topk": true
+    }
+  ]
+}

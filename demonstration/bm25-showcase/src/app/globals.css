@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-amber-hl: #d4a017;
+  --color-amber-glow: #f5c842;
+  --color-score-bar: #2563eb;
+  --color-gnn-purple: #8b5cf6;
+  --color-bm25-amber: #d97706;
+  --color-blended-blue: #3b82f6;
+  --font-display: "DM Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", "Cascadia Code", monospace;
+}
+
+/* ── dark theme (default) ── */
+html {
+  --color-surface: #0a0a0c;
+  --color-surface-raised: #111114;
+  --color-surface-hover: #18181c;
+  --color-border: #2a2a30;
+  --color-border-subtle: #1e1e24;
+  --color-text-primary: #e8e6e3;
+  --color-text-muted: #7a7880;
+  --color-text-dim: #4a4850;
+  --color-gt-green: #22c55e;
+  --color-gt-border: #166534;
+  --color-gt-bg: #052e16;
+
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── light theme ── */
+html.light {
+  --color-surface: #f8f7f6;
+  --color-surface-raised: #ffffff;
+  --color-surface-hover: #f0efed;
+  --color-border: #d8d6d2;
+  --color-border-subtle: #e8e6e2;
+  --color-text-primary: #1a1a1a;
+  --color-text-muted: #5a5856;
+  --color-text-dim: #8a8884;
+  --color-gt-green: #16a34a;
+  --color-gt-border: #86efac;
+  --color-gt-bg: #f0fdf4;
+}
+
+::selection { background: rgba(212, 160, 23, 0.35); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-dim); }

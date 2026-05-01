@@ -1,0 +1,264 @@
+{
+  "qid": "q1444",
+  "query_text": "Apakah seseorang dapat dituntut secara perdata karena melakukan perbuatan yang melanggar hukum dan merugikan orang lain?",
+  "case_name": "Putusan_PN_JAKARTA_BARAT_Nomor_728_Pdt.G_2023_PN_Jkt.Brt.pdf",
+  "n_gt": 1,
+  "gt_doc_ids": [
+    "1365"
+  ],
+  "gt_ranks": {
+    "1365": 1
+  },
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 12.106,
+      "gnn_score": 10.9145,
+      "bm25_score": 22.8297,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "1366",
+      "title": "Pasal 1366",
+      "score": 7.0726,
+      "gnn_score": 7.6597,
+      "bm25_score": 1.7883,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 6.0279,
+      "gnn_score": 6.6977,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 5.5435,
+      "gnn_score": 5.7802,
+      "bm25_score": 3.4132,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 5.5259,
+      "gnn_score": 5.6836,
+      "bm25_score": 4.1059,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "433",
+      "title": "Pasal 433",
+      "score": 4.5315,
+      "gnn_score": 4.61,
+      "bm25_score": 3.8251,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1367",
+      "title": "Pasal 1367",
+      "score": 4.5238,
+      "gnn_score": 3.6654,
+      "bm25_score": 12.2494,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 4.4848,
+      "gnn_score": 4.9831,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 4.3179,
+      "gnn_score": 4.7977,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "1321",
+      "title": "Pasal 1321",
+      "score": 4.0947,
+      "gnn_score": 4.2293,
+      "bm25_score": 2.8841,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "1313",
+      "title": "Pasal 1313",
+      "score": 4.094,
+      "gnn_score": 3.5344,
+      "bm25_score": 9.1301,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "1166",
+      "title": "Pasal 1166",
+      "score": 3.9671,
+      "gnn_score": 4.4079,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "436",
+      "title": "Pasal 436",
+      "score": 3.8763,
+      "gnn_score": 4.1058,
+      "bm25_score": 1.8112,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "1335",
+      "title": "Pasal 1335",
+      "score": 3.7585,
+      "gnn_score": 4.1761,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "434",
+      "title": "Pasal 434",
+      "score": 3.7488,
+      "gnn_score": 3.6249,
+      "bm25_score": 4.8644,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 3.6802,
+      "gnn_score": 4.0892,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "1339",
+      "title": "Pasal 1339",
+      "score": 3.6422,
+      "gnn_score": 3.509,
+      "bm25_score": 4.8411,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "1340",
+      "title": "Pasal 1340",
+      "score": 3.6328,
+      "gnn_score": 2.6766,
+      "bm25_score": 12.2386,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "564",
+      "title": "Pasal 564",
+      "score": 3.6313,
+      "gnn_score": 3.6192,
+      "bm25_score": 3.7402,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "456",
+      "title": "Pasal 456",
+      "score": 3.6072,
+      "gnn_score": 3.0415,
+      "bm25_score": 8.6986,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "1967",
+      "title": "Pasal 1967",
+      "score": 3.5761,
+      "gnn_score": 3.0919,
+      "bm25_score": 7.9338,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "1377",
+      "title": "Pasal 1377",
+      "score": 3.4552,
+      "gnn_score": 1.6788,
+      "bm25_score": 19.4427,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "1338",
+      "title": "Pasal 1338",
+      "score": 3.3683,
+      "gnn_score": 3.3494,
+      "bm25_score": 3.539,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "1246",
+      "title": "Pasal 1246",
+      "score": 3.351,
+      "gnn_score": 2.9214,
+      "bm25_score": 7.2172,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "13",
+      "title": "Pasal 13",
+      "score": 3.3278,
+      "gnn_score": 3.38,
+      "bm25_score": 2.8589,
+      "is_relevant": false,
+      "beyond_topk": false
+    }
+  ]
+}

@@ -1,0 +1,270 @@
+{
+  "qid": "q152",
+  "query_text": "Apakah seorang investor dapat menuntut promotor investasi dan perantara dana untuk mengganti kerugian akibat penipuan skema trading online?",
+  "case_name": "1701844044-putusan_522_pdt_g_2022_pn_jkt_pst_20231206132610.pdf",
+  "n_gt": 4,
+  "gt_doc_ids": [
+    "1320",
+    "1338",
+    "1365",
+    "1366"
+  ],
+  "gt_ranks": {
+    "1365": 1,
+    "1366": 2,
+    "1320": 5,
+    "1338": 11
+  },
+  "ranked_docs": [
+    {
+      "rank": 1,
+      "doc_id": "1365",
+      "title": "Pasal 1365",
+      "score": 9.2797,
+      "gnn_score": 9.5183,
+      "bm25_score": 7.1318,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 2,
+      "doc_id": "1366",
+      "title": "Pasal 1366",
+      "score": 7.2694,
+      "gnn_score": 7.5349,
+      "bm25_score": 4.8806,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 3,
+      "doc_id": "1337",
+      "title": "Pasal 1337",
+      "score": 5.9555,
+      "gnn_score": 6.6172,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 4,
+      "doc_id": "1321",
+      "title": "Pasal 1321",
+      "score": 5.5745,
+      "gnn_score": 5.459,
+      "bm25_score": 6.6135,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 5,
+      "doc_id": "1320",
+      "title": "Pasal 1320",
+      "score": 5.3824,
+      "gnn_score": 5.8656,
+      "bm25_score": 1.034,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 6,
+      "doc_id": "1341",
+      "title": "Pasal 1341",
+      "score": 5.3378,
+      "gnn_score": 5.9309,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 7,
+      "doc_id": "1234",
+      "title": "Pasal 1234",
+      "score": 5.2596,
+      "gnn_score": 5.6603,
+      "bm25_score": 1.6539,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 8,
+      "doc_id": "188",
+      "title": "Pasal 188",
+      "score": 5.2323,
+      "gnn_score": 5.5072,
+      "bm25_score": 2.7587,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 9,
+      "doc_id": "1865",
+      "title": "Pasal 1865",
+      "score": 4.8988,
+      "gnn_score": 5.2964,
+      "bm25_score": 1.3209,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 10,
+      "doc_id": "1166",
+      "title": "Pasal 1166",
+      "score": 4.8474,
+      "gnn_score": 5.386,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 11,
+      "doc_id": "1338",
+      "title": "Pasal 1338",
+      "score": 4.4951,
+      "gnn_score": 4.8481,
+      "bm25_score": 1.318,
+      "is_relevant": true,
+      "beyond_topk": false
+    },
+    {
+      "rank": 12,
+      "doc_id": "1243",
+      "title": "Pasal 1243",
+      "score": 4.3682,
+      "gnn_score": 4.2268,
+      "bm25_score": 5.6411,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 13,
+      "doc_id": "1335",
+      "title": "Pasal 1335",
+      "score": 4.34,
+      "gnn_score": 4.8223,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 14,
+      "doc_id": "1239",
+      "title": "Pasal 1239",
+      "score": 4.3036,
+      "gnn_score": 4.1572,
+      "bm25_score": 5.621,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 15,
+      "doc_id": "1313",
+      "title": "Pasal 1313",
+      "score": 4.1614,
+      "gnn_score": 4.6238,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 16,
+      "doc_id": "433",
+      "title": "Pasal 433",
+      "score": 4.0351,
+      "gnn_score": 4.2351,
+      "bm25_score": 2.2352,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 17,
+      "doc_id": "1329",
+      "title": "Pasal 1329",
+      "score": 4.0297,
+      "gnn_score": 4.3123,
+      "bm25_score": 1.4864,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 18,
+      "doc_id": "1244",
+      "title": "Pasal 1244",
+      "score": 3.9385,
+      "gnn_score": 3.2627,
+      "bm25_score": 10.02,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 19,
+      "doc_id": "1367",
+      "title": "Pasal 1367",
+      "score": 3.7347,
+      "gnn_score": 3.5082,
+      "bm25_score": 5.7736,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 20,
+      "doc_id": "1267",
+      "title": "Pasal 1267",
+      "score": 3.71,
+      "gnn_score": 3.0104,
+      "bm25_score": 10.0062,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 21,
+      "doc_id": "1330",
+      "title": "Pasal 1330",
+      "score": 3.6856,
+      "gnn_score": 3.8848,
+      "bm25_score": 1.8932,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 22,
+      "doc_id": "1246",
+      "title": "Pasal 1246",
+      "score": 3.6733,
+      "gnn_score": 3.4212,
+      "bm25_score": 5.9423,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 23,
+      "doc_id": "1339",
+      "title": "Pasal 1339",
+      "score": 3.6604,
+      "gnn_score": 4.0672,
+      "bm25_score": 0.0,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 24,
+      "doc_id": "1340",
+      "title": "Pasal 1340",
+      "score": 3.5947,
+      "gnn_score": 3.3102,
+      "bm25_score": 6.155,
+      "is_relevant": false,
+      "beyond_topk": false
+    },
+    {
+      "rank": 25,
+      "doc_id": "436",
+      "title": "Pasal 436",
+      "score": 3.593,
+      "gnn_score": 3.8656,
+      "bm25_score": 1.14,
+      "is_relevant": false,
+      "beyond_topk": false
+    }
+  ]
+}
