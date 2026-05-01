@@ -174,6 +174,15 @@ async def main():
     parser.add_argument("--pad_to_k", type=int, default=0,
                         help="Pad agent rankings to k docs using seen_doc_ids "
                         "(0=no padding, 10=pad to 10 for fair comparison)")
+    parser.add_argument("--dense_source", default="bge",
+                        choices=["bge", "structgnn"],
+                        help="Dense embedding source: bge (BGE-M3) or structgnn "
+                        "(GNN corpus+query embeddings)")
+    parser.add_argument("--gnn_model_dir", default=None,
+                        help="Path to StructGNN model dir with best_model.pt "
+                        "and gnn_corpus_embeddings.npy (required if --dense_source structgnn)")
+    parser.add_argument("--gnn_alpha", type=float, default=0.8,
+                        help="Alpha for StructGNN scoring: alpha*gnn + (1-alpha)*bm25")
     parser.add_argument("--debug_qid", default=None,
                         help="Run a single query and dump full conversation")
     args = parser.parse_args()
@@ -183,13 +192,15 @@ async def main():
     lang = ds["lang"]
 
     if args.output_dir is None:
-        args.output_dir = f"outputs/context_1/{args.dataset}"
+        dense_tag = f"_{args.dense_source}" if args.dense_source != "bge" else ""
+        args.output_dir = f"outputs/context_1/{args.dataset}{dense_tag}"
     os.makedirs(args.output_dir, exist_ok=True)
     log_path = f"{args.output_dir}/agent_log.jsonl"
 
     print("=" * 60)
     print(f"Context-1 Agentic Retrieval — {args.dataset}")
     print(f"Model: {args.model}")
+    print(f"Dense source: {args.dense_source}")
     print(f"Max turns: {args.max_turns}, Concurrency: {args.concurrency}")
     print("=" * 60)
 
@@ -216,25 +227,6 @@ async def main():
     print("\nFitting BM25...")
     bm25 = build_bm25(doc_texts, lang)
 
-    # --- Dense embeddings ---
-    print("Loading corpus embeddings...")
-    corpus_embeddings = load_corpus_embeddings(args.embeddings_dir)
-    if corpus_embeddings is None:
-        print("  No cached embeddings found. Encoding corpus with BGE-M3...")
-        encoder = load_query_encoder(device=args.encoder_device)
-        from evaluate_dense_retrieval import encode_with_bge
-        corpus_embeddings = encode_with_bge(doc_texts, encoder)
-        norms = np.linalg.norm(corpus_embeddings, axis=1, keepdims=True)
-        norms[norms == 0] = 1
-        corpus_embeddings = corpus_embeddings / norms
-        os.makedirs(args.embeddings_dir, exist_ok=True)
-        np.save(f"{args.embeddings_dir}/bge_m3_corpus.npy", corpus_embeddings)
-        print(f"  Saved to {args.embeddings_dir}/bge_m3_corpus.npy")
-    else:
-        encoder = load_query_encoder(device=args.encoder_device)
-        print(f"  Loaded cached embeddings: {corpus_embeddings.shape}")
-    print(f"  Query encoder on: {args.encoder_device}")
-
     # --- Reranker (optional) ---
     reranker = None
     if args.use_reranker:
@@ -242,14 +234,73 @@ async def main():
         reranker = SimpleReranker(load_reranker(device=args.encoder_device))
 
     # --- Build search pipeline ---
-    searcher = HybridSearcher(
-        doc_ids=doc_ids,
-        doc_texts=doc_texts,
-        corpus_embeddings=corpus_embeddings,
-        bm25=bm25,
-        query_encoder=encoder,
-        reranker=reranker,
-    )
+    if args.dense_source == "structgnn":
+        gnn_model_dir = (args.gnn_model_dir
+                         or f"outputs/paragnn/{args.dataset}/adapted_struct")
+        gnn_emb_path = Path(gnn_model_dir) / "gnn_corpus_embeddings.npy"
+        gnn_model_path = Path(gnn_model_dir) / "best_model.pt"
+        rr_emb_path = (Path(gnn_model_dir).parent
+                       / "embeddings" / "EMBD_CONST.pt")
+
+        if not gnn_emb_path.exists() or not gnn_model_path.exists():
+            print(f"ERROR: StructGNN files not found in {gnn_model_dir}")
+            print(f"  Run first: python src/paragnn/inference.py "
+                  f"--dataset {args.dataset} --export_embeddings")
+            return
+
+        print(f"\nLoading StructGNN searcher...")
+        print(f"  Corpus embeddings: {gnn_emb_path}")
+        print(f"  Model: {gnn_model_path}")
+        gnn_corpus_emb = np.load(gnn_emb_path)
+        print(f"  Loaded: {gnn_corpus_emb.shape}")
+
+        import torch
+        rr_const_emb = torch.load(rr_emb_path, map_location="cpu")
+
+        print("  Loading BGE-M3 (for GNN query encoding)...")
+        encoder = load_query_encoder(device=args.encoder_device)
+
+        from paragnn.gnn_searcher import StructGNNSearcher
+        searcher = StructGNNSearcher(
+            doc_ids=doc_ids,
+            doc_texts=doc_texts,
+            corpus_embeddings=gnn_corpus_emb,
+            bm25=bm25,
+            bge_encoder=encoder,
+            model_path=str(gnn_model_path),
+            rr_const_emb=rr_const_emb,
+            alpha=args.gnn_alpha,
+            device=args.encoder_device,
+            reranker=reranker,
+        )
+        print(f"  StructGNN searcher ready (alpha={searcher.alpha})")
+    else:
+        print("Loading corpus embeddings...")
+        corpus_embeddings = load_corpus_embeddings(args.embeddings_dir)
+        if corpus_embeddings is None:
+            print("  No cached embeddings found. Encoding corpus with BGE-M3...")
+            encoder = load_query_encoder(device=args.encoder_device)
+            from evaluate_dense_retrieval import encode_with_bge
+            corpus_embeddings = encode_with_bge(doc_texts, encoder)
+            norms = np.linalg.norm(corpus_embeddings, axis=1, keepdims=True)
+            norms[norms == 0] = 1
+            corpus_embeddings = corpus_embeddings / norms
+            os.makedirs(args.embeddings_dir, exist_ok=True)
+            np.save(f"{args.embeddings_dir}/bge_m3_corpus.npy", corpus_embeddings)
+            print(f"  Saved to {args.embeddings_dir}/bge_m3_corpus.npy")
+        else:
+            encoder = load_query_encoder(device=args.encoder_device)
+            print(f"  Loaded cached embeddings: {corpus_embeddings.shape}")
+        print(f"  Query encoder on: {args.encoder_device}")
+
+        searcher = HybridSearcher(
+            doc_ids=doc_ids,
+            doc_texts=doc_texts,
+            corpus_embeddings=corpus_embeddings,
+            bm25=bm25,
+            query_encoder=encoder,
+            reranker=reranker,
+        )
 
     from context_1.token_budget import TokenBudgetTracker
     tool_executor = ToolExecutor(

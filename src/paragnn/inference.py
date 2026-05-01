@@ -62,7 +62,7 @@ def get_gnn_scores(model, test_graph, device):
     std_scores = scores.std(dim=1, keepdim=True)
     gnn_scores = (scores - mean_scores) / (std_scores + 1e-8)
 
-    return gnn_scores.cpu()
+    return gnn_scores.cpu(), candidate_encoded.cpu()
 
 
 def grid_search_alpha(gnn_scores, bm25_scores, gold_matrix, k=10):
@@ -147,6 +147,8 @@ def main():
     parser.add_argument("--max_relevant", type=int, default=0)
     parser.add_argument("--top_k", type=int, default=100)
     parser.add_argument("--proximity_radius", type=int, default=50)
+    parser.add_argument("--export_embeddings", action="store_true",
+                        help="Export GNN corpus embeddings as .npy for hybrid search")
     args = parser.parse_args()
 
     cfg = DATASETS[args.dataset]
@@ -247,8 +249,18 @@ def main():
 
     # Compute GNN scores
     print("Computing GNN scores...")
-    gnn_scores = get_gnn_scores(model, test_graph, device)
+    gnn_scores, candidate_embeddings = get_gnn_scores(model, test_graph, device)
     gnn_debiased = gnn_scores - gnn_scores.mean(dim=0, keepdim=True)
+
+    # Export GNN corpus embeddings for hybrid search
+    if args.export_embeddings:
+        emb_np = candidate_embeddings.numpy()
+        norms = np.linalg.norm(emb_np, axis=1, keepdims=True)
+        norms[norms == 0] = 1
+        emb_np = emb_np / norms
+        emb_path = f"{model_dir}/gnn_corpus_embeddings.npy"
+        np.save(emb_path, emb_np)
+        print(f"  Exported GNN corpus embeddings: {emb_path} {emb_np.shape}")
     bm25_cpu = bm25_test_scores.cpu()
 
     # Grid search alpha
