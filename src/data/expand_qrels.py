@@ -180,12 +180,11 @@ def compute_bm25_topk(
         query_texts = [" ".join(jieba.cut(t)) for t in query_texts]
 
     print(f"Computing BM25 top-{top_k} for {len(query_ids)} queries...")
-    scores = bm25.transform(query_texts)
 
     topk_per_query = {}
     for i, qid in enumerate(query_ids):
-        row = scores[i].toarray().flatten() if hasattr(scores[i], 'toarray') else np.array(scores[i]).flatten()
-        top_indices = np.argsort(row)[::-1][:top_k]
+        scores = bm25.transform(query_texts[i])
+        top_indices = np.argsort(scores)[::-1][:top_k]
         topk_per_query[qid] = [doc_ids[idx] for idx in top_indices]
 
     return topk_per_query
