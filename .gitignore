@@ -37,6 +37,8 @@ experiment/claude-assistance/
 experiment/kuhperdata_pdfs/
 experiment/mkri_pdfs/
 experiment/putusan_kuhperdata_pdfs/
+experiment/excluded_mkri/
+experiment/excluded_pa_puu/
 paper/
 latex/
 include/
