@@ -408,6 +408,9 @@ async def main():
                 prev_rankings[result["qid"]] = result["ranked_doc_ids"]
 
                 conversation = result.pop("conversation", [])
+                qid = result["qid"]
+                gt_docs = list(loader.qrels.get(qid, {}).keys())
+                result["ground_truth"] = gt_docs
                 log_file.write(json.dumps(result, ensure_ascii=False) + "\n")
                 log_file.flush()
 

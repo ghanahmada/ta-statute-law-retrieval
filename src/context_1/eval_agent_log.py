@@ -114,7 +114,14 @@ def main():
     per_mrr = metrics["per_query_mrr"]
     zero_mrr_qids = [qid for qid, m in zip(evaluated_gt.keys(), per_mrr) if m == 0]
     if zero_mrr_qids:
-        print(f"\n{len(zero_mrr_qids)} queries with MRR=0 (no relevant doc in top {k})")
+        print(f"\n{len(zero_mrr_qids)} queries with MRR=0 (no relevant doc in top {k}):")
+        stats_by_qid = {s["qid"]: s for s in stats} if stats else {}
+        for qid in zero_mrr_qids:
+            gt = evaluated_gt.get(qid, [])
+            predicted = rankings.get(qid, [])[:k]
+            rec = stats_by_qid.get(qid, {})
+            gt_in_log = rec.get("ground_truth", gt)
+            print(f"  {qid}: predicted={predicted}  gt={gt_in_log}")
 
 
 if __name__ == "__main__":
