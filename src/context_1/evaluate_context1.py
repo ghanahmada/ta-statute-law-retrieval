@@ -297,6 +297,8 @@ async def main():
         print(f"  Selected: {len(state.selected_doc_ids)} docs")
         print(f"  Seen: {len(state.seen_doc_ids)} docs")
         print(f"  Turns: {state.turn_count}")
+        if state.error:
+            print(f"  ERROR: {state.error}")
         print(f"  Ground truth: {list(loader.qrels.get(qid, {}).keys())}")
         print(f"{'='*60}")
         return
