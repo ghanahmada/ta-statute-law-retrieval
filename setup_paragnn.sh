@@ -8,10 +8,12 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "Project dir: ${PROJECT_DIR}"
 
+# Initialize conda in this shell
+eval "$(${HOME}/miniconda3/bin/conda shell.bash hook)"
+
 # 1. Create conda env with Python 3.11
 echo "Creating conda env (paragnn, Python 3.11)..."
 conda create -n paragnn python=3.11 -y
-eval "$(conda shell.bash hook)"
 conda activate paragnn
 
 # 2. Install PyTorch with CUDA via pip (conda installs CPU-only)
