@@ -194,9 +194,29 @@ class AgenticRetriever:
             if doc_id in self.tool_executor.corpus:
                 state.selected_doc_ids[doc_id] = justification
 
+    def _bootstrap_search(self, state: AgentState, query: str):
+        result = self.tool_executor.search_corpus(
+            query, exclude_ids=set(), top_n=20,
+        )
+        state.seen_doc_ids.update(result.doc_ids_seen)
+        for did, score in result.doc_scores.items():
+            state.doc_scores[did] = score
+        state.budget.add(result.content)
+        return result
+
     async def run(self, query: str) -> AgentState:
         state = self._new_state()
-        self._observe(state, query)
+
+        bootstrap = self._bootstrap_search(state, query)
+        user_content = (
+            query
+            + "\n\n--- INITIAL SEARCH RESULTS (top 20 from full query) ---\n"
+            + bootstrap.content
+            + "\n\n"
+            + state.budget.status_message()
+        )
+        state.messages.append({"role": "user", "content": user_content})
+        state.budget.add(user_content)
 
         while not state.is_done and state.turn_count < state.max_turns:
             state.turn_count += 1
