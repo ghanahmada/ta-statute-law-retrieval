@@ -119,6 +119,27 @@ class SimpleReranker:
         return scores.tolist()
 
 
+def _extract_conversation(messages: list[dict]) -> list[dict]:
+    """Extract a compact conversation log with reasoning from agent messages."""
+    conv = []
+    for msg in messages:
+        entry = {"role": msg.get("role", "?")}
+        if msg.get("reasoning"):
+            entry["reasoning"] = msg["reasoning"]
+        content = msg.get("content", "")
+        if content:
+            entry["content"] = content[:2000]
+        tool_calls = msg.get("tool_calls", [])
+        if tool_calls:
+            entry["tool_calls"] = [
+                {"name": tc["function"]["name"],
+                 "args": tc["function"]["arguments"][:500]}
+                for tc in tool_calls
+            ]
+        conv.append(entry)
+    return conv
+
+
 async def run_one_query(
     retriever: AgenticRetriever,
     sem: asyncio.Semaphore,
@@ -135,9 +156,11 @@ async def run_one_query(
                 "ranked_doc_ids": ranked,
                 "n_selected": len(ranked),
                 "n_seen": len(state.seen_doc_ids),
+                "n_read": len(state.read_doc_ids),
                 "turns": state.turn_count,
                 "error": state.error,
                 "elapsed_s": round(time.time() - t0, 2),
+                "conversation": _extract_conversation(state.messages),
             }
         except Exception as e:
             return {
@@ -145,9 +168,11 @@ async def run_one_query(
                 "ranked_doc_ids": [],
                 "n_selected": 0,
                 "n_seen": 0,
+                "n_read": 0,
                 "turns": 0,
                 "error": str(e),
                 "elapsed_s": round(time.time() - t0, 2),
+                "conversation": [],
             }
 
 
@@ -370,18 +395,37 @@ async def main():
             for qid in remaining_qids
         ]
 
+        conv_log_path = f"{args.output_dir}/agent_conversations.jsonl"
         results = []
         log_file = open(log_path, "a", encoding="utf-8")
+        conv_file = open(conv_log_path, "a", encoding="utf-8")
         pbar = tqdm_asyncio(total=len(tasks), desc="Agentic retrieval")
-        for coro in asyncio.as_completed(tasks):
-            result = await coro
-            results.append(result)
-            prev_rankings[result["qid"]] = result["ranked_doc_ids"]
-            log_file.write(json.dumps(result, ensure_ascii=False) + "\n")
-            log_file.flush()
-            pbar.update(1)
-        pbar.close()
-        log_file.close()
+        interrupted = False
+        try:
+            for coro in asyncio.as_completed(tasks):
+                result = await coro
+                results.append(result)
+                prev_rankings[result["qid"]] = result["ranked_doc_ids"]
+
+                conversation = result.pop("conversation", [])
+                log_file.write(json.dumps(result, ensure_ascii=False) + "\n")
+                log_file.flush()
+
+                conv_rec = {
+                    "qid": result["qid"],
+                    "conversation": conversation,
+                }
+                conv_file.write(json.dumps(conv_rec, ensure_ascii=False) + "\n")
+                conv_file.flush()
+
+                pbar.update(1)
+        except KeyboardInterrupt:
+            interrupted = True
+            print(f"\n\nInterrupted! Evaluating {len(results)} completed queries...")
+        finally:
+            pbar.close()
+            log_file.close()
+            conv_file.close()
 
         errors = [r for r in results if r["error"]]
         if errors:
@@ -389,15 +433,21 @@ async def main():
             for r in errors[:5]:
                 print(f"  {r['qid']}: {r['error']}")
 
-        avg_turns = np.mean([r["turns"] for r in results])
-        avg_selected = np.mean([r["n_selected"] for r in results])
-        avg_seen = np.mean([r["n_seen"] for r in results])
-        avg_time = np.mean([r["elapsed_s"] for r in results])
-        print(f"\nAgent stats:")
-        print(f"  Avg turns: {avg_turns:.1f}")
-        print(f"  Avg selected docs: {avg_selected:.1f}")
-        print(f"  Avg seen docs: {avg_seen:.1f}")
-        print(f"  Avg time/query: {avg_time:.1f}s")
+        if results:
+            avg_turns = np.mean([r["turns"] for r in results])
+            avg_selected = np.mean([r["n_selected"] for r in results])
+            avg_seen = np.mean([r["n_seen"] for r in results])
+            avg_read = np.mean([r["n_read"] for r in results])
+            avg_time = np.mean([r["elapsed_s"] for r in results])
+            print(f"\nAgent stats ({len(results)} queries):")
+            print(f"  Avg turns: {avg_turns:.1f}")
+            print(f"  Avg selected docs: {avg_selected:.1f}")
+            print(f"  Avg seen docs: {avg_seen:.1f}")
+            print(f"  Avg read docs: {avg_read:.1f}")
+            print(f"  Avg time/query: {avg_time:.1f}s")
+
+        if interrupted:
+            print(f"\nConversation log: {conv_log_path}")
 
     # --- Evaluate ---
     print(f"\n{'='*60}")

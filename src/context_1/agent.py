@@ -89,7 +89,11 @@ class AgenticRetriever:
         if assistant_content:
             state.budget.add(assistant_content)
 
+        reasoning = getattr(choice.message, "reasoning_content", None) or ""
+
         msg = {"role": "assistant", "content": assistant_content}
+        if reasoning:
+            msg["reasoning"] = reasoning
         if choice.message.tool_calls:
             msg["tool_calls"] = [
                 {
