@@ -1,6 +1,9 @@
 """Training loop for Para-GNN / Prox-GNN / StructGNN.
 
 Adapted from IL-PCSR's train_paragnn_plus_bm25_for_secs.py.
+
+Uses validation set for early stopping and alpha selection.
+Test set metrics are reported but never used for model/hyperparameter decisions.
 """
 import json
 import os
@@ -32,10 +35,34 @@ class ParaGNNTrainer:
         self.use_fact_types = use_fact_types
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    def _build_graph(self, query_ids, corpus_ids):
+        mode = self.config.structure_mode
+        return GraphBuilder(
+            query_ids, corpus_ids, self.para_store,
+            structure_mode=mode,
+            proximity_radius=self.config.proximity_radius,
+            structure_features=self.structure_features,
+            query_structure_feature=self.query_structure_feature,
+        ).graph
+
+    def _build_gold_matrix(self, query_ids, corpus_ids, gold):
+        gold_matrix = torch.zeros(len(query_ids), len(corpus_ids))
+        doc_id_to_idx = {d: i for i, d in enumerate(corpus_ids)}
+        for qi, qid in enumerate(query_ids):
+            if qid in gold:
+                for did, score in gold[qid].items():
+                    if did in doc_id_to_idx and score > 0:
+                        gold_matrix[qi][doc_id_to_idx[did]] = 1
+        return gold_matrix
+
     def train(
         self,
         train_dataset,
         collator,
+        bm25_val_scores: torch.Tensor,
+        val_query_ids: list,
+        val_corpus_ids: list,
+        val_gold: dict,
         bm25_test_scores: torch.Tensor,
         test_query_ids: list,
         test_corpus_ids: list,
@@ -43,7 +70,6 @@ class ParaGNNTrainer:
     ):
         set_seed(42)
 
-        # Output to method-specific subfolder
         mode = self.config.structure_mode
         method_suffix = self.config.method
         if mode == "proximity":
@@ -61,7 +87,6 @@ class ParaGNNTrainer:
                         dropout=self.config.dropout, num_head=self.config.num_heads,
                         structure_mode=mode, struct_input_dim=struct_input_dim)
 
-        # Resume from checkpoint if exists
         start_epoch = 0
         best_metric = 0
         log = []
@@ -83,7 +108,6 @@ class ParaGNNTrainer:
         if os.path.exists(resume_path):
             optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
-        # IL-PCSR LR schedule: linear warmup + 1.2x total steps (never fully decays)
         steps_per_epoch = ceil(len(train_dataset) / self.config.batch_size)
         total_steps = steps_per_epoch * self.config.epochs
         scheduler = get_linear_schedule_with_warmup(
@@ -92,7 +116,6 @@ class ParaGNNTrainer:
             num_training_steps=int(total_steps * 1.2),
         )
 
-        # Early stopping
         patience = 10
         epochs_without_improvement = 0
 
@@ -104,32 +127,26 @@ class ParaGNNTrainer:
             num_workers=0,
         )
 
-        # Handle BM25 NaN values
+        bm25_val_scores = torch.nan_to_num(bm25_val_scores, nan=0.0)
         bm25_test_scores = torch.nan_to_num(bm25_test_scores, nan=0.0)
 
-        # Build test graph once
+        # Build val and test graphs once
+        print("Building val graph...")
+        val_graph = self._build_graph(val_query_ids, val_corpus_ids)
+        val_graph = val_graph.to(self.device)
+        bm25_val_scores = bm25_val_scores.to(self.device)
+        val_gold_matrix = self._build_gold_matrix(val_query_ids, val_corpus_ids, val_gold)
+
         print("Building test graph...")
-        test_graph = GraphBuilder(
-            test_query_ids, test_corpus_ids, self.para_store,
-            structure_mode=mode,
-            proximity_radius=self.config.proximity_radius,
-            structure_features=self.structure_features,
-            query_structure_feature=self.query_structure_feature,
-        ).graph
+        test_graph = self._build_graph(test_query_ids, test_corpus_ids)
         test_graph = test_graph.to(self.device)
         bm25_test_scores = bm25_test_scores.to(self.device)
-
-        # Build gold matrix
-        gold_matrix = torch.zeros(len(test_query_ids), len(test_corpus_ids))
-        doc_id_to_idx = {d: i for i, d in enumerate(test_corpus_ids)}
-        for qi, qid in enumerate(test_query_ids):
-            if qid in test_gold:
-                for did, score in test_gold[qid].items():
-                    if did in doc_id_to_idx and score > 0:
-                        gold_matrix[qi][doc_id_to_idx[did]] = 1
+        test_gold_matrix = self._build_gold_matrix(test_query_ids, test_corpus_ids, test_gold)
 
         mode_name = {"none": "Para-GNN", "proximity": "Prox-GNN", "structural": "StructGNN"}[mode]
         print(f"Training {mode_name} for epochs {start_epoch+1}-{self.config.epochs}...")
+        print(f"  Early stopping on VAL set ({len(val_query_ids)} queries)")
+
         for epoch in range(start_epoch, self.config.epochs):
             model.train()
             total_loss = 0
@@ -145,7 +162,6 @@ class ParaGNNTrainer:
                 if hasattr(batch_on_device["graph"], "to"):
                     batch_on_device["graph"] = batch_on_device["graph"].to(self.device)
 
-                # OOM handling (from IL-PCSR)
                 try:
                     loss = model(
                         query_pos=batch_on_device["query_pos"],
@@ -171,40 +187,29 @@ class ParaGNNTrainer:
 
             avg_loss = total_loss / max(n_batches, 1)
 
-            # Evaluate: get raw GNN scores then grid search alpha
-            gnn_scores, avg_alpha = self._get_gnn_scores(model, test_graph)
-            best_alpha, mrr, recall, hit_rate = self._grid_search_alpha(
-                gnn_scores, bm25_test_scores.cpu(), gold_matrix
-            )
-            # Also try debiased scores
-            gnn_debiased = gnn_scores - gnn_scores.mean(dim=0, keepdim=True)
-            best_alpha_d, mrr_d, recall_d, hit_rate_d = self._grid_search_alpha(
-                gnn_debiased, bm25_test_scores.cpu(), gold_matrix
-            )
-            if mrr_d > mrr:
-                mrr, recall, hit_rate, best_alpha = mrr_d, recall_d, hit_rate_d, best_alpha_d
+            # Evaluate on VAL for early stopping (pure GNN scores, no alpha sweep)
+            gnn_val, avg_alpha = self._get_gnn_scores(model, val_graph)
+            val_mrr, val_recall, val_hit = self._compute_metrics(gnn_val, val_gold_matrix)
 
             log_entry = {
                 "epoch": epoch + 1,
                 "loss": avg_loss,
-                "mrr@10": mrr,
-                "recall@10": recall,
-                "hit_rate": hit_rate,
-                "best_alpha": best_alpha,
+                "val_mrr@10": val_mrr,
+                "val_recall@10": val_recall,
+                "val_hit_rate": val_hit,
                 "learned_alpha": avg_alpha,
             }
             log.append(log_entry)
-            print(f"  Epoch {epoch+1}: loss={avg_loss:.4f} MRR={mrr:.4f} R@10={recall:.4f} Hit={hit_rate:.1%} alpha={best_alpha:.2f} (learned={avg_alpha:.3f})")
+            print(f"  Epoch {epoch+1}: loss={avg_loss:.4f} val_MRR={val_mrr:.4f} val_R@10={val_recall:.4f} val_Hit={val_hit:.1%} (learned_alpha={avg_alpha:.3f})")
 
-            if mrr > best_metric:
-                best_metric = mrr
+            if val_mrr > best_metric:
+                best_metric = val_mrr
                 epochs_without_improvement = 0
                 torch.save(model.state_dict(), f"{output_dir}/best_model.pt")
-                print(f"  → New best MRR={mrr:.4f} at alpha={best_alpha:.2f}, saved model")
+                print(f"  → New best val MRR={val_mrr:.4f}, saved model")
             else:
                 epochs_without_improvement += 1
 
-            # Save resume checkpoint
             torch.save({
                 "epoch": epoch + 1,
                 "model_state_dict": model.state_dict(),
@@ -217,60 +222,98 @@ class ParaGNNTrainer:
                 json.dump(log, f, indent=2)
 
             if epochs_without_improvement >= patience:
-                print(f"  Early stopping at epoch {epoch+1} (no improvement for {patience} epochs)")
+                print(f"  Early stopping at epoch {epoch+1} (no val improvement for {patience} epochs)")
                 break
 
-        # Final grid search with best model
+        # === Post-training: alpha sweep on VAL, then apply frozen to TEST ===
         print(f"\n{'='*60}")
-        print(f"  Final evaluation with best model + alpha grid search")
+        print(f"  Post-training alpha selection (on VAL) and final evaluation (on TEST)")
         print(f"{'='*60}")
         model.load_state_dict(torch.load(f"{output_dir}/best_model.pt", map_location="cpu"))
         model = model.to(self.device)
-        gnn_scores, _ = self._get_gnn_scores(model, test_graph)
 
-        # Debiased GNN scores: subtract per-candidate mean across all queries
-        gnn_debiased = gnn_scores - gnn_scores.mean(dim=0, keepdim=True)
+        gnn_val, _ = self._get_gnn_scores(model, val_graph)
+        gnn_test, _ = self._get_gnn_scores(model, test_graph)
 
-        print(f"\n  Alpha grid search results (original):")
+        gnn_val_debiased = gnn_val - gnn_val.mean(dim=0, keepdim=True)
+        gnn_test_debiased = gnn_test - gnn_test.mean(dim=0, keepdim=True)
+
+        # Sweep alpha on VAL (original scores)
+        print(f"\n  Alpha sweep on VAL (original):")
         print(f"  {'Alpha':<8} {'MRR@10':<10} {'R@10':<10} {'Hit':<10}")
         print(f"  {'-'*38}")
-        best_alpha, best_mrr, best_recall, best_hit = 0, 0, 0, 0
+        best_val_alpha, best_val_mrr = 0, 0
         for alpha in np.arange(0.0, 1.05, 0.1):
-            scores = alpha * gnn_scores + (1 - alpha) * bm25_test_scores.cpu()
-            mrr, recall, hit_rate = self._compute_metrics(scores, gold_matrix)
-            marker = " ←" if mrr > best_mrr else ""
-            print(f"  {alpha:<8.1f} {mrr:<10.4f} {recall:<10.4f} {hit_rate:<10.1%}{marker}")
-            if mrr > best_mrr:
-                best_mrr = mrr
-                best_recall = recall
-                best_hit = hit_rate
-                best_alpha = alpha
+            scores = alpha * gnn_val + (1 - alpha) * bm25_val_scores.cpu()
+            mrr, recall, hit = self._compute_metrics(scores, val_gold_matrix)
+            marker = " ←" if mrr > best_val_mrr else ""
+            print(f"  {alpha:<8.1f} {mrr:<10.4f} {recall:<10.4f} {hit:<10.1%}{marker}")
+            if mrr > best_val_mrr:
+                best_val_mrr = mrr
+                best_val_alpha = alpha
 
-        print(f"\n  Best (original): alpha={best_alpha:.1f} MRR={best_mrr:.4f} R@10={best_recall:.4f} Hit={best_hit:.1%}")
-
-        print(f"\n  Alpha grid search results (debiased):")
+        # Sweep alpha on VAL (debiased scores)
+        print(f"\n  Alpha sweep on VAL (debiased):")
         print(f"  {'Alpha':<8} {'MRR@10':<10} {'R@10':<10} {'Hit':<10}")
         print(f"  {'-'*38}")
-        best_alpha_d, best_mrr_d, best_recall_d, best_hit_d = 0, 0, 0, 0
+        best_val_alpha_d, best_val_mrr_d = 0, 0
         for alpha in np.arange(0.0, 1.05, 0.1):
-            scores = alpha * gnn_debiased + (1 - alpha) * bm25_test_scores.cpu()
-            mrr, recall, hit_rate = self._compute_metrics(scores, gold_matrix)
-            marker = " ←" if mrr > best_mrr_d else ""
-            print(f"  {alpha:<8.1f} {mrr:<10.4f} {recall:<10.4f} {hit_rate:<10.1%}{marker}")
-            if mrr > best_mrr_d:
-                best_mrr_d = mrr
-                best_recall_d = recall
-                best_hit_d = hit_rate
-                best_alpha_d = alpha
+            scores = alpha * gnn_val_debiased + (1 - alpha) * bm25_val_scores.cpu()
+            mrr, recall, hit = self._compute_metrics(scores, val_gold_matrix)
+            marker = " ←" if mrr > best_val_mrr_d else ""
+            print(f"  {alpha:<8.1f} {mrr:<10.4f} {recall:<10.4f} {hit:<10.1%}{marker}")
+            if mrr > best_val_mrr_d:
+                best_val_mrr_d = mrr
+                best_val_alpha_d = alpha
 
-        print(f"\n  Best (debiased): alpha={best_alpha_d:.1f} MRR={best_mrr_d:.4f} R@10={best_recall_d:.4f} Hit={best_hit_d:.1%}")
+        # Decide: use original or debiased based on val performance
+        use_debiased = best_val_mrr_d > best_val_mrr
+        chosen_alpha = best_val_alpha_d if use_debiased else best_val_alpha
+        chosen_val_mrr = max(best_val_mrr, best_val_mrr_d)
+        variant = "debiased" if use_debiased else "original"
 
-        final_mrr = max(best_mrr, best_mrr_d)
-        print(f"\nTraining complete. Best MRR@10: {final_mrr:.4f}")
-        return final_mrr
+        print(f"\n  Val-selected: alpha={chosen_alpha:.1f} ({variant}), val MRR={chosen_val_mrr:.4f}")
+
+        # Apply frozen alpha to TEST
+        if use_debiased:
+            test_scores = chosen_alpha * gnn_test_debiased + (1 - chosen_alpha) * bm25_test_scores.cpu()
+        else:
+            test_scores = chosen_alpha * gnn_test + (1 - chosen_alpha) * bm25_test_scores.cpu()
+        test_mrr, test_recall, test_hit = self._compute_metrics(test_scores, test_gold_matrix)
+
+        print(f"\n  TEST results (alpha={chosen_alpha:.1f} frozen from val):")
+        print(f"    MRR@10:    {test_mrr:.4f}")
+        print(f"    Recall@10: {test_recall:.4f}")
+        print(f"    Hit Rate:  {test_hit:.1%}")
+
+        # Also report test-optimal alpha for transparency
+        print(f"\n  Alpha sweep on TEST (for transparency only — NOT used for selection):")
+        print(f"  {'Alpha':<8} {'MRR@10':<10} {'R@10':<10} {'Hit':<10}")
+        print(f"  {'-'*38}")
+        best_test_alpha, best_test_mrr = 0, 0
+        gnn_test_chosen = gnn_test_debiased if use_debiased else gnn_test
+        for alpha in np.arange(0.0, 1.05, 0.1):
+            scores = alpha * gnn_test_chosen + (1 - alpha) * bm25_test_scores.cpu()
+            mrr, recall, hit = self._compute_metrics(scores, test_gold_matrix)
+            marker = " ←" if mrr > best_test_mrr else ""
+            print(f"  {alpha:<8.1f} {mrr:<10.4f} {recall:<10.4f} {hit:<10.1%}{marker}")
+            if mrr > best_test_mrr:
+                best_test_mrr = mrr
+                best_test_alpha = alpha
+
+        alpha_gap = abs(chosen_alpha - best_test_alpha)
+        print(f"\n  Val-selected alpha: {chosen_alpha:.1f}")
+        print(f"  Test-optimal alpha: {best_test_alpha:.1f}")
+        print(f"  Gap: {alpha_gap:.1f} {'✓' if alpha_gap <= 0.1 else '⚠ >0.1'}")
+        print(f"  Test MRR (val alpha): {test_mrr:.4f}")
+        print(f"  Test MRR (test alpha): {best_test_mrr:.4f}")
+        print(f"  MRR difference: {best_test_mrr - test_mrr:+.4f}")
+
+        print(f"\nTraining complete. Test MRR@10: {test_mrr:.4f}")
+        return test_mrr
 
     @torch.no_grad()
-    def _get_gnn_scores(self, train_model, test_graph):
+    def _get_gnn_scores(self, train_model, graph):
         """Get raw GNN scores (before alpha blending)."""
         dim = self.config.embed_dim
         mode = self.config.structure_mode
@@ -282,15 +325,15 @@ class ParaGNNTrainer:
         test_model = test_model.to(self.device)
         test_model.eval()
 
-        node_h = test_graph.ndata["h"]
-        edge_h = test_graph.edata["h"]
+        node_h = graph.ndata["h"]
+        edge_h = graph.edata["h"]
 
         if mode == "structural":
             node_h = test_model.struct_proj(node_h)
 
-        h = test_model.eugat_gnn(test_graph, node_h, edge_h)
-        query_encoded = h[test_graph.ndata["query_mask"].bool()]
-        candidate_encoded = h[test_graph.ndata["candidate_mask"].bool()]
+        h = test_model.eugat_gnn(graph, node_h, edge_h)
+        query_encoded = h[graph.ndata["query_mask"].bool()]
+        candidate_encoded = h[graph.ndata["candidate_mask"].bool()]
         alphas = test_model.ffnn(query_encoded)
 
         scores = torch.matmul(query_encoded, candidate_encoded.T)

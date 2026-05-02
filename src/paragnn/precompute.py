@@ -39,7 +39,7 @@ def split_into_sentences(text: str, lang: str = "en") -> list[str]:
 
 
 def precompute_bm25_scores(config: ParaGNNConfig):
-    """Compute BM25 score matrices for train and test queries."""
+    """Compute BM25 score matrices for train, val, and test queries."""
     output_dir = f"{config.output_dir}/{config.dataset}"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -109,6 +109,34 @@ def precompute_bm25_scores(config: ParaGNNConfig):
 
     with open(f"{output_dir}/test_query_ids.json", "w") as f:
         json.dump(test_qids, f)
+
+    # Val BM25 scores (if qrels_val.tsv exists)
+    val_qrels_path = f"{config.data_path}/qrels_val.tsv"
+    if os.path.exists(val_qrels_path):
+        val_loader = DataLoader(
+            f"{config.data_path}/corpus.jsonl",
+            f"{config.data_path}/queries.jsonl",
+            val_qrels_path,
+        ).load()
+        if config.max_relevant > 0:
+            val_loader.filter_max_relevant(config.max_relevant)
+
+        val_qids = sorted(val_loader.qrels.keys())
+        print(f"Computing BM25 for {len(val_qids)} val queries...")
+        val_scores = []
+        for qid in tqdm(val_qids, desc="BM25 val"):
+            q_text = val_loader.queries[qid]["text"]
+            if config.lang == "zh":
+                q_text = " ".join(jieba.cut(q_text))
+            val_scores.append(bm25.transform(q_text))
+        val_scores = torch.tensor(np.array(val_scores), dtype=torch.float32)
+        torch.save(val_scores, f"{output_dir}/bm25_val_scores.pt")
+        print(f"  Saved: {output_dir}/bm25_val_scores.pt, shape={val_scores.shape}")
+
+        with open(f"{output_dir}/val_query_ids.json", "w") as f:
+            json.dump(val_qids, f)
+    else:
+        print(f"  No qrels_val.tsv found at {val_qrels_path}, skipping val BM25")
 
     # Also save BM25 hard negative rankings for training
     print("Computing BM25 hard negative rankings...")

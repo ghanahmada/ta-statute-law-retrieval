@@ -84,8 +84,10 @@ def main():
 
         required = [
             f"{output_dir}/bm25_train_scores.pt",
+            f"{output_dir}/bm25_val_scores.pt",
             f"{output_dir}/bm25_test_scores.pt",
             f"{output_dir}/train_query_ids.json",
+            f"{output_dir}/val_query_ids.json",
             f"{output_dir}/test_query_ids.json",
             f"{output_dir}/corpus_doc_ids.json",
             f"{output_dir}/bm25_hard_negatives.json",
@@ -103,9 +105,12 @@ def main():
 
         print("Loading pre-computed data...")
         bm25_train_scores = torch.load(f"{output_dir}/bm25_train_scores.pt")
+        bm25_val_scores = torch.load(f"{output_dir}/bm25_val_scores.pt")
         bm25_test_scores = torch.load(f"{output_dir}/bm25_test_scores.pt")
         with open(f"{output_dir}/train_query_ids.json") as f:
             train_qids = json.load(f)
+        with open(f"{output_dir}/val_query_ids.json") as f:
+            val_qids = json.load(f)
         with open(f"{output_dir}/test_query_ids.json") as f:
             test_qids = json.load(f)
         with open(f"{output_dir}/corpus_doc_ids.json") as f:
@@ -118,6 +123,11 @@ def main():
             f"{config.data_path}/queries.jsonl",
             f"{config.data_path}/qrels_train.tsv",
         ).load()
+        val_loader = DataLoader(
+            f"{config.data_path}/corpus.jsonl",
+            f"{config.data_path}/queries.jsonl",
+            f"{config.data_path}/qrels_val.tsv",
+        ).load()
         test_loader = DataLoader(
             f"{config.data_path}/corpus.jsonl",
             f"{config.data_path}/queries.jsonl",
@@ -125,6 +135,7 @@ def main():
         ).load()
         if config.max_relevant > 0:
             train_loader.filter_max_relevant(config.max_relevant)
+            val_loader.filter_max_relevant(config.max_relevant)
             test_loader.filter_max_relevant(config.max_relevant)
 
         rr_labels_path = None
@@ -186,6 +197,10 @@ def main():
         best_mrr = trainer.train(
             train_dataset=train_dataset,
             collator=collator,
+            bm25_val_scores=bm25_val_scores,
+            val_query_ids=val_qids,
+            val_corpus_ids=corpus_doc_ids,
+            val_gold=val_loader.qrels,
             bm25_test_scores=bm25_test_scores,
             test_query_ids=test_qids,
             test_corpus_ids=corpus_doc_ids,
