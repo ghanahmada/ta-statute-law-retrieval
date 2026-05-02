@@ -96,6 +96,9 @@ Contoh:
 [2] unsur: hubungan sewa-menyewa, pengembalian barang sewaan | fakta: kasus tentang pinjam-pakai bukan sewa | TIDAK_RELEVAN"""
 
 
+VALIDATOR_PROMPT = """Anda adalah hakim perdata yang skeptis. Periksa apakah pasal "{title}" benar-benar relevan untuk kasus berikut — TOLAK relevansi jika ada satu pun unsur pokok pasal yang tidak hadir dalam fakta kasus. Kasus: "{query_text}" | Pasal: "{article_text}" | Instruksi: sebutkan semua unsur pokok pasal, identifikasi unsur mana yang tidak ada dalam fakta kasus, lalu beri verdict. Jawab dalam satu baris: unsur_pokok: <daftar singkat> | unsur_hilang: <unsur yang tidak ada, atau 'tidak ada'> | verdict: <RELEVAN/TIDAK_RELEVAN>"""
+
+
 def parse_judgments(response_text: str, n_candidates: int) -> list[bool]:
     results = [False] * n_candidates
     for line in response_text.strip().split("\n"):
@@ -110,6 +113,57 @@ def parse_judgments(response_text: str, n_candidates: int) -> list[bool]:
     return results
 
 
+def parse_validator_response(response_text: str) -> bool:
+    match = re.search(r'verdict:\s*(RELEVAN|TIDAK_RELEVAN)', response_text)
+    if not match:
+        return False
+    return match.group(1) == "RELEVAN"
+
+
+async def validate_one_candidate(
+    client: AsyncOpenAI,
+    model: str,
+    sem: asyncio.Semaphore,
+    query_text: str,
+    cand: dict,
+) -> tuple[str, bool, str]:
+    async with sem:
+        prompt = VALIDATOR_PROMPT.format(
+            title=cand["title"],
+            query_text=query_text,
+            article_text=cand["text"],
+        )
+        try:
+            response = await client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=4096,
+                temperature=0,
+                extra_body={"chat_template_kwargs": {"enable_thinking": True}},
+            )
+            raw = response.choices[0].message.content.strip()
+            return cand["doc_id"], parse_validator_response(raw), raw
+        except Exception:
+            return cand["doc_id"], False, ""
+
+
+async def validate_relevant_candidates(
+    client: AsyncOpenAI,
+    model: str,
+    sem: asyncio.Semaphore,
+    query_text: str,
+    relevant_candidates: list[dict],
+) -> tuple[list[str], list[str]]:
+    tasks = [
+        validate_one_candidate(client, model, sem, query_text, cand)
+        for cand in relevant_candidates
+    ]
+    results = await asyncio.gather(*tasks)
+    confirmed = [doc_id for doc_id, ok, _ in results if ok]
+    rejected = [f"{doc_id}: {raw}" for doc_id, ok, raw in results if not ok]
+    return confirmed, rejected
+
+
 async def judge_one_query(
     client: AsyncOpenAI,
     model: str,
@@ -117,6 +171,7 @@ async def judge_one_query(
     qid: str,
     query_text: str,
     candidates: list[dict],
+    validate: bool = False,
 ) -> dict:
     async with sem:
         prompt = build_judgment_prompt(query_text, candidates)
@@ -133,20 +188,34 @@ async def judge_one_query(
             )
             raw = response.choices[0].message.content.strip()
             judgments = parse_judgments(raw, len(candidates))
-            new_relevant = [
-                cand["doc_id"]
-                for cand, is_rel in zip(candidates, judgments)
-                if is_rel
+
+            first_pass_relevant = [
+                cand for cand, is_rel in zip(candidates, judgments) if is_rel
             ]
-            return {
+
+            validator_log = []
+            if validate and first_pass_relevant:
+                confirmed_ids, rejected_logs = await validate_relevant_candidates(
+                    client, model, sem, query_text, first_pass_relevant
+                )
+                validator_log = rejected_logs
+                new_relevant = confirmed_ids
+            else:
+                new_relevant = [c["doc_id"] for c in first_pass_relevant]
+
+            result = {
                 "qid": qid,
                 "raw_response": raw,
                 "new_relevant": new_relevant,
                 "candidate_doc_ids": [c["doc_id"] for c in candidates],
                 "n_candidates": len(candidates),
                 "n_new": len(new_relevant),
+                "n_first_pass": len(first_pass_relevant),
                 "error": None,
             }
+            if validator_log:
+                result["validator_rejected"] = validator_log
+            return result
         except Exception as e:
             return {
                 "qid": qid,
@@ -155,6 +224,7 @@ async def judge_one_query(
                 "candidate_doc_ids": [c["doc_id"] for c in candidates],
                 "n_candidates": len(candidates),
                 "n_new": 0,
+                "n_first_pass": 0,
                 "error": str(e),
             }
 
@@ -226,6 +296,7 @@ async def expand_split(
     concurrency: int,
     log_path: str,
     done_qids: set[str],
+    validate: bool = False,
 ) -> dict[str, list[str]]:
     sem = asyncio.Semaphore(concurrency)
     corpus = loader.corpus
@@ -259,7 +330,7 @@ async def expand_split(
 
         query_text = loader.queries[qid]["text"]
         tasks.append(
-            judge_one_query(client, model, sem, qid, query_text, candidates)
+            judge_one_query(client, model, sem, qid, query_text, candidates, validate=validate)
         )
 
     if not tasks:
@@ -296,9 +367,11 @@ async def main():
                         help="Path to reformulated queries.jsonl (optional)")
     parser.add_argument("--top_k", type=int, default=50)
     parser.add_argument("--max_relevant", type=int, default=5)
-    parser.add_argument("--model", default="QuantTrio/Qwen3.6-27B-AWQ")
+    parser.add_argument("--model", default="qwen3.6-27b")
     parser.add_argument("--base_url", default="http://localhost:8000/v1")
     parser.add_argument("--concurrency", type=int, default=8)
+    parser.add_argument("--validate", action="store_true",
+                        help="Two-pass: re-validate RELEVANT candidates with thinking enabled")
     args = parser.parse_args()
 
     src_dir = f"data/{args.dataset}"
@@ -353,9 +426,13 @@ async def main():
     train_qids_set = set(train_loader.qrels.keys())
     train_topk = {qid: docs for qid, docs in topk.items() if qid in train_qids_set}
 
+    if args.validate:
+        print("Two-pass validation ENABLED: RELEVANT candidates will be re-checked with thinking")
+
     new_train = await expand_split(
         "train", train_loader, train_topk,
         client, args.model, args.concurrency, log_path, done_qids,
+        validate=args.validate,
     )
 
     # Build expanded train qrels
@@ -379,6 +456,7 @@ async def main():
     new_test = await expand_split(
         "test", test_loader, test_topk,
         client, args.model, args.concurrency, log_path, done_qids,
+        validate=args.validate,
     )
 
     # Build expanded test qrels
