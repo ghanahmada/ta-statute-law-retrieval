@@ -3,7 +3,7 @@
 
 \subsection{Main Results}
 
-Table~\ref{tab:main-results} presents retrieval performance across all methods and datasets.
+Table~\ref{tab:main-results} presents retrieval performance on the expanded KUHPerdata test set across all methods. All results use expanded relevance judgments (\S\ref{sec:gte}) with no filtering on the number of relevant articles per query.
 
 \begin{table*}[t]
 \centering
@@ -14,50 +14,54 @@ Table~\ref{tab:main-results} presents retrieval performance across all methods a
 \hline
 \multicolumn{8}{c}{\textbf{Lexical Methods}} \\
 \hline
-BM25 & unigram & 0.08 & 0.10 & 17.7 & 0.05 & 0.07 & 10.7 \\
-BM25 + Reranker & + cross-encoder & 0.18 & 0.21 & 33.1 & 0.09 & 0.13 & 19.1 \\
-BM25 + GAR & + graph expansion & 0.15 & 0.18 & 28.9 & 0.09 & 0.13 & 19.5 \\
+BM25 & unigram & 0.19 & 0.17 & 42.9 & 0.17 & 0.13 & 36.8 \\
+BM25 + Reranker & + cross-encoder & 0.35 & 0.26 & 55.8 & 0.28 & 0.22 & 49.1 \\
+BM25 + GAR & + graph expansion & 0.09 & 0.09 & 24.9 & 0.16 & 0.13 & 33.2 \\
 \hline
 \multicolumn{8}{c}{\textbf{Semantic Methods}} \\
 \hline
-Dense (BGE-M3) & cosine similarity & 0.07 & 0.10 & 18.7 & 0.09 & 0.12 & 19.0 \\
+Dense (BGE-M3) & cosine similarity & 0.22 & 0.17 & 39.9 & 0.19 & 0.16 & 34.7 \\
 \hline
 \multicolumn{8}{c}{\textbf{Learned Methods}} \\
 \hline
-JNLP Stage~1 & CatBoost, product & 0.34 & 0.43 & 62.9 & 0.37 & 0.50 & 64.4 \\
+JNLP Stage~1 & CatBoost, product & 0.50 & 0.41 & 71.0 & 0.48 & 0.46 & 75.2 \\
 \hline
 \multicolumn{8}{c}{\textbf{Graph Methods}} \\
 \hline
-Para-GNN & adapted & 0.46 & 0.52 & 71.1 & 0.46 & 0.54 & 67.8 \\
-StructGNN & + structural features & \textbf{0.50} & \textbf{0.53} & \textbf{72.4} & \textbf{0.49} & \textbf{0.56} & \textbf{68.5} \\
+Para-GNN & adapted & 0.52 & 0.51 & 82.8 & 0.59 & 0.55 & 82.6 \\
+StructGNN & + structural features & \textbf{0.54} & \textbf{0.53} & \textbf{82.1} & \textbf{0.63} & \textbf{0.60} & \textbf{85.1} \\
 \hline
 \end{tabular}
 \caption{\label{tab:main-results}
-Results on KUHPerdata test set (MRR@10, Recall@10, Hit Rate \%). Both query variants share identical relevance judgments. Best values in bold.
+Results on KUHPerdata test set with expanded relevance judgments (MRR@10, Recall@10, Hit Rate \%). Both query variants share identical relevance judgments. Best values in bold.
 }
 \end{table*}
 
-StructGNN achieves the highest MRR@10 on both query variants (0.50 Summarized, 0.49 Humanized), improving 47\% and 33\% over the strongest baseline (JNLP Stage~1). The improvement is consistent across formality levels: unlike BM25 which drops 41\% from Summarized to Humanized, StructGNN varies only 2\% (0.50 vs 0.49).
+StructGNN achieves the highest MRR@10 on both query variants (0.54 Summarized, 0.63 Humanized), improving 8\% and 31\% over the strongest non-graph baseline (JNLP Stage~1). Notably, all graph and learned methods perform \emph{better} on humanized queries than on summarized ones---the opposite of lexical methods. We attribute this to the expanded ground truth: humanized queries, being shorter and less specific, tend to match a broader set of relevant articles that only surface after ground truth expansion. StructGNN's hit rate reaches 85.1\% on humanized queries, demonstrating strong coverage even for informal queries.
 
-\noindent\textbf{Cross-Lingual Results:} Table~\ref{tab:cross-results} shows that the same method generalizes across languages without any language-specific tuning.
+BM25 + GAR underperforms plain BM25 on summarized queries (0.09 vs 0.19 MRR), indicating that graph-based query expansion with a multilingual scorer (mT5) poorly captures Indonesian legal terminology. The reranker (BGE cross-encoder) provides substantial gains over BM25 (+84\% MRR on summarized) but remains well below learned methods, confirming that the vocabulary gap requires training signal beyond pretrained representations.
+
+\noindent\textbf{Cross-Lingual Results:} Table~\ref{tab:cross-results} shows that Para-GNN generalizes across four languages without any language-specific tuning. BSARD (French) and STARD (Chinese) use their native statute pools; all methods use the same hyperparameters as KUHPerdata.
 
 \begin{table}[t]
 \centering
 \small
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lcccc}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llccc}
 \hline
-& \multicolumn{4}{c}{\textbf{MRR@10}} \\
-\textbf{Dataset} & BM25 & JNLP & P-GNN & Struct \\
+\textbf{Dataset} & \textbf{Method} & \textbf{MRR} & \textbf{R@10} & \textbf{Hit} \\
 \hline
-KUHPer. (hum.) & 0.05 & 0.37 & 0.46 & \textbf{0.49} \\
-KUHPer. (sum.) & 0.08 & 0.34 & 0.46 & \textbf{0.50} \\
-BSARD & 0.25 & 0.33 & 0.49 & \textbf{0.59} \\
-STARD & 0.34 & 0.27 & 0.53 & \textbf{0.58} \\
+\multirow{3}{*}{BSARD (FR)} & BM25 & 0.25 & 0.27 & 42.3 \\
+& JNLP & 0.33 & 0.30 & 44.6 \\
+& Para-GNN & \textbf{0.49} & \textbf{0.49} & \textbf{68.5} \\
+\hline
+\multirow{3}{*}{STARD (ZH)} & BM25 & 0.34 & 0.43 & 53.3 \\
+& JNLP & 0.27 & 0.39 & 49.4 \\
+& Para-GNN & \textbf{0.53} & \textbf{0.62} & \textbf{72.4} \\
 \hline
 \end{tabular}
 \caption{\label{tab:cross-results}
-Cross-dataset MRR@10. StructGNN generalizes across languages without language-specific tuning.
+Cross-dataset results (MRR@10, Recall@10, Hit Rate \%). Para-GNN generalizes across languages without language-specific tuning.
 }
 \end{table}
 
@@ -75,19 +79,19 @@ Table~\ref{tab:alpha-ablation} isolates the contribution of post-training alpha 
 KUHPer. (human.) & 0.43 & \textbf{0.46} & +0.03 \\
 KUHPer. (summ.) & 0.34 & \textbf{0.46} & +0.12 \\
 BSARD & 0.28 & \textbf{0.49} & +0.21 \\
-STARD & \xxx & \textbf{0.53} & \xxx \\
+STARD & 0.23 & \textbf{0.53} & +0.30 \\
 \hline
 \end{tabular}
 \caption{\label{tab:alpha-ablation}
-Para-GNN MRR@10 with learned alpha (converges to ~0.97) vs grid search. Grid search recovers the dataset-specific BM25 signal that learned alpha destroys. Largest gains on BSARD where BM25 is most informative.
+Para-GNN MRR@10 with learned alpha (converges to ${\sim}$0.97) vs grid search (original qrels). Grid search recovers the dataset-specific BM25 signal that learned alpha destroys. Largest gains on BSARD where BM25 is most informative.
 }
 \end{table}
 
-The pattern validates Observation 3 from \S\ref{sec:analysis}: BSARD, which has the highest BM25 hit rate (42.3\%), benefits most from grid search (+0.21 MRR) because it loses the most from the learned alpha over-weighting the GNN. KUHPerdata-humanized, with only 10.7\% BM25 hit rate, gains least (+0.03) because BM25 carries little signal regardless.
+The pattern validates Observation 3 from \S\ref{sec:analysis}: BSARD, which has the highest BM25 hit rate (42.3\%), benefits most from grid search (+0.21 MRR) because it loses the most from the learned alpha over-weighting the GNN. KUHPerdata-humanized, with only 36.8\% BM25 hit rate (expanded qrels), gains least (+0.03) because BM25 carries little signal regardless.
 
 \subsection{Ablation: Structural Node Features}
 
-Table~\ref{tab:prox-ablation} isolates the contribution of structural node features (act membership + positional encoding) on KUHPerdata.
+Table~\ref{tab:prox-ablation} isolates the contribution of structural node features (act membership + positional encoding) on KUHPerdata with expanded relevance judgments.
 
 \begin{table}[t]
 \centering
@@ -96,16 +100,16 @@ Table~\ref{tab:prox-ablation} isolates the contribution of structural node featu
 \hline
 \textbf{Dataset} & \textbf{No struct} & \textbf{StructGNN} & \textbf{$\Delta$} \\
 \hline
-KUHPer. (human.) & 0.456 & \textbf{0.486} & +0.030 \\
-KUHPer. (summ.) & 0.458 & \textbf{0.498} & +0.040 \\
+KUHPer. (human.) & 0.59 & \textbf{0.63} & +0.04 \\
+KUHPer. (summ.) & 0.52 & \textbf{0.54} & +0.02 \\
 \hline
 \end{tabular}
 \caption{\label{tab:prox-ablation}
-Ablation of structural node features on KUHPerdata. Both use alpha grid search. Structural features improve MRR by 6--9\%.
+Ablation of structural node features on KUHPerdata (expanded qrels). Both use alpha grid search. Structural features improve MRR by 4--7\% (MRR@10).
 }
 \end{table}
 
-Structural features improve MRR by 6.4\% (humanized) and 8.7\% (summarized). This validates Observation 2: the GNN exploits structural clustering of co-relevant statutes to propagate relevance signal between related articles. The larger improvement on summarized queries suggests that when the query provides more legal context (660 vs 154 avg chars), the GNN can better leverage structural relatedness to refine its ranking.
+Structural features improve MRR by 7\% (humanized) and 4\% (summarized). This validates Observation 2: the GNN exploits structural clustering of co-relevant statutes to propagate relevance signal between related articles. The larger improvement on humanized queries suggests that when the query is short and underspecified (154 vs 660 avg chars), structural proximity provides a stronger complementary signal for identifying related articles that lack direct lexical overlap with the query.
 
 \subsection{Vocabulary Gap Analysis}
 
