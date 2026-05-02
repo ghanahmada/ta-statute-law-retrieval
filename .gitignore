@@ -28,7 +28,11 @@ data/_raw/
 data/kuhperdata/
 data/ir_dataset/
 data/kuhperdata-humanized/
+data/kuhperdata-humanized-old/
+data/kuhperdata-exp/
 data/kuhperdata-summarized/
+data/kuhperdata-summarized-old/
+data/kuhperdata-summ-exp/
 data/bsard/
 data/ilpcsr/
 data/stard/
@@ -52,3 +56,5 @@ catboost_info/
 demonstration/*/node_modules/
 demonstration/*/.next/
 demonstration/nextjs-temp/
+demonstration/*/public/structgnn/queries/
+demonstration/*/public/structgnn/index.json
