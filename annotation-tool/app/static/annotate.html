@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Annotation Tool</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f5f5f5;
+    color: #333;
+  }
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  .header {
+    background: white;
+    padding: 16px 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e5e5e5;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-inner { max-width: 1400px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+  .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #e5e5e5;
+    border-radius: 3px;
+    margin: 0 20px;
+    overflow: hidden;
+  }
+  .progress-fill { background: #22c55e; height: 100%; transition: width 0.3s; }
+  .progress-text { font-size: 0.9rem; color: #666; min-width: 100px; text-align: right; }
+  .variant-badge {
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .variant-badge.humanized { background: #dbeafe; color: #1e40af; }
+  .variant-badge.summarized { background: #e0e7ff; color: #3730a3; }
+  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .panel {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .panel-title { font-size: 0.85rem; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 12px; }
+  .query-text, .article-text { line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+  .article-title { font-weight: 600; margin-bottom: 12px; }
+  .controls {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .label-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .label-btn {
+    padding: 14px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .label-btn.relevant { background: #dcfce7; color: #166534; border: 2px solid #22c55e; }
+  .label-btn.relevant:hover { background: #bbf7d0; }
+  .label-btn.relevant.active { background: #22c55e; color: white; }
+  .label-btn.notrelevant { background: #fee2e2; color: #991b1b; border: 2px solid #ef4444; }
+  .label-btn.notrelevant:hover { background: #fecaca; }
+  .label-btn.notrelevant.active { background: #ef4444; color: white; }
+  .confidence-group { margin-bottom: 20px; }
+  .confidence-title { font-size: 0.85rem; font-weight: 600; color: #666; margin-bottom: 12px; }
+  .confidence-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .radio-label {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .radio-label input[type="radio"] { margin-right: 8px; }
+  .radio-label:hover { border-color: #999; background: #fafafa; }
+  .radio-label input[type="radio"]:checked + span { font-weight: 600; }
+  .submit-btn {
+    width: 100%;
+    padding: 12px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  .submit-btn:hover { background: #1d4ed8; }
+  .submit-btn:disabled { background: #999; cursor: not-allowed; }
+  .completion { text-align: center; padding: 40px; }
+  .completion-icon { font-size: 48px; margin-bottom: 16px; }
+  .completion-title { font-size: 1.4rem; font-weight: 600; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <span id="annotator" style="font-weight: 600;"></span>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-text"><span id="done">0</span> / <span id="total">80</span></div>
+  </div>
+</div>
+
+<div class="container" id="annotateView" style="display:none;">
+  <div class="variant-badge" id="badge"></div>
+  <div class="main-grid">
+    <div class="panel">
+      <div class="panel-title">Query</div>
+      <div class="query-text" id="queryText"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Article (KUHPerdata)</div>
+      <div class="article-title" id="articleTitle"></div>
+      <div class="article-text" id="articleText"></div>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="label-buttons">
+      <button class="label-btn relevant" onclick="selectLabel('RELEVANT')" id="btnRel">
+        <div style="font-size:0.8rem">R</div>RELEVANT
+      </button>
+      <button class="label-btn notrelevant" onclick="selectLabel('NOT_RELEVANT')" id="btnNotRel">
+        <div style="font-size:0.8rem">N</div>NOT RELEVANT
+      </button>
+    </div>
+    <div class="confidence-group">
+      <div class="confidence-title">Confidence</div>
+      <div class="confidence-options">
+        <label class="radio-label">
+          <input type="radio" name="confidence" value="low"> <span>Low</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="confidence" value="medium"> <span>Medium</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="confidence" value="high" checked> <span>High</span>
+        </label>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="submitLabel()" id="submitBtn" disabled>Submit Label</button>
+  </div>
+</div>
+
+<div class="container" id="completionView" style="display:none;">
+  <div class="completion">
+    <div class="completion-icon">✓</div>
+    <div class="completion-title">All 80 pairs annotated!</div>
+    <p style="color: #666; margin-top: 12px;">Thank you for your careful work.<br/>Your labels have been saved.</p>
+  </div>
+</div>
+
+<script>
+let currentPair = null;
+
+function getAuth() { return `Bearer ${localStorage.getItem('token')}`; }
+
+async function loadPair() {
+  const res = await fetch('/pairs/next', {
+    headers: { 'Authorization': getAuth() }
+  });
+  if (!res.ok) { window.location.href = '/'; return; }
+  const data = await res.json();
+
+  document.getElementById('annotator').textContent = localStorage.getItem('annotator');
+  document.getElementById('done').textContent = data.progress.done;
+  document.getElementById('total').textContent = data.progress.total;
+  const pct = data.progress.total ? (100 * data.progress.done / data.progress.total) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  if (data.done) {
+    document.getElementById('annotateView').style.display = 'none';
+    document.getElementById('completionView').style.display = 'block';
+    return;
+  }
+
+  currentPair = data;
+  document.getElementById('badge').textContent = data.variant.toUpperCase();
+  document.getElementById('badge').className = 'variant-badge ' + data.variant.toLowerCase();
+  document.getElementById('queryText').textContent = data.query_text;
+  document.getElementById('articleTitle').textContent = data.article_title;
+  document.getElementById('articleText').textContent = data.article_text;
+
+  document.getElementById('annotateView').style.display = 'block';
+  document.getElementById('completionView').style.display = 'none';
+
+  document.getElementById('btnRel').classList.remove('active');
+  document.getElementById('btnNotRel').classList.remove('active');
+  document.getElementById('submitBtn').disabled = true;
+  document.querySelectorAll('input[name="confidence"]').forEach(r => r.checked = r.value === 'high');
+}
+
+function selectLabel(label) {
+  document.getElementById('btnRel').classList.toggle('active', label === 'RELEVANT');
+  document.getElementById('btnNotRel').classList.toggle('active', label === 'NOT_RELEVANT');
+  document.getElementById('submitBtn').disabled = !label;
+  window.currentLabel = label;
+}
+
+async function submitLabel() {
+  if (!currentPair || !window.currentLabel) return;
+  const conf = document.querySelector('input[name="confidence"]:checked').value;
+  const res = await fetch('/pairs/label', {
+    method: 'POST',
+    headers: {
+      'Authorization': getAuth(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      pair_id: currentPair.pair_id,
+      label: window.currentLabel,
+      confidence: conf
+    })
+  });
+  if (res.ok) { await loadPair(); }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key.toLowerCase() === 'r') { selectLabel('RELEVANT'); document.getElementById('submitBtn').focus(); }
+  if (e.key.toLowerCase() === 'n') { selectLabel('NOT_RELEVANT'); document.getElementById('submitBtn').focus(); }
+});
+
+loadPair();
+</script>
+</body>
+</html>

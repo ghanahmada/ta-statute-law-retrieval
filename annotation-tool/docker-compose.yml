@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./db:/app/db
+      - ./data:/app/data:ro
+    environment:
+      - DATABASE_URL=sqlite:///./db/labels.sqlite
+    restart: unless-stopped
