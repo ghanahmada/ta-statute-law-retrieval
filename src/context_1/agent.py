@@ -157,7 +157,7 @@ class AgenticRetriever:
         self, state: AgentState, name: str, args: dict,
     ) -> ToolResult:
         if name == "search_corpus":
-            exclude = state.read_doc_ids | set(state.selected_doc_ids.keys())
+            exclude = set(state.selected_doc_ids.keys())
             return self.tool_executor.search_corpus(
                 args.get("query", ""),
                 exclude_ids=exclude,
@@ -177,6 +177,11 @@ class AgenticRetriever:
             )
             state.budget.remove(result.tokens_removed)
             return result
+        elif name == "FinalAnswer":
+            content = args.get("answer", "") or args.get("documents", "") or json.dumps(args)
+            self._parse_doc_references(state, content)
+            state.is_done = True
+            return ToolResult(content="Final answer recorded.")
         else:
             return ToolResult(content=f"Unknown tool: {name}")
 
@@ -252,6 +257,21 @@ class AgenticRetriever:
 
             try:
                 choice = await self._infer(state, force_conclude=is_last_turn)
+
+                content = choice.message.content or ""
+                has_tools = bool(choice.message.tool_calls)
+                if not content and not has_tools and not is_last_turn:
+                    state.messages.append({
+                        "role": "user",
+                        "content": (
+                            "[SYSTEM] Your response was empty. You MUST either "
+                            "call a tool or provide your <FinalAnswer>. "
+                            "Think about the query and what to do next.\n"
+                            f"Original query: \"{query}\""
+                        ),
+                    })
+                    continue
+
                 self._act(state, choice, force_conclude=is_last_turn)
             except Exception as e:
                 state.error = str(e)
