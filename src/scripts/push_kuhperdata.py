@@ -45,6 +45,7 @@ def upload_config(api, config_name, data_dir):
     corpus_path = os.path.join(data_dir, "corpus.jsonl")
     queries_path = os.path.join(data_dir, "queries.jsonl")
     qrels_train_path = os.path.join(data_dir, "qrels_train.tsv")
+    qrels_val_path = os.path.join(data_dir, "qrels_val.tsv")
     qrels_test_path = os.path.join(data_dir, "qrels_test.tsv")
 
     for p in [corpus_path, queries_path, qrels_train_path, qrels_test_path]:
@@ -79,6 +80,11 @@ def upload_config(api, config_name, data_dir):
         "qrels_test": qrels_test_ds,
     }
 
+    if os.path.exists(qrels_val_path):
+        qrels_val_ds = Dataset.from_list(load_tsv(qrels_val_path))
+        splits["qrels_val"] = qrels_val_ds
+        print(f"  Qrels val: {len(qrels_val_ds)}")
+
     for split_name, split_ds in splits.items():
         buf = io.BytesIO()
         split_ds.to_parquet(buf)
@@ -100,7 +106,7 @@ def build_readme(uploaded_configs):
     for cfg in uploaded_configs:
         lines.append(f"- config_name: {cfg}")
         lines.append("  data_files:")
-        for split in ["corpus", "queries", "qrels_train", "qrels_test"]:
+        for split in ["corpus", "queries", "qrels_train", "qrels_val", "qrels_test"]:
             lines.append(f"  - split: {split}")
             lines.append(f"    path: {cfg}/{split}-*.parquet")
     if uploaded_configs:
