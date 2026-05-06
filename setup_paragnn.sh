@@ -9,7 +9,7 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "Project dir: ${PROJECT_DIR}"
 
 # Initialize conda in this shell
-eval "$(${HOME}/miniconda3/bin/conda shell.bash hook)"
+eval "$(conda shell.bash hook)"
 
 # 1. Create conda env with Python 3.11
 echo "Creating conda env (paragnn, Python 3.11)..."
