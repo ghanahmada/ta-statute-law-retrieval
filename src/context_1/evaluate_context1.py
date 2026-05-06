@@ -202,7 +202,9 @@ async def main():
     parser.add_argument("--encoder_device", default="cuda",
                         help="Device for BGE-M3 encoder and reranker "
                         "(use cpu to leave GPU fully for vLLM)")
-    parser.add_argument("--embeddings_dir", default="outputs/embeddings")
+    parser.add_argument("--embeddings_dir", default=None,
+                        help="Directory for cached BGE-M3 corpus embeddings "
+                        "(default: outputs/embeddings/<dataset>)")
     parser.add_argument("--output_dir", default=None)
     parser.add_argument("--pad_to_k", type=int, default=0,
                         help="Pad agent rankings to k docs using seen_doc_ids "
@@ -231,6 +233,9 @@ async def main():
     ds = DATASETS[args.dataset]
     data_dir = ds["path"]
     lang = ds["lang"]
+
+    if args.embeddings_dir is None:
+        args.embeddings_dir = f"outputs/embeddings/{args.dataset}"
 
     if args.output_dir is None:
         dense_tag = f"_{args.dense_source}" if args.dense_source != "bge" else ""
