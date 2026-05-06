@@ -238,7 +238,10 @@ class AgenticRetriever:
         self, state: AgentState, name: str, args: dict,
     ) -> ToolResult:
         # Early gate: require frame declarations before any search on early turns
-        if name in ("search_corpus", "grep_corpus") and not state.frames and state.turn_count <= 2:
+        if (self.use_coverage_gate
+                and name in ("search_corpus", "grep_corpus")
+                and not state.frames
+                and state.turn_count <= 2):
             return ToolResult(
                 content=(
                     "Declare L2 frames before searching. Use 'L2 FRAME: <name>' "
