@@ -54,6 +54,8 @@ Prompt: basic statutory term abstraction instruction. **Baseline before hierarch
 | StructGNN | bsard | fr | — | — | — | — |
 | StructGNN | stard | zh | — | — | — | — |
 | StructGNN | ilpcsr | en | — | — | — | — |
+| Agentic v1 (Qwen3.6-27B, flat prompt) | bsard | fr | 0.5393 | 0.4705 | 0.1242 | 65.83% |
+| Agentic v1 (Qwen3.6-27B, flat prompt) | stard | zh | 0.6900 | 0.7329 | 0.1135 | 82.05% |
 | Agentic v2 (Qwen3.6-27B, hierarchy+gate) | bsard | fr | 0.4537 | 0.4083 | 0.1192 | 59.17% |
 | Agentic v2 (Qwen3.6-27B, hierarchy+gate) | stard | zh | 0.6448 | 0.6672 | 0.1038 | 77.56% |
 
@@ -69,8 +71,12 @@ Prompt: basic statutory term abstraction instruction. **Baseline before hierarch
 - [ ] StructGNN
 - [ ] Agentic (Context-1)
 
+**Agentic v1 agent stats** (bsard, 120 queries): avg turns 4.9, avg seen 37.6, avg read 2.9, avg time/query 423s.  
+**Agentic v1 agent stats** (stard, 156 queries): avg turns 4.9, avg seen 39.3, avg read 3.5, avg time/query 344s.  
 **Agentic v2 agent stats** (bsard, 120 queries): avg turns 4.9, avg seen 37.7, avg read 3.2, avg time/query 269s, avg frames declared 2.8, avg frames covered 1.0, gate triggers 111, similarity rejections 5.  
 **Agentic v2 agent stats** (stard, 156 queries): avg turns 5.0, avg seen 36.6, avg read 4.3, avg time/query 178s, avg frames declared 3.0, avg frames covered 1.7, gate triggers 125, similarity rejections 7.
+
+> **Note:** Flat prompt (v1) outperforms hierarchy+gate (v2) on both cross-lingual datasets: +0.086 MRR on bsard, +0.045 on stard. Hierarchy overhead consumes turns that would otherwise be spent searching — with max_turns=5 the coverage table and frame declarations eat into the search budget. The L1-L4 scaffold likely helps more when turns are not a bottleneck (avg turns 4.9–5.0 = always turn-limited).
 
 **Cross-lingual (bsard, stard, ilpcsr):**
 - [ ] BM25
@@ -78,5 +84,5 @@ Prompt: basic statutory term abstraction instruction. **Baseline before hierarch
 - [ ] JNLP Stage 1
 - [ ] Para-GNN
 - [ ] StructGNN
-- [x] Agentic v2 (bsard)
-- [x] Agentic v2 (stard)
+- [x] Agentic v1 (bsard, stard)
+- [x] Agentic v2 (bsard, stard)
