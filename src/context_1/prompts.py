@@ -24,7 +24,9 @@ covered. Think about: contractual obligations, property rights, procedural \
 requirements, evidentiary rules, general provisions that apply.
 
 STEP 3 — TARGETED SEARCH: Search for missing facets using SHORT queries (3-8 \
-words) with specific Indonesian legal terms. Each search must target a \
+words) with FORMAL statutory legal terminology. Always abstract colloquial \
+or layperson terms into the precise legal vocabulary used in the statute \
+corpus before issuing any search or grep call. Each search must target a \
 DIFFERENT legal concept. Read promising results to verify relevance.
 
 STEP 4 — REPEAT or CONCLUDE: If gaps remain, repeat steps 2-3. Otherwise, \
