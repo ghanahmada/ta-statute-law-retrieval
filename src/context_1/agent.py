@@ -9,9 +9,10 @@ import re
 from dataclasses import dataclass, field
 from collections import OrderedDict
 
+import numpy as np
 from openai import AsyncOpenAI
 
-from .prompts import SYSTEM_PROMPT, TOOLS
+from .prompts import SYSTEM_PROMPT_HIERARCHY, SYSTEM_PROMPT_FLAT, TOOLS
 from .tools import ToolExecutor, ToolResult
 from .token_budget import TokenBudgetTracker
 
@@ -23,6 +24,11 @@ class AgentState:
     read_doc_ids: set[str] = field(default_factory=set)
     selected_doc_ids: OrderedDict = field(default_factory=OrderedDict)
     doc_scores: dict[str, float] = field(default_factory=dict)
+    frames: dict[str, list[str]] = field(default_factory=dict)
+    frame_rejections: dict[str, str] = field(default_factory=dict)
+    query_embeddings: list = field(default_factory=list)
+    n_similarity_rejections: int = 0
+    n_gate_triggers: int = 0
     is_done: bool = False
     turn_count: int = 0
     max_turns: int = 10
@@ -40,6 +46,10 @@ class AgenticRetriever:
         max_turns: int = 10,
         budget_size: int = 32_768,
         pad_to_k: int = 0,
+        use_hierarchy: bool = True,
+        use_coverage_gate: bool = True,
+        use_similarity_guard: bool = True,
+        similarity_threshold: float = 0.92,
     ):
         self.client = client
         self.model = model
@@ -47,6 +57,13 @@ class AgenticRetriever:
         self.max_turns = max_turns
         self.pad_to_k = pad_to_k
         self.budget_size = budget_size
+        self.use_hierarchy = use_hierarchy
+        self.use_coverage_gate = use_coverage_gate
+        self.use_similarity_guard = use_similarity_guard
+        self.similarity_threshold = similarity_threshold
+        self._system_prompt = (
+            SYSTEM_PROMPT_HIERARCHY if use_hierarchy else SYSTEM_PROMPT_FLAT
+        )
 
     def _new_state(self) -> AgentState:
         state = AgentState(
@@ -65,7 +82,7 @@ class AgenticRetriever:
             model=self.model,
             messages=state.messages,
             temperature=0,
-            max_tokens=2048,
+            max_tokens=4096 if force_conclude else 2048,
         )
 
         if force_conclude:
@@ -108,6 +125,47 @@ class AgenticRetriever:
 
         return choice
 
+    def _parse_frame_declarations(self, state: AgentState, text: str):
+        for m in re.finditer(r'^L2 FRAME:\s*(.+)$', text, re.MULTILINE):
+            frame = m.group(1).strip().rstrip('.,:;')
+            if frame and frame not in state.frames:
+                state.frames[frame] = []
+
+    def _parse_doc_references(self, state: AgentState, text: str):
+        pattern = (
+            r'<Document\s+id=["\']?([^"\'>\s]+)["\']?\s*>'
+            r'<Justification>(.*?)</Justification>'
+            r'</Document>'
+        )
+        for m in re.finditer(pattern, text, re.DOTALL):
+            doc_id = m.group(1)
+            justification = m.group(2).strip()
+            if doc_id in self.tool_executor.corpus:
+                state.selected_doc_ids[doc_id] = justification
+                frame_match = re.match(r'L2:\s*([^—\-–]+)', justification)
+                if frame_match:
+                    frame = frame_match.group(1).strip()
+                    if frame in state.frames and doc_id not in state.frames[frame]:
+                        state.frames[frame].append(doc_id)
+
+    def _validate_coverage(self, state: AgentState) -> tuple[bool, str]:
+        if len(state.frames) < 2:
+            return False, (
+                "Declare at least 2 L2 frames before concluding. "
+                f"Currently declared: {list(state.frames.keys()) or 'none'}."
+            )
+        covered = {f for f, docs in state.frames.items() if docs}
+        rejected = set(state.frame_rejections.keys())
+        unaccounted = set(state.frames.keys()) - covered - rejected
+        if len(covered) >= 2 and not unaccounted:
+            return True, ""
+        return False, (
+            f"Coverage gate: {len(covered)} frame(s) have supporting documents, "
+            f"{len(unaccounted)} unaccounted. "
+            f"Search remaining frames or explicitly reject them. "
+            f"Unaccounted: {sorted(unaccounted)}."
+        )
+
     def _act(
         self, state: AgentState, choice, force_conclude: bool = False,
     ) -> list[ToolResult]:
@@ -115,11 +173,29 @@ class AgenticRetriever:
         content = choice.message.content or ""
 
         if content:
+            self._parse_frame_declarations(state, content)
             self._parse_doc_references(state, content)
 
         if force_conclude or choice.finish_reason == "stop" or not choice.message.tool_calls:
             state.is_done = True
+
+            if force_conclude and self.use_coverage_gate:
+                ok, _ = self._validate_coverage(state)
+                if not ok:
+                    state.n_gate_triggers += 1
+
             return results
+
+        # Coverage gate on non-final turns
+        if state.is_done and not force_conclude and self.use_coverage_gate:
+            ok, reason = self._validate_coverage(state)
+            if not ok:
+                state.is_done = False
+                state.n_gate_triggers += 1
+                state.messages.append({
+                    "role": "user",
+                    "content": f"[SYSTEM] {reason}",
+                })
 
         for tool_call in choice.message.tool_calls:
             fn_name = tool_call.function.name
@@ -156,7 +232,35 @@ class AgenticRetriever:
     def _execute_tool(
         self, state: AgentState, name: str, args: dict,
     ) -> ToolResult:
+        # Early gate: require frame declarations before any search on early turns
+        if name in ("search_corpus", "grep_corpus") and not state.frames and state.turn_count <= 2:
+            return ToolResult(
+                content=(
+                    "Declare L2 frames before searching. Use 'L2 FRAME: <name>' "
+                    "for each frame, then proceed with targeted searches."
+                )
+            )
+
         if name == "search_corpus":
+            # Similarity guard
+            if self.use_similarity_guard:
+                query_text = args.get("query", "")
+                new_emb = self.tool_executor.embed_query(query_text)
+                if new_emb is not None and state.query_embeddings:
+                    for prior_emb in state.query_embeddings:
+                        sim = float(np.dot(new_emb, prior_emb))
+                        if sim > self.similarity_threshold:
+                            state.n_similarity_rejections += 1
+                            return ToolResult(
+                                content=(
+                                    f"Query rejected: too similar to a prior query "
+                                    f"(similarity {sim:.2f} > {self.similarity_threshold}). "
+                                    f"Reformulate targeting a different L2 frame or L3 doctrine."
+                                )
+                            )
+                if new_emb is not None:
+                    state.query_embeddings.append(new_emb)
+
             exclude = set(state.selected_doc_ids.keys())
             return self.tool_executor.search_corpus(
                 args.get("query", ""),
@@ -179,23 +283,12 @@ class AgenticRetriever:
             return result
         elif name == "FinalAnswer":
             content = args.get("answer", "") or args.get("documents", "") or json.dumps(args)
+            self._parse_frame_declarations(state, content)
             self._parse_doc_references(state, content)
             state.is_done = True
             return ToolResult(content="Final answer recorded.")
         else:
             return ToolResult(content=f"Unknown tool: {name}")
-
-    def _parse_doc_references(self, state: AgentState, text: str):
-        pattern = (
-            r'<Document\s+id=["\']?([^"\'>\s]+)["\']?\s*>'
-            r'<Justification>(.*?)</Justification>'
-            r'</Document>'
-        )
-        for m in re.finditer(pattern, text, re.DOTALL):
-            doc_id = m.group(1)
-            justification = m.group(2).strip()
-            if doc_id in self.tool_executor.corpus:
-                state.selected_doc_ids[doc_id] = justification
 
     def _bootstrap_search(self, state: AgentState, query: str):
         result = self.tool_executor.search_corpus(
@@ -211,9 +304,13 @@ class AgenticRetriever:
         state = self._new_state()
 
         bootstrap = self._bootstrap_search(state, query)
+
+        # System prompt in system role
+        state.messages.append({"role": "system", "content": self._system_prompt})
+        state.budget.add(self._system_prompt)
+
         user_content = (
-            SYSTEM_PROMPT
-            + "\n\n--- USER QUERY ---\n"
+            "--- USER QUERY ---\n"
             + query
             + "\n\n--- INITIAL SEARCH RESULTS (top 20 from full query) ---\n"
             + bootstrap.content

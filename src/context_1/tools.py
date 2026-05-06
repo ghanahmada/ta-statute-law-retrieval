@@ -33,6 +33,11 @@ class ToolExecutor:
         self.searcher = hybrid_searcher
         self.token_counter = token_counter
 
+    def embed_query(self, query: str):
+        if hasattr(self.searcher, "encode_query"):
+            return self.searcher.encode_query(query)
+        return None
+
     def search_corpus(
         self,
         query: str,

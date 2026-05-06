@@ -158,6 +158,10 @@ async def run_one_query(
                 "n_seen": len(state.seen_doc_ids),
                 "n_read": len(state.read_doc_ids),
                 "turns": state.turn_count,
+                "n_frames_declared": len(state.frames),
+                "n_frames_covered": len([f for f, docs in state.frames.items() if docs]),
+                "n_gate_triggers": state.n_gate_triggers,
+                "n_similarity_rejections": state.n_similarity_rejections,
                 "error": state.error,
                 "elapsed_s": round(time.time() - t0, 2),
                 "conversation": _extract_conversation(state.messages),
@@ -170,6 +174,10 @@ async def run_one_query(
                 "n_seen": 0,
                 "n_read": 0,
                 "turns": 0,
+                "n_frames_declared": 0,
+                "n_frames_covered": 0,
+                "n_gate_triggers": 0,
+                "n_similarity_rejections": 0,
                 "error": str(e),
                 "elapsed_s": round(time.time() - t0, 2),
                 "conversation": [],
@@ -210,6 +218,14 @@ async def main():
                         help="Alpha for StructGNN scoring: alpha*gnn + (1-alpha)*bm25")
     parser.add_argument("--debug_qid", default=None,
                         help="Run a single query and dump full conversation")
+    parser.add_argument("--no_hierarchy", action="store_true",
+                        help="Use flat prompt instead of L1-L4 hierarchy scaffold")
+    parser.add_argument("--no_coverage_gate", action="store_true",
+                        help="Disable coverage-gate enforcement")
+    parser.add_argument("--no_similarity_guard", action="store_true",
+                        help="Disable query similarity guard")
+    parser.add_argument("--similarity_threshold", type=float, default=0.92,
+                        help="Cosine similarity threshold for query rejection (default: 0.92)")
     args = parser.parse_args()
 
     ds = DATASETS[args.dataset]
@@ -342,6 +358,10 @@ async def main():
         tool_executor=tool_executor,
         max_turns=args.max_turns,
         pad_to_k=args.pad_to_k,
+        use_hierarchy=not args.no_hierarchy,
+        use_coverage_gate=not args.no_coverage_gate,
+        use_similarity_guard=not args.no_similarity_guard,
+        similarity_threshold=args.similarity_threshold,
     )
 
     # --- Resume ---
@@ -442,12 +462,20 @@ async def main():
             avg_seen = np.mean([r["n_seen"] for r in results])
             avg_read = np.mean([r["n_read"] for r in results])
             avg_time = np.mean([r["elapsed_s"] for r in results])
+            avg_frames_decl = np.mean([r.get("n_frames_declared", 0) for r in results])
+            avg_frames_cov = np.mean([r.get("n_frames_covered", 0) for r in results])
+            total_gate = sum(r.get("n_gate_triggers", 0) for r in results)
+            total_sim_rej = sum(r.get("n_similarity_rejections", 0) for r in results)
             print(f"\nAgent stats ({len(results)} queries):")
             print(f"  Avg turns: {avg_turns:.1f}")
             print(f"  Avg selected docs: {avg_selected:.1f}")
             print(f"  Avg seen docs: {avg_seen:.1f}")
             print(f"  Avg read docs: {avg_read:.1f}")
             print(f"  Avg time/query: {avg_time:.1f}s")
+            print(f"  Avg frames declared: {avg_frames_decl:.1f}")
+            print(f"  Avg frames covered: {avg_frames_cov:.1f}")
+            print(f"  Total gate triggers: {total_gate}")
+            print(f"  Total similarity rejections: {total_sim_rej}")
 
         if interrupted:
             print(f"\nConversation log: {conv_log_path}")

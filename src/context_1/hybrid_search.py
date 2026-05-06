@@ -47,6 +47,14 @@ class HybridSearcher:
             vec = np.array(output)
         return vec[0]
 
+    def encode_query(self, query: str) -> np.ndarray:
+        vec = self._encode_query(query)
+        norm = np.linalg.norm(vec)
+        if norm > 0:
+            vec = vec / norm
+        assert abs(np.linalg.norm(vec) - 1.0) < 1e-4, "encode_query must return unit-norm vector"
+        return vec
+
     def search(
         self,
         query: str,
