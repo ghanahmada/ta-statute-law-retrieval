@@ -54,6 +54,7 @@ Prompt: basic statutory term abstraction instruction. **Baseline before hierarch
 | StructGNN | bsard | fr | — | — | — | — |
 | StructGNN | stard | zh | — | — | — | — |
 | StructGNN | ilpcsr | en | — | — | — | — |
+| Agentic v2 (Qwen3.6-27B, hierarchy+gate) | bsard | fr | 0.4537 | 0.4083 | 0.1192 | 59.17% |
 | Agentic v2 (Qwen3.6-27B, hierarchy+gate) | stard | zh | 0.6448 | 0.6672 | 0.1038 | 77.56% |
 
 ## Pending
@@ -68,6 +69,7 @@ Prompt: basic statutory term abstraction instruction. **Baseline before hierarch
 - [ ] StructGNN
 - [ ] Agentic (Context-1)
 
+**Agentic v2 agent stats** (bsard, 120 queries): avg turns 4.9, avg seen 37.7, avg read 3.2, avg time/query 269s, avg frames declared 2.8, avg frames covered 1.0, gate triggers 111, similarity rejections 5.  
 **Agentic v2 agent stats** (stard, 156 queries): avg turns 5.0, avg seen 36.6, avg read 4.3, avg time/query 178s, avg frames declared 3.0, avg frames covered 1.7, gate triggers 125, similarity rejections 7.
 
 **Cross-lingual (bsard, stard, ilpcsr):**
@@ -76,4 +78,5 @@ Prompt: basic statutory term abstraction instruction. **Baseline before hierarch
 - [ ] JNLP Stage 1
 - [ ] Para-GNN
 - [ ] StructGNN
+- [x] Agentic v2 (bsard)
 - [x] Agentic v2 (stard)
