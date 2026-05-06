@@ -70,7 +70,7 @@ async def validate_one(
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=1024,
                 temperature=0,
-                extra_body={"chat_template_kwargs": {"enable_thinking": True}},
+                extra_body={"chat_template_kwargs": {"enable_thinking": False}},
             )
             msg = response.choices[0].message
             raw = (msg.content or getattr(msg, "reasoning_content", None) or "").strip()
