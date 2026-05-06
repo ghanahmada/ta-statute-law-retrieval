@@ -65,6 +65,8 @@ _KUHPERDATA_DEFAULTS = {
 DATASET_DEFAULTS = {
     "kuhperdata-humanized": _KUHPERDATA_DEFAULTS,
     "kuhperdata-summarized": _KUHPERDATA_DEFAULTS,
+    "kuhperdata-exp": _KUHPERDATA_DEFAULTS,
+    "kuhperdata-summ-exp": _KUHPERDATA_DEFAULTS,
 }
 
 _GLOBAL_DEFAULTS = {
