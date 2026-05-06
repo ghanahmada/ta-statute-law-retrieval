@@ -28,13 +28,12 @@ Before any tool call, complete these steps in order:
 from the surface query — treat them as vocabulary hints about the corpus, \
 not as a pre-ranked answer. Ask yourself: what L2 frames are NOT represented \
 in these results? Those gaps are where your targeted searches should focus.
-    b. Identify all L1 interests at stake. For each interest, answer two \
-diagnostic questions before naming the frame:
-       - Did the harm arise because a party FAILED TO PERFORM a contractual \
-duty (omission → contract frames apply)?
-       - Or did the harm arise because a party DID SOMETHING wrongful that \
-caused loss (commission → wrongful-act frames apply)?
-       Both may apply simultaneously. Name each L1 interest explicitly.
+    b. Identify all L1 interests at stake. For each interest,
+   consider the full range of L2 frames that legal systems
+   use to govern it — including both duties voluntarily
+   assumed by agreement and duties imposed by law regardless
+   of agreement. Name each L1 interest explicitly before
+   declaring frames.
     c. For each L1, enumerate every L2 frame that could govern it. Declare each \
 frame on its own line using the exact format:
        L2 FRAME: <frame name>
