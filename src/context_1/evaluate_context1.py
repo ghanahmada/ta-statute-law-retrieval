@@ -186,7 +186,7 @@ async def main():
     parser.add_argument("--model", default="chromadb/context-1")
     parser.add_argument("--base_url", default="http://localhost:8000/v1")
     parser.add_argument("--concurrency", type=int, default=4)
-    parser.add_argument("--max_turns", type=int, default=10)
+    parser.add_argument("--max_turns", type=int, default=5)
     parser.add_argument("--top_k", type=int, default=10)
     parser.add_argument("--max_relevant", type=int, default=5)
     parser.add_argument("--use_reranker", action="store_true",
