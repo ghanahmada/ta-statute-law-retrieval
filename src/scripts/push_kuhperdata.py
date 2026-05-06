@@ -14,6 +14,8 @@ CONFIGS = {
     "summarized": "data/kuhperdata-summarized",
     "humanized-expanded": "data/kuhperdata-exp",
     "summarized-expanded": "data/kuhperdata-summ-exp",
+    "bsard": "data/bsard",
+    "stard": "data/stard",
 }
 
 
@@ -57,15 +59,7 @@ def upload_config(api, config_name, data_dir):
     print(f"  Corpus: {len(corpus_ds)} documents")
 
     raw_queries = load_jsonl(queries_path)
-    queries_rows = []
-    for q in raw_queries:
-        queries_rows.append(
-            {
-                "_id": q["_id"],
-                "text": q["text"],
-                "case_name": q.get("metadata", {}).get("case_name", ""),
-            }
-        )
+    queries_rows = [{"_id": q["_id"], "text": q["text"]} for q in raw_queries]
     queries_ds = Dataset.from_list(queries_rows)
     print(f"  Queries: {len(queries_ds)} queries")
 
@@ -113,22 +107,25 @@ def build_readme(uploaded_configs):
         lines.append(f"default_config_name: {uploaded_configs[0]}")
     lines.append("---")
     lines.append("")
-    lines.append("# KUHPerdata")
+    lines.append("# Statute Law Retrieval Benchmark")
     lines.append("")
-    lines.append("Indonesian statute retrieval dataset with multi-formality queries.")
+    lines.append("Multi-lingual statute article retrieval benchmark covering Indonesian (KUHPerdata), French (BSARD), and Chinese (STARD) legal corpora.")
     lines.append("")
     lines.append("## Configs")
     lines.append("")
-    lines.append("| Config | Description |")
-    lines.append("|--------|-------------|")
+    lines.append("| Config | Lang | Description |")
+    lines.append("|--------|------|-------------|")
     desc = {
-        "humanized": "Layperson queries, citation-based qrels",
-        "summarized": "Case summary queries, citation-based qrels",
-        "humanized-expanded": "Layperson queries, LLM-expanded qrels",
-        "summarized-expanded": "Case summary queries, LLM-expanded qrels",
+        "humanized": ("id", "KUHPerdata — layperson queries, citation-based qrels"),
+        "summarized": ("id", "KUHPerdata — case summary queries, citation-based qrels"),
+        "humanized-expanded": ("id", "KUHPerdata — layperson queries, LLM-validated expanded qrels"),
+        "summarized-expanded": ("id", "KUHPerdata — case summary queries, LLM-validated expanded qrels"),
+        "bsard": ("fr", "Belgian Statutory Article Retrieval Dataset"),
+        "stard": ("zh", "Chinese Statute Article Retrieval Dataset"),
     }
     for cfg in uploaded_configs:
-        lines.append(f"| `{cfg}` | {desc.get(cfg, '')} |")
+        lang, description = desc.get(cfg, ("", ""))
+        lines.append(f"| `{cfg}` | `{lang}` | {description} |")
     lines.append("")
     lines.append("## Usage")
     lines.append("")
@@ -161,7 +158,7 @@ def main():
     api = HfApi()
 
     if args.clean:
-        for folder in list(CONFIGS.keys()) + ["data"]:
+        for folder in list(CONFIGS.keys()) + ["data", "bsard", "stard"]:
             try:
                 api.delete_folder(
                     folder_path=folder, repo_id=HF_DATASET_ID, repo_type="dataset"
