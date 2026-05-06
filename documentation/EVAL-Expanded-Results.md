@@ -1,0 +1,79 @@
+# Evaluation Results — Validated Expanded Qrels
+
+All results on **test split** after Phase 1 (validation) + Phase 2 (split_test_to_val).  
+Expanded datasets: `kuhperdata-exp` (humanized) and `kuhperdata-summ-exp` (summarized).  
+`--max_relevant 0` throughout (no query filtering).
+
+Updated: 2026-05-06.
+
+## Test Split Info
+
+| Dataset | Lang | Corpus | Test Queries | Qrels |
+|---------|------|--------|-------------|-------|
+| kuhperdata-exp | id | 2127 docs | 211 queries | validated expanded |
+| kuhperdata-summ-exp | id | 2127 docs | 213 queries | validated expanded |
+| bsard | fr | — | — | original |
+| stard | zh | — | — | original |
+| ilpcsr | en | — | — | original |
+
+## KUHPerdata Results (Indonesian, Expanded Qrels)
+
+| Method | Dataset | MRR@10 | Recall@10 | Precision@10 | Hit Rate |
+|--------|---------|--------|-----------|--------------|----------|
+| BM25 | exp | 0.0329 | 0.0434 | 0.0081 | 8.06% |
+| BM25 | summ-exp | 0.0799 | 0.1137 | 0.0202 | 19.25% |
+| GAR (bge) | exp | 0.0718 | 0.0656 | 0.0142 | 13.27% |
+| GAR (bge) | summ-exp | 0.1709 | 0.1571 | 0.0319 | 25.35% |
+| Dense (BGE-M3) | exp | 0.0634 | 0.0682 | 0.0152 | 12.3% |
+| Dense (BGE-M3) | summ-exp | 0.0974 | 0.1212 | 0.0263 | 20.2% |
+| Rerank (BGE) | exp | 0.0841 | 0.0863 | 0.0175 | 16.59% |
+| Rerank (BGE) | summ-exp | 0.1850 | 0.1711 | 0.0362 | 29.11% |
+| JNLP Stage 1 | exp | 0.5226 | 0.6500 | 0.1839 | 86.3% |
+| JNLP Stage 1 | summ-exp | 0.4450 | 0.5195 | 0.1446 | 71.4% |
+| Agentic v1 (Qwen3.6-27B, max_turns=5, BGE+BM25) | exp | 0.2927 | 0.2408 | 0.0611 | 41.23% |
+
+**Agentic v1 agent stats** (exp, 211 queries): avg turns 4.9, avg selected 10.3, avg seen 48.4, avg read 4.5, avg time/query 230s.  
+Prompt: basic statutory term abstraction instruction. **Baseline before hierarchy prompt.**
+
+## Cross-Lingual Results (Original Qrels)
+
+| Method | Dataset | Lang | MRR@10 | Recall@10 | Precision@10 | Hit Rate |
+|--------|---------|------|--------|-----------|--------------|----------|
+| BM25 | bsard | fr | — | — | — | — |
+| BM25 | stard | zh | — | — | — | — |
+| BM25 | ilpcsr | en | — | — | — | — |
+| GAR | bsard | fr | — | — | — | — |
+| GAR | stard | zh | — | — | — | — |
+| GAR | ilpcsr | en | — | — | — | — |
+| JNLP Stage 1 | bsard | fr | — | — | — | — |
+| JNLP Stage 1 | stard | zh | — | — | — | — |
+| JNLP Stage 1 | ilpcsr | en | — | — | — | — |
+| Para-GNN | bsard | fr | — | — | — | — |
+| Para-GNN | stard | zh | — | — | — | — |
+| Para-GNN | ilpcsr | en | — | — | — | — |
+| StructGNN | bsard | fr | — | — | — | — |
+| StructGNN | stard | zh | — | — | — | — |
+| StructGNN | ilpcsr | en | — | — | — | — |
+| Agentic v2 (Qwen3.6-27B, hierarchy+gate) | stard | zh | 0.6448 | 0.6672 | 0.1038 | 77.56% |
+
+## Pending
+
+**KUHPerdata (exp + summ-exp):**
+- [ ] BM25 (stem+stop)
+- [x] GAR (bge)
+- [x] Dense (BGE-M3)
+- [x] Rerank
+- [x] JNLP Stage 1
+- [ ] Para-GNN
+- [ ] StructGNN
+- [ ] Agentic (Context-1)
+
+**Agentic v2 agent stats** (stard, 156 queries): avg turns 5.0, avg seen 36.6, avg read 4.3, avg time/query 178s, avg frames declared 3.0, avg frames covered 1.7, gate triggers 125, similarity rejections 7.
+
+**Cross-lingual (bsard, stard, ilpcsr):**
+- [ ] BM25
+- [ ] GAR
+- [ ] JNLP Stage 1
+- [ ] Para-GNN
+- [ ] StructGNN
+- [x] Agentic v2 (stard)
