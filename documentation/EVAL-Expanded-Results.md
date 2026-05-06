@@ -54,8 +54,10 @@ Prompt: basic statutory term abstraction instruction. **Baseline before hierarch
 | StructGNN | bsard | fr | — | — | — | — |
 | StructGNN | stard | zh | — | — | — | — |
 | StructGNN | ilpcsr | en | — | — | — | — |
-| Agentic v1 (Qwen3.6-27B, flat prompt) | bsard | fr | 0.5393 | 0.4705 | 0.1242 | 65.83% |
-| Agentic v1 (Qwen3.6-27B, flat prompt) | stard | zh | 0.6900 | 0.7329 | 0.1135 | 82.05% |
+| Agentic v1 (Qwen3.6-27B, flat, max_turns=5) | bsard | fr | 0.5393 | 0.4705 | 0.1242 | 65.83% |
+| Agentic v1 (Qwen3.6-27B, flat, max_turns=7) | bsard | fr | 0.5354 | 0.4622 | 0.1308 | 65.00% |
+| Agentic v1 (Qwen3.6-27B, flat, max_turns=5) | stard | zh | 0.6900 | 0.7329 | 0.1135 | 82.05% |
+| Agentic v1 (Qwen3.6-27B, flat, max_turns=7) | stard | zh | 0.6839 | 0.7585 | 0.1167 | 83.33% |
 | Agentic v2 (Qwen3.6-27B, hierarchy+gate) | bsard | fr | 0.4537 | 0.4083 | 0.1192 | 59.17% |
 | Agentic v2 (Qwen3.6-27B, hierarchy+gate) | stard | zh | 0.6448 | 0.6672 | 0.1038 | 77.56% |
 
@@ -71,12 +73,15 @@ Prompt: basic statutory term abstraction instruction. **Baseline before hierarch
 - [ ] StructGNN
 - [ ] Agentic (Context-1)
 
-**Agentic v1 agent stats** (bsard, 120 queries): avg turns 4.9, avg seen 37.6, avg read 2.9, avg time/query 423s.  
-**Agentic v1 agent stats** (stard, 156 queries): avg turns 4.9, avg seen 39.3, avg read 3.5, avg time/query 344s.  
+**Agentic v1 agent stats** (bsard t5, 120 queries): avg turns 4.9, avg seen 37.6, avg read 2.9, avg time/query 423s.  
+**Agentic v1 agent stats** (bsard t7, 120 queries): avg turns 6.7, avg seen 44.1, avg read 3.8, avg time/query 678s. 1 timeout (q231).  
+**Agentic v1 agent stats** (stard t5, 156 queries): avg turns 4.9, avg seen 39.3, avg read 3.5, avg time/query 344s.  
+**Agentic v1 agent stats** (stard t7, 156 queries): avg turns 6.4, avg seen 45.4, avg read 5.2, avg time/query 538s. 1 timeout (q1247).  
 **Agentic v2 agent stats** (bsard, 120 queries): avg turns 4.9, avg seen 37.7, avg read 3.2, avg time/query 269s, avg frames declared 2.8, avg frames covered 1.0, gate triggers 111, similarity rejections 5.  
 **Agentic v2 agent stats** (stard, 156 queries): avg turns 5.0, avg seen 36.6, avg read 4.3, avg time/query 178s, avg frames declared 3.0, avg frames covered 1.7, gate triggers 125, similarity rejections 7.
 
-> **Note:** Flat prompt (v1) outperforms hierarchy+gate (v2) on both cross-lingual datasets: +0.086 MRR on bsard, +0.045 on stard. Hierarchy overhead consumes turns that would otherwise be spent searching — with max_turns=5 the coverage table and frame declarations eat into the search budget. The L1-L4 scaffold likely helps more when turns are not a bottleneck (avg turns 4.9–5.0 = always turn-limited).
+> **Note:** Flat prompt (v1) outperforms hierarchy+gate (v2) on both cross-lingual datasets: +0.086 MRR on bsard, +0.045 on stard. Hierarchy overhead consumes turns that would otherwise be spent searching — with max_turns=5 the coverage table and frame declarations eat into the search budget. The L1-L4 scaffold likely helps more when turns are not a bottleneck (avg turns 4.9–5.0 = always turn-limited).  
+> **max_turns=7 finding:** Extra turns improve Recall@10 (stard +0.026, bsard -0.008) but do not improve MRR@10. Avg turns reaches 6.4–6.7 (not always hitting the limit), suggesting the agent finds its natural stopping point. Additional searches in turns 6–7 surface marginally relevant docs that pad Recall but don't displace the top ranked results, leaving MRR flat. Cost increases ~60%. **Conclusion: max_turns=5 is sufficient for MRR optimization; max_turns=7 only if Recall@10 is the target metric.**
 
 **Cross-lingual (bsard, stard, ilpcsr):**
 - [ ] BM25
