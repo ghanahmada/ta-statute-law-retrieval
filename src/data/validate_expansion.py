@@ -72,7 +72,8 @@ async def validate_one(
                 temperature=0,
                 extra_body={"chat_template_kwargs": {"enable_thinking": True}},
             )
-            raw = response.choices[0].message.content.strip()
+            msg = response.choices[0].message
+            raw = (msg.content or getattr(msg, "reasoning_content", None) or "").strip()
             confirmed = parse_validator_response(raw)
             return {
                 "qid": qid,
