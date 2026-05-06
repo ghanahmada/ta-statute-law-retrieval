@@ -142,11 +142,15 @@ class AgenticRetriever:
             justification = m.group(2).strip()
             if doc_id in self.tool_executor.corpus:
                 state.selected_doc_ids[doc_id] = justification
-                frame_match = re.match(r'L2:\s*([^—\-–]+)', justification)
+                frame_match = re.search(r'L2\s*:\s*([^—\-–|]+)', justification)
                 if frame_match:
-                    frame = frame_match.group(1).strip()
-                    if frame in state.frames and doc_id not in state.frames[frame]:
-                        state.frames[frame].append(doc_id)
+                    frame_name = frame_match.group(1).strip().lower()
+                    for declared_frame in state.frames:
+                        if (frame_name in declared_frame.lower()
+                                or declared_frame.lower() in frame_name):
+                            if doc_id not in state.frames[declared_frame]:
+                                state.frames[declared_frame].append(doc_id)
+                            break
 
     def _validate_coverage(self, state: AgentState) -> tuple[bool, str]:
         if len(state.frames) < 2:
@@ -179,10 +183,11 @@ class AgenticRetriever:
         if force_conclude or choice.finish_reason == "stop" or not choice.message.tool_calls:
             state.is_done = True
 
-            if force_conclude and self.use_coverage_gate:
-                ok, _ = self._validate_coverage(state)
+            if self.use_coverage_gate:
+                ok, reason = self._validate_coverage(state)
                 if not ok:
                     state.n_gate_triggers += 1
+                    state.error = f"gate_failure: {reason}"
 
             return results
 
