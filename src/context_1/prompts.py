@@ -25,9 +25,16 @@ Before any tool call, complete these steps in order:
 
   STEP 1 — FRAME ENUMERATION (first turn only):
     a. Review the bootstrap results already in your context. These were retrieved \
-from the surface query — use them only as signals about which L2 frames the \
-corpus covers, not as evidence of relevance.
-    b. Identify all L1 interests at stake. Name each.
+from the surface query — treat them as vocabulary hints about the corpus, \
+not as a pre-ranked answer. Ask yourself: what L2 frames are NOT represented \
+in these results? Those gaps are where your targeted searches should focus.
+    b. Identify all L1 interests at stake. For each interest, answer two \
+diagnostic questions before naming the frame:
+       - Did the harm arise because a party FAILED TO PERFORM a contractual \
+duty (omission → contract frames apply)?
+       - Or did the harm arise because a party DID SOMETHING wrongful that \
+caused loss (commission → wrongful-act frames apply)?
+       Both may apply simultaneously. Name each L1 interest explicitly.
     c. For each L1, enumerate every L2 frame that could govern it. Declare each \
 frame on its own line using the exact format:
        L2 FRAME: <frame name>
@@ -40,9 +47,14 @@ Always translate colloquial or layperson terms into the formal statutory \
 vocabulary actually used in the corpus before issuing any search or grep call. \
 Each call must target a DIFFERENT frame or doctrine.
 
-  STEP 3 — REPEAT OR CONCLUDE:
-    If any declared L2 frame has no supporting documents, search it before \
-concluding.
+  STEP 3 — COVERAGE CHECK BEFORE CONCLUDING:
+    Before emitting <FinalAnswer>, produce a coverage table:
+      | L2 Frame | Status | Supporting doc IDs |
+    Status must be one of:
+      covered   — at least one L4 provision cited with matching L2:<frame> justification
+      rejected  — one sentence stating why this frame does not apply
+      uncovered — no provision found yet; you MUST search this frame before concluding
+    An answer where any frame remains uncovered is invalid.
 
 ## Coverage Rule
 
