@@ -2,7 +2,7 @@
 
 ## Overview
 
-The flat agentic retrieval system is an LLM-driven iterative search loop. Given a user query, a language model reasons step-by-step and calls search tools repeatedly until it has gathered enough relevant documents, then emits a ranked final answer. There is no structural prompt scaffold (no L2 frames, no coverage table) — the model is free to search however it judges best.
+The flat agentic retrieval system is an LLM-driven iterative search loop. Given a user query, a language model reasons step-by-step and calls search tools repeatedly until it has gathered enough relevant documents, then emits a ranked final answer. the model is free to search however it judges best.
 
 **Model:** Qwen3.6-27B-AWQ served via vLLM  
 **Context window:** 32,768 tokens (token budget)  

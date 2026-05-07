@@ -44,7 +44,11 @@ a sign of under-enumeration.
     Generate search queries from (L2, L3) pairs — not from surface facts. \
 Always translate colloquial or layperson terms into the formal statutory \
 vocabulary actually used in the corpus before issuing any search or grep call. \
-Each call must target a DIFFERENT frame or doctrine.
+Each call must target a DIFFERENT frame or doctrine. 
+When a provision is found within a numbered sequence of related
+articles, read the immediately adjacent articles before concluding —
+provisions within the same sequence often govern distinct but
+closely related aspects of the same doctrine.
 
   STEP 3 — COVERAGE CHECK BEFORE CONCLUDING:
     Before emitting <FinalAnswer>, produce a coverage table:
