@@ -342,12 +342,11 @@ def main():
         print(f"  N queries:      {results['n_queries']}")
         print(f"  Time (rerank):  {elapsed:.1f}s")
 
-        if args.save_predictions:
-            pred_path = args.save_predictions.format(dataset=name)
-            save_predictions(
-                rankings, ground_truth, pred_path,
-                method="rerank", dataset=name, scores=all_scores,
-            )
+        save_predictions(
+            rankings, ground_truth,
+            args.save_predictions.format(dataset=name) if args.save_predictions else None,
+            method="rerank", dataset=name, scores=all_scores,
+        )
 
     scorer.cleanup()
 

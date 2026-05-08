@@ -191,20 +191,21 @@ def main():
         r = results[k]
         print(f"{k:>6} | {r['mrr']:>8.4f} | {r['recall']:>10.4f} | {r['precision']:>12.4f} | {r['hit_rate']:>9.1%}")
 
-    if args.save_predictions:
-        sim_scores_full = query_embeddings @ corpus_embeddings.T
-        save_k = 100
-        top_save_indices = np.argsort(sim_scores_full, axis=1)[:, ::-1][:, :save_k]
-        rankings = {}
-        all_scores = {}
-        ground_truth = {qid: list(loader.qrels.get(qid, {}).keys()) for qid in test_query_ids}
-        for i, qid in enumerate(test_query_ids):
-            ranked = [doc_ids[idx] for idx in top_save_indices[i]]
-            rankings[qid] = ranked
-            all_scores[qid] = {doc_ids[idx]: float(sim_scores_full[i, idx]) for idx in top_save_indices[i]}
-        pred_path = args.save_predictions.format(dataset=args.dataset or "dense")
-        save_predictions(rankings, ground_truth, pred_path,
-                         method="dense_bge_m3", dataset=args.dataset or "", scores=all_scores)
+    sim_scores_full = query_embeddings @ corpus_embeddings.T
+    save_k = 100
+    top_save_indices = np.argsort(sim_scores_full, axis=1)[:, ::-1][:, :save_k]
+    pred_rankings = {}
+    pred_scores = {}
+    ground_truth = {qid: list(loader.qrels.get(qid, {}).keys()) for qid in test_query_ids}
+    for i, qid in enumerate(test_query_ids):
+        ranked = [doc_ids[idx] for idx in top_save_indices[i]]
+        pred_rankings[qid] = ranked
+        pred_scores[qid] = {doc_ids[idx]: float(sim_scores_full[i, idx]) for idx in top_save_indices[i]}
+    save_predictions(
+        pred_rankings, ground_truth,
+        args.save_predictions.format(dataset=args.dataset or "dense") if args.save_predictions else None,
+        method="dense_bge_m3", dataset=args.dataset or "", scores=pred_scores,
+    )
 
     # --- Cosine similarity score distribution ---
     sim_scores = query_embeddings @ corpus_embeddings.T

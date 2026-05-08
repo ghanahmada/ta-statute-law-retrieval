@@ -114,12 +114,11 @@ def main():
         print(f"  Hit rate:       {results['hit_rate']:.4f}")
         print(f"  N queries:      {results['n_queries']}")
 
-        if args.save_predictions:
-            pred_path = args.save_predictions.format(dataset=name)
-            save_predictions(
-                results["_rankings"], results["_ground_truth"], pred_path,
-                method="bm25", dataset=name, scores=results["_scores"],
-            )
+        save_predictions(
+            results["_rankings"], results["_ground_truth"],
+            args.save_predictions.format(dataset=name) if args.save_predictions else None,
+            method="bm25", dataset=name, scores=results["_scores"],
+        )
 
 
 if __name__ == "__main__":

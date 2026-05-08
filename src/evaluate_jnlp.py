@@ -75,9 +75,9 @@ for name, cfg in datasets.items():
             use_reranker=args.reranker,
         )
 
-    if args.save_predictions and "_rankings" in metrics:
-        pred_path = args.save_predictions.format(dataset=name)
+    if "_rankings" in metrics:
         save_predictions(
-            metrics["_rankings"], metrics["_ground_truth"], pred_path,
+            metrics["_rankings"], metrics["_ground_truth"],
+            args.save_predictions.format(dataset=name) if args.save_predictions else None,
             method=f"jnlp_stage{args.stage}", dataset=name, scores=metrics.get("_scores"),
         )

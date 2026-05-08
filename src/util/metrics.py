@@ -31,15 +31,21 @@ def calculate_precision_at_k(ranked_doc_ids: List[str], ground_truth_ids: List[s
     return relevant_found / len(top_k_docs)
 
 
+def predictions_path(method: str, dataset: str) -> str:
+    return f"outputs/predictions/{method}_{dataset}.jsonl"
+
+
 def save_predictions(
     rankings: Dict[str, List[str]],
     ground_truth: Dict[str, List[str]],
-    output_path: str,
+    output_path: Optional[str] = None,
     method: str = "",
     dataset: str = "",
     scores: Optional[Dict[str, Dict[str, float]]] = None,
     top_k: int = 100,
 ):
+    if output_path is None:
+        output_path = predictions_path(method, dataset)
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         for qid in ground_truth:

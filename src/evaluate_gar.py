@@ -544,12 +544,11 @@ def main():
         print(f"  Avg expanded:   {results['avg_expanded_docs']:.1f} docs/query from graph")
         print(f"  Time (GAR):     {elapsed:.1f}s")
 
-        if args.save_predictions:
-            pred_path = args.save_predictions.format(dataset=name)
-            save_predictions(
-                results["_rankings"], results["_ground_truth"], pred_path,
-                method="gar", dataset=name, scores=results["_scores"],
-            )
+        save_predictions(
+            results["_rankings"], results["_ground_truth"],
+            args.save_predictions.format(dataset=name) if args.save_predictions else None,
+            method="gar", dataset=name, scores=results["_scores"],
+        )
 
     scorer.cleanup()
 
