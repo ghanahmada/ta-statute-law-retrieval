@@ -1,6 +1,7 @@
 import argparse
 
 from jnlp import Config, PipelineOrchestrator
+from util.metrics import save_predictions
 
 DATASETS = {
     "kuhperdata-humanized": {"path": "data/kuhperdata-humanized", "max_length": 1024, "batch_size": 64},
@@ -28,6 +29,8 @@ parser.add_argument("--llm_model", type=str, default="qwen2.5", choices=LLM_MODE
 parser.add_argument("--reranker", action="store_true", help="Enable re-ranker (slow)")
 parser.add_argument("--max_relevant", type=int, default=5,
                     help="Max ground-truth docs per query (queries with more are excluded)")
+parser.add_argument("--save_predictions", type=str, default=None,
+                    help="Path to save per-query top-100 predictions as JSONL")
 args = parser.parse_args()
 
 datasets = DATASETS if args.dataset == "all" else {args.dataset: DATASETS[args.dataset]}
@@ -61,13 +64,20 @@ for name, cfg in datasets.items():
     pipeline = PipelineOrchestrator(config)
 
     if args.stage == 1:
-        pipeline.evaluate_stage1_only(
+        metrics = pipeline.evaluate_stage1_only(
             verbose=True,
             use_reranker=args.reranker,
             use_test_split=True,
         )
     else:
-        pipeline.evaluate_stage2_only(
+        metrics = pipeline.evaluate_stage2_only(
             verbose=True,
             use_reranker=args.reranker,
+        )
+
+    if args.save_predictions and "_rankings" in metrics:
+        pred_path = args.save_predictions.format(dataset=name)
+        save_predictions(
+            metrics["_rankings"], metrics["_ground_truth"], pred_path,
+            method=f"jnlp_stage{args.stage}", dataset=name, scores=metrics.get("_scores"),
         )

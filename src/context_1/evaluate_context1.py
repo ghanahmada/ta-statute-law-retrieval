@@ -151,9 +151,16 @@ async def run_one_query(
         try:
             state = await retriever.run(query_text)
             ranked = list(state.selected_doc_ids.keys())
+            ranked_seen_100 = sorted(
+                state.seen_doc_ids,
+                key=lambda d: state.doc_scores.get(d, 0),
+                reverse=True,
+            )[:100]
             return {
                 "qid": qid,
                 "ranked_doc_ids": ranked,
+                "ranked_seen_100": ranked_seen_100,
+                "doc_scores": {d: round(s, 6) for d, s in state.doc_scores.items()},
                 "n_selected": len(ranked),
                 "n_seen": len(state.seen_doc_ids),
                 "n_read": len(state.read_doc_ids),

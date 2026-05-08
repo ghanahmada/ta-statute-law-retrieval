@@ -486,7 +486,7 @@ class PipelineOrchestrator:
             for qid, docs in eval_loader.qrels.items()
         }
         metrics = evaluate_ranking(rankings, ground_truth, top_k=top_k)
-        
+
         if verbose:
             split_name = "TEST" if use_test_split else "ALL"
             print("\n" + "=" * 60)
@@ -497,7 +497,18 @@ class PipelineOrchestrator:
             print(f"Precision@{top_k}: {metrics[f'precision@{top_k}']:.4f}")
             print(f"Queries with hits: {int(metrics['hit_rate'] * metrics['n_queries'])}/{metrics['n_queries']} ({metrics['hit_rate']:.1%})")
             print("-" * 60)
-        
+
+        all_scores = {
+            qid: {doc_id: float(score) for doc_id, score in docs}
+            for qid, docs in results.items()
+        }
+        full_rankings = {
+            qid: [doc_id for doc_id, _ in docs]
+            for qid, docs in results.items()
+        }
+        metrics["_rankings"] = full_rankings
+        metrics["_scores"] = all_scores
+        metrics["_ground_truth"] = ground_truth
         return metrics
 
     def evaluate_stage2_only(

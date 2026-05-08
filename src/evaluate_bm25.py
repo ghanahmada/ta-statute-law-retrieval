@@ -4,7 +4,7 @@ import numpy as np
 
 from util.bm25 import BM25
 from util.dataloader import DataLoader
-from util.metrics import evaluate_ranking
+from util.metrics import evaluate_ranking, save_predictions
 
 DATASETS = {
     "kuhperdata-humanized": {"path": "data/kuhperdata-humanized", "lang": "id"},
@@ -29,7 +29,8 @@ def tokenize_chinese(texts: list[str]) -> list[str]:
 
 def run_bm25(loader: DataLoader, top_k: int, lang: str = "en",
              b: float = 0.75, k1: float = 1.5, n_gram: int = 1,
-             use_stemmer: bool = False, remove_stopwords: bool = False):
+             use_stemmer: bool = False, remove_stopwords: bool = False,
+             save_top_k: int = 100):
     doc_ids, doc_texts = loader.get_corpus_texts()
     query_ids, query_texts = loader.get_query_texts()
 
@@ -43,14 +44,21 @@ def run_bm25(loader: DataLoader, top_k: int, lang: str = "en",
     bm25.fit(doc_texts)
 
     rankings = {}
+    all_scores = {}
+    k = max(top_k, save_top_k)
     for qid, query in zip(query_ids, query_texts):
         scores = bm25.transform(query)
-        ranked_indices = np.argsort(scores)[::-1][:top_k]
+        ranked_indices = np.argsort(scores)[::-1][:k]
         rankings[qid] = [doc_ids[idx] for idx in ranked_indices]
+        all_scores[qid] = {doc_ids[idx]: float(scores[idx]) for idx in ranked_indices}
 
     ground_truth = {qid: list(docs.keys()) for qid, docs in loader.qrels.items()}
 
-    return evaluate_ranking(rankings, ground_truth, top_k)
+    results = evaluate_ranking(rankings, ground_truth, top_k)
+    results["_rankings"] = rankings
+    results["_scores"] = all_scores
+    results["_ground_truth"] = ground_truth
+    return results
 
 
 def main():
@@ -67,6 +75,8 @@ def main():
                         help="Remove Indonesian stopwords via PySastrawi (default: on for kuhperdata)")
     parser.add_argument("--max_relevant", type=int, default=5,
                         help="Max ground-truth docs per query (queries with more are excluded)")
+    parser.add_argument("--save_predictions", type=str, default=None,
+                        help="Path to save per-query top-100 predictions as JSONL")
     args = parser.parse_args()
 
     datasets = DATASET_DEFAULTS if args.dataset == "all" else {args.dataset: DATASETS[args.dataset]}
@@ -103,6 +113,13 @@ def main():
         print(f"  Precision@{args.top_k}: {results[f'precision@{args.top_k}']:.4f}")
         print(f"  Hit rate:       {results['hit_rate']:.4f}")
         print(f"  N queries:      {results['n_queries']}")
+
+        if args.save_predictions:
+            pred_path = args.save_predictions.format(dataset=name)
+            save_predictions(
+                results["_rankings"], results["_ground_truth"], pred_path,
+                method="bm25", dataset=name, scores=results["_scores"],
+            )
 
 
 if __name__ == "__main__":

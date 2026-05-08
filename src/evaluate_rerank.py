@@ -34,7 +34,7 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 from util.bm25 import BM25
 from util.dataloader import DataLoader
-from util.metrics import evaluate_ranking
+from util.metrics import evaluate_ranking, save_predictions
 
 DATASETS = {
     "kuhperdata-humanized": {"path": "data/kuhperdata-humanized", "lang": "id"},
@@ -222,11 +222,14 @@ def rerank_pools(
         per_query[qid].append((doc_id, score))
 
     rankings = {}
+    all_doc_scores = {}
+    save_k = max(top_k, 100)
     for qid, scored_docs in per_query.items():
         scored_docs.sort(key=lambda x: -x[1])
-        rankings[qid] = [doc_id for doc_id, _ in scored_docs[:top_k]]
+        rankings[qid] = [doc_id for doc_id, _ in scored_docs[:save_k]]
+        all_doc_scores[qid] = {doc_id: float(score) for doc_id, score in scored_docs[:save_k]}
 
-    return rankings
+    return rankings, all_doc_scores
 
 
 # ---------------------------------------------------------------------------
@@ -270,6 +273,8 @@ def main():
     parser.add_argument("--remove_stopwords", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--max_relevant", type=int, default=5,
                         help="Max ground-truth docs per query (queries with more are excluded)")
+    parser.add_argument("--save_predictions", type=str, default=None,
+                        help="Path to save per-query top-100 predictions as JSONL")
     args = parser.parse_args()
 
     _resolve_args(args)
@@ -321,7 +326,7 @@ def main():
         # Step 2: Rerank with scorer (no graph)
         print(f"\n  Step 2: Rerank top-{pool_size} with {scorer_name}")
         t0 = time.time()
-        rankings = rerank_pools(
+        rankings, all_scores = rerank_pools(
             bm25_pools, loader, scorer,
             batch_size=args.scorer_batch_size, top_k=args.top_k,
         )
@@ -336,6 +341,13 @@ def main():
         print(f"  Hit rate:       {results['hit_rate']:.4f}")
         print(f"  N queries:      {results['n_queries']}")
         print(f"  Time (rerank):  {elapsed:.1f}s")
+
+        if args.save_predictions:
+            pred_path = args.save_predictions.format(dataset=name)
+            save_predictions(
+                rankings, ground_truth, pred_path,
+                method="rerank", dataset=name, scores=all_scores,
+            )
 
     scorer.cleanup()
 

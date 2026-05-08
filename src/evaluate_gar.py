@@ -32,7 +32,7 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 from util.bm25 import BM25
 from util.dataloader import DataLoader
-from util.metrics import evaluate_ranking
+from util.metrics import evaluate_ranking, save_predictions
 from gar.corpus_graph import CorpusGraph
 from gar.adaptive_reranker import GAR
 
@@ -356,7 +356,9 @@ def run_gar(
     gar = GAR(corpus_graph=graph, budget=budget, batch_size=batch_size, backfill=True)
 
     rankings = {}
+    all_scores = {}
     n_expanded = []
+    save_k = 100
 
     for i, qid in enumerate(query_ids):
         initial_pool = bm25_pools.get(qid, [])
@@ -367,7 +369,8 @@ def run_gar(
         scorer_fn = make_scorer_fn(query_text, loader.corpus, scorer, cache=qid_cache)
         reranked = gar.rerank(initial_pool, scorer_fn, graph_k=graph_k_limit)
 
-        rankings[qid] = [doc_id for doc_id, _ in reranked[:top_k]]
+        rankings[qid] = [doc_id for doc_id, _ in reranked[:save_k]]
+        all_scores[qid] = {doc_id: float(score) for doc_id, score in reranked[:save_k]}
 
         final_ids = {did for did, _ in reranked[:top_k]}
         n_expanded.append(len(final_ids - initial_doc_ids))
@@ -377,6 +380,9 @@ def run_gar(
 
     results = evaluate_ranking(rankings, ground_truth, top_k)
     results["avg_expanded_docs"] = float(np.mean(n_expanded))
+    results["_rankings"] = rankings
+    results["_scores"] = all_scores
+    results["_ground_truth"] = ground_truth
     return results
 
 
@@ -440,6 +446,8 @@ def main():
     parser.add_argument("--cache_dir", type=str, default="outputs/gar")
     parser.add_argument("--max_relevant", type=int, default=5,
                         help="Max ground-truth docs per query (queries with more are excluded)")
+    parser.add_argument("--save_predictions", type=str, default=None,
+                        help="Path to save per-query top-100 predictions as JSONL")
     args = parser.parse_args()
 
     _resolve_args(args)
@@ -535,6 +543,13 @@ def main():
         print(f"  N queries:      {results['n_queries']}")
         print(f"  Avg expanded:   {results['avg_expanded_docs']:.1f} docs/query from graph")
         print(f"  Time (GAR):     {elapsed:.1f}s")
+
+        if args.save_predictions:
+            pred_path = args.save_predictions.format(dataset=name)
+            save_predictions(
+                results["_rankings"], results["_ground_truth"], pred_path,
+                method="gar", dataset=name, scores=results["_scores"],
+            )
 
     scorer.cleanup()
 

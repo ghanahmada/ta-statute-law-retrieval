@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 
 from util.dataloader import DataLoader
-from util.metrics import calculate_mrr, calculate_recall_at_k, calculate_precision_at_k
+from util.metrics import calculate_mrr, calculate_recall_at_k, calculate_precision_at_k, save_predictions
 
 
 def encode_with_bge(texts, model, batch_size=64, max_length=1024):
@@ -85,6 +85,8 @@ def main():
     parser.add_argument("--embeddings_dir", default="outputs/embeddings")
     parser.add_argument("--max_relevant", type=int, default=5,
                         help="Max ground-truth docs per query (queries with more are excluded)")
+    parser.add_argument("--save_predictions", type=str, default=None,
+                        help="Path to save per-query top-100 predictions as JSONL")
     args = parser.parse_args()
 
     if args.dataset:
@@ -188,6 +190,21 @@ def main():
     for k in top_k_values:
         r = results[k]
         print(f"{k:>6} | {r['mrr']:>8.4f} | {r['recall']:>10.4f} | {r['precision']:>12.4f} | {r['hit_rate']:>9.1%}")
+
+    if args.save_predictions:
+        sim_scores_full = query_embeddings @ corpus_embeddings.T
+        save_k = 100
+        top_save_indices = np.argsort(sim_scores_full, axis=1)[:, ::-1][:, :save_k]
+        rankings = {}
+        all_scores = {}
+        ground_truth = {qid: list(loader.qrels.get(qid, {}).keys()) for qid in test_query_ids}
+        for i, qid in enumerate(test_query_ids):
+            ranked = [doc_ids[idx] for idx in top_save_indices[i]]
+            rankings[qid] = ranked
+            all_scores[qid] = {doc_ids[idx]: float(sim_scores_full[i, idx]) for idx in top_save_indices[i]}
+        pred_path = args.save_predictions.format(dataset=args.dataset or "dense")
+        save_predictions(rankings, ground_truth, pred_path,
+                         method="dense_bge_m3", dataset=args.dataset or "", scores=all_scores)
 
     # --- Cosine similarity score distribution ---
     sim_scores = query_embeddings @ corpus_embeddings.T

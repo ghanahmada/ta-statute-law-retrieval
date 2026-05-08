@@ -1,4 +1,6 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
+import json
+import os
 
 import numpy as np
 
@@ -27,6 +29,36 @@ def calculate_precision_at_k(ranked_doc_ids: List[str], ground_truth_ids: List[s
         return 0.0
     relevant_found = len(set(top_k_docs).intersection(set(ground_truth_ids)))
     return relevant_found / len(top_k_docs)
+
+
+def save_predictions(
+    rankings: Dict[str, List[str]],
+    ground_truth: Dict[str, List[str]],
+    output_path: str,
+    method: str = "",
+    dataset: str = "",
+    scores: Optional[Dict[str, Dict[str, float]]] = None,
+    top_k: int = 100,
+):
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        for qid in ground_truth:
+            ranked = rankings.get(qid, [])[:top_k]
+            gt = ground_truth.get(qid, [])
+            rec = {
+                "qid": qid,
+                "method": method,
+                "dataset": dataset,
+                "ranked_doc_ids": ranked,
+                "ground_truth": gt,
+                "rr@10": calculate_mrr(ranked, gt, 10),
+                "recall@10": calculate_recall_at_k(ranked, gt, 10),
+            }
+            if scores and qid in scores:
+                qid_scores = scores[qid]
+                rec["doc_scores"] = {d: round(qid_scores.get(d, 0.0), 6) for d in ranked}
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    print(f"  Predictions saved: {output_path} ({len(ground_truth)} queries, top-{top_k})")
 
 
 def evaluate_ranking(
