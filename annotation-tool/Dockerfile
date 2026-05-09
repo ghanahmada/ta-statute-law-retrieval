@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ app/
 COPY data/ data/
 COPY --from=frontend /app/static app/static/
+RUN mkdir -p /app/db
 
 ENV PAIRS_TSV=/app/data/pairs.tsv
 ENV ANNOTATORS_TXT=/app/data/annotators.txt
