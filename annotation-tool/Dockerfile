@@ -10,5 +10,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ app/
-COPY --from=frontend /build/../app/static app/static/
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY data/ data/
+COPY --from=frontend /app/static app/static/
+
+ENV PAIRS_TSV=/app/data/pairs.tsv
+ENV ANNOTATORS_TXT=/app/data/annotators.txt
+ENV DATABASE_URL=sqlite:///./db/labels.sqlite
+
+EXPOSE 8000
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
