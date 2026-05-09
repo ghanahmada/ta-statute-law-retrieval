@@ -1,3 +1,5 @@
+import hashlib
+import random
 from datetime import datetime
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
@@ -32,8 +34,11 @@ def all_pairs(
     authorization: str = Header(default=""),
     db: Session = Depends(get_db),
 ):
-    get_current_annotator(authorization, db)
+    annotator = get_current_annotator(authorization, db)
     pairs = db.query(Pair).order_by(Pair.pair_id).all()
+    seed = int(hashlib.sha256(annotator.encode()).hexdigest(), 16) % (2**32)
+    rng = random.Random(seed)
+    rng.shuffle(pairs)
     return [
         {
             "pair_id": p.pair_id,
