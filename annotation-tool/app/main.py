@@ -1,6 +1,7 @@
 import csv
 import os
 from contextlib import asynccontextmanager
+import bcrypt
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -58,11 +59,39 @@ def load_data():
         db.close()
 
 
+def _provision_tokens():
+    """Read ACCESS_TOKENS env var and hash into DB.
+
+    Format: "Annotator1:token1,Annotator2:token2,Annotator3:token3"
+    Only provisions if annotator has no token hash yet.
+    """
+    raw = os.getenv("ACCESS_TOKENS", "")
+    if not raw:
+        return
+    db: Session = SessionLocal()
+    try:
+        for entry in raw.split(","):
+            entry = entry.strip()
+            if ":" not in entry:
+                continue
+            name, token = entry.split(":", 1)
+            ann = db.query(Annotator).filter_by(name=name.strip()).first()
+            if ann and not ann.access_token_hash:
+                ann.access_token_hash = bcrypt.hashpw(
+                    token.strip().encode("utf-8"), bcrypt.gensalt()
+                ).decode("utf-8")
+                print(f"Token provisioned for {ann.name}")
+        db.commit()
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     _migrate_schema()
     load_data()
+    _provision_tokens()
     yield
 
 
