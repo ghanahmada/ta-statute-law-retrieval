@@ -3,7 +3,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { ClipboardCheck } from "lucide-react"
-import { GuidelinesDialog } from "./GuidelinesDialog"
 
 type PairStatus = "unanswered" | "answered" | "flagged" | "flagged-answered"
 
@@ -34,7 +33,6 @@ export function Sidebar({
   return (
     <aside className="flex w-64 flex-col border-l border-navy-200 bg-white">
       <div className="space-y-2 p-3">
-        <GuidelinesDialog />
         <Button
           variant="outline"
           size="sm"

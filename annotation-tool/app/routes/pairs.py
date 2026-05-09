@@ -13,6 +13,7 @@ class LabelRequest(BaseModel):
     pair_id: str
     label: str
     confidence: str = "high"
+    reasoning: str | None = None
 
 
 class FlagRequest(BaseModel):
@@ -61,6 +62,7 @@ def get_labels(
             lbl.pair_id: {
                 "label": lbl.label,
                 "confidence": lbl.confidence,
+                "reasoning": lbl.reasoning or "",
             }
             for lbl in labels
         },
@@ -126,6 +128,7 @@ def submit_label(
     if existing:
         existing.label = req.label
         existing.confidence = req.confidence
+        existing.reasoning = req.reasoning
         existing.created_at = datetime.utcnow()
     else:
         db.add(Label(
@@ -133,6 +136,7 @@ def submit_label(
             pair_id=req.pair_id,
             label=req.label,
             confidence=req.confidence,
+            reasoning=req.reasoning,
         ))
     db.commit()
     return {"success": True}

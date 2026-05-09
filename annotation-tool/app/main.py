@@ -24,6 +24,11 @@ def _migrate_schema():
                 conn.execute(text("ALTER TABLE annotators ADD COLUMN submitted_at DATETIME"))
             if "access_token_hash" not in cols:
                 conn.execute(text("ALTER TABLE annotators ADD COLUMN access_token_hash TEXT"))
+    if "labels" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("labels")}
+        with engine.begin() as conn:
+            if "reasoning" not in cols:
+                conn.execute(text("ALTER TABLE labels ADD COLUMN reasoning TEXT"))
 
 
 def load_data():

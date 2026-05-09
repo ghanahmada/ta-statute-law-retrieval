@@ -11,6 +11,7 @@ export interface Pair {
 
 export interface LabelData {
   label: "RELEVANT" | "NOT_RELEVANT"
+  reasoning?: string
 }
 
 export interface LabelsResponse {

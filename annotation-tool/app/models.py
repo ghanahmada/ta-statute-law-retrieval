@@ -34,6 +34,7 @@ class Label(Base):
     pair_id = Column(String)
     label = Column(String)
     confidence = Column(String)
+    reasoning = Column(Text, nullable=True, default=None)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
