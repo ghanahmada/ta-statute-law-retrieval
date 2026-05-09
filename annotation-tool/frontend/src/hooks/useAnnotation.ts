@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import { api } from "@/lib/api"
 import type { LabelData, Pair } from "@/types"
 
