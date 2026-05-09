@@ -38,10 +38,6 @@ export function useAnnotation() {
     }
   }, [])
 
-  useEffect(() => {
-    init()
-  }, [init])
-
   const currentPair = pairs[currentIndex] ?? null
   const totalAnswered = Object.keys(labels).length
   const totalFlagged = flagged.size
@@ -135,6 +131,7 @@ export function useAnnotation() {
     totalAnswered,
     totalFlagged,
     totalPairs,
+    init,
     goTo,
     next,
     prev,

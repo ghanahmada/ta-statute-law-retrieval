@@ -18,13 +18,14 @@ export default function App() {
   useEffect(() => {
     const token = localStorage.getItem("session_token")
     if (!token) return
-    api.status().then((res) => {
+    api.status().then(async (res) => {
       if (res.authenticated && res.name) {
         setAnnotatorName(res.name)
         if (res.submitted) {
           annotation.setSubmitted(true)
           setView("complete")
         } else {
+          await annotation.init()
           setView("annotate")
         }
       }
@@ -33,12 +34,13 @@ export default function App() {
     })
   }, [])
 
-  const handleLogin = useCallback((name: string, submitted: boolean) => {
+  const handleLogin = useCallback(async (name: string, submitted: boolean) => {
     setAnnotatorName(name)
     if (submitted) {
       annotation.setSubmitted(true)
       setView("complete")
     } else {
+      await annotation.init()
       setView("guidelines")
     }
   }, [annotation])
