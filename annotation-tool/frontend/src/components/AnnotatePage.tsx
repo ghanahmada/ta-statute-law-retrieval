@@ -1,10 +1,12 @@
 import { useEffect } from "react"
 import { useAnnotation } from "@/hooks/useAnnotation"
+import { Button } from "@/components/ui/button"
 import { ProgressHeader } from "./ProgressHeader"
 import { PairView } from "./PairView"
 import { LabelControls } from "./LabelControls"
 import { Sidebar } from "./Sidebar"
 import { Separator } from "@/components/ui/separator"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 
 interface Props {
   annotatorName: string
@@ -38,6 +40,38 @@ export function AnnotatePage({ annotatorName, onReview, annotation }: Props) {
     }
   }, [pairs.length, loading, init])
 
+  useEffect(() => {
+    if (submitted) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      switch (e.key.toLowerCase()) {
+        case "r": {
+          const existing = currentPair ? labels[currentPair.pair_id] : null
+          if (currentPair) saveLabel("RELEVANT", existing?.reasoning)
+          break
+        }
+        case "n": {
+          const existing = currentPair ? labels[currentPair.pair_id] : null
+          if (currentPair) saveLabel("NOT_RELEVANT", existing?.reasoning)
+          break
+        }
+        case "f":
+          if (currentPair) toggleFlag(currentPair.pair_id)
+          break
+        case "arrowleft":
+          e.preventDefault()
+          prev()
+          break
+        case "arrowright":
+          e.preventDefault()
+          next()
+          break
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [submitted, currentPair, labels, saveLabel, toggleFlag, prev, next])
+
   if (loading || (pairs.length === 0)) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-navy-50">
@@ -66,20 +100,44 @@ export function AnnotatePage({ annotatorName, onReview, annotation }: Props) {
           total={totalPairs}
         />
         <div className="flex-1 overflow-y-auto p-6">
-          <PairView pair={currentPair} index={currentIndex} total={totalPairs} />
+          <PairView
+            pair={currentPair}
+            index={currentIndex}
+            total={totalPairs}
+            isFlagged={isFlagged}
+            submitted={submitted}
+            onToggleFlag={() => toggleFlag(currentPair.pair_id)}
+          />
           <Separator className="my-6 bg-navy-100" />
           <LabelControls
             pairId={currentPair.pair_id}
             existingLabel={existingLabel}
-            isFlagged={isFlagged}
-            isFirst={currentIndex === 0}
-            isLast={currentIndex === totalPairs - 1}
             submitted={submitted}
             onSave={saveLabel}
-            onToggleFlag={() => toggleFlag(currentPair.pair_id)}
-            onPrev={prev}
-            onNext={next}
           />
+        </div>
+
+        <div className="flex items-center justify-between border-t border-navy-200 bg-white px-6 py-3">
+          <Button
+            variant="outline"
+            onClick={prev}
+            disabled={currentIndex === 0}
+            className="border-navy-200 text-navy-600 hover:bg-navy-50"
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Previous
+          </Button>
+          <span className="text-sm text-navy-400">
+            {currentIndex + 1} / {totalPairs}
+          </span>
+          <Button
+            onClick={next}
+            disabled={currentIndex === totalPairs - 1}
+            className="bg-navy-700 text-white hover:bg-navy-600"
+          >
+            Next
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
         </div>
       </main>
 

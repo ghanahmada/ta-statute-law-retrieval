@@ -32,20 +32,6 @@ export function Sidebar({
 }: Props) {
   return (
     <aside className="flex w-64 flex-col border-l border-navy-200 bg-white">
-      <div className="space-y-2 p-3">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onReview}
-          className="w-full border-amber-400 text-amber-700 hover:bg-amber-50"
-        >
-          <ClipboardCheck className="mr-1.5 h-4 w-4" />
-          Review & Submit
-        </Button>
-      </div>
-
-      <Separator className="bg-navy-100" />
-
       <ScrollArea className="flex-1 p-3">
         <div className="grid grid-cols-8 gap-1.5">
           {Array.from({ length: total }, (_, i) => {
@@ -68,6 +54,20 @@ export function Sidebar({
           })}
         </div>
       </ScrollArea>
+
+      <Separator className="bg-navy-100" />
+
+      <div className="p-3">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onReview}
+          className="w-full border-amber-400 text-amber-700 hover:bg-amber-50"
+        >
+          <ClipboardCheck className="mr-1.5 h-4 w-4" />
+          Review & Submit
+        </Button>
+      </div>
 
       <Separator className="bg-navy-100" />
 

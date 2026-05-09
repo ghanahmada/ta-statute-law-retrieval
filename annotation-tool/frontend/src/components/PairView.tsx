@@ -1,15 +1,21 @@
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Flag } from "lucide-react"
+import { cn } from "@/lib/utils"
 import type { Pair } from "@/types"
 
 interface Props {
   pair: Pair
   index: number
   total: number
+  isFlagged: boolean
+  submitted: boolean
+  onToggleFlag: () => void
 }
 
-export function PairView({ pair, index, total }: Props) {
+export function PairView({ pair, index, total, isFlagged, submitted, onToggleFlag }: Props) {
   const isHumanized = pair.variant === "humanized"
 
   return (
@@ -30,6 +36,20 @@ export function PairView({ pair, index, total }: Props) {
         <span className="text-sm text-navy-400">
           {pair.kuhperdata_book}
         </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onToggleFlag}
+          disabled={submitted}
+          className={cn(
+            "ml-auto h-7 px-2 transition-all",
+            isFlagged
+              ? "border-amber-400 bg-amber-100 text-amber-700 hover:bg-amber-200"
+              : "border-navy-200 text-navy-400 hover:bg-navy-50 hover:text-amber-600",
+          )}
+        >
+          <Flag className={cn("h-3.5 w-3.5", isFlagged && "fill-amber-500")} />
+        </Button>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
