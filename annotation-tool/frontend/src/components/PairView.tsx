@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Flag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Pair } from "@/types"
@@ -71,11 +70,9 @@ export function PairView({ pair, index, total, isFlagged, submitted, onToggleFla
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="max-h-[45vh]">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-navy-800">
-                {pair.article_text}
-              </p>
-            </ScrollArea>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-navy-800">
+              {pair.article_text}
+            </p>
           </CardContent>
         </Card>
       </div>
