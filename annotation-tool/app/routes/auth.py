@@ -1,5 +1,6 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+import bcrypt
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -9,18 +10,38 @@ router = APIRouter(prefix="/auth")
 
 
 class LoginRequest(BaseModel):
-    name: str
+    token: str
 
 
 @router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    annotator = db.query(Annotator).filter(Annotator.name == req.name).first()
-    if not annotator:
-        raise HTTPException(status_code=404, detail="Annotator not found")
-    token = str(uuid.uuid4())
-    annotator.session_token = token
-    db.commit()
-    return {"session_token": token, "annotator_name": annotator.name}
+    for ann in db.query(Annotator).all():
+        if not ann.access_token_hash:
+            continue
+        if bcrypt.checkpw(req.token.encode("utf-8"), ann.access_token_hash.encode("utf-8")):
+            session = str(uuid.uuid4())
+            ann.session_token = session
+            db.commit()
+            return {
+                "session_token": session,
+                "annotator_name": ann.name,
+                "submitted": ann.submitted_at is not None,
+            }
+    raise HTTPException(status_code=401, detail="Invalid access token")
+
+
+@router.get("/status")
+def auth_status(authorization: str = Header(default=""), db: Session = Depends(get_db)):
+    try:
+        name = get_current_annotator(authorization, db)
+        ann = db.query(Annotator).filter(Annotator.name == name).first()
+        return {
+            "authenticated": True,
+            "name": name,
+            "submitted": ann.submitted_at is not None if ann else False,
+        }
+    except HTTPException:
+        return {"authenticated": False}
 
 
 def get_current_annotator(authorization: str, db: Session) -> str:

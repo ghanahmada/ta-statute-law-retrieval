@@ -21,7 +21,9 @@ class Annotator(Base):
     __tablename__ = "annotators"
 
     name = Column(String, primary_key=True)
-    session_token = Column(String)
+    access_token_hash = Column(String, nullable=True)
+    session_token = Column(String, nullable=True)
+    submitted_at = Column(DateTime, nullable=True, default=None)
 
 
 class Label(Base):
@@ -32,4 +34,13 @@ class Label(Base):
     pair_id = Column(String)
     label = Column(String)
     confidence = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Flag(Base):
+    __tablename__ = "flags"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    annotator = Column(String, nullable=False)
+    pair_id = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

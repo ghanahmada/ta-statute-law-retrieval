@@ -21,6 +21,8 @@ def progress(db: Session = Depends(get_db)):
             "done": done,
             "remaining": total - done,
             "pct": round(100 * done / total, 1) if total else 0,
+            "submitted": ann.submitted_at is not None,
+            "submitted_at": ann.submitted_at.isoformat() if ann.submitted_at else None,
         })
     overall = db.query(Label).count()
     return {"total_pairs": total, "annotators": rows, "total_labels": overall}
