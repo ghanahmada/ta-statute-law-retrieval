@@ -11,7 +11,6 @@ export interface Pair {
 
 export interface LabelData {
   label: "RELEVANT" | "NOT_RELEVANT"
-  confidence: "low" | "medium" | "high"
 }
 
 export interface LabelsResponse {

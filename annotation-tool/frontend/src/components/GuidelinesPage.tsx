@@ -47,26 +47,6 @@ export function GuidelinesContent() {
       <Separator className="bg-navy-100" />
 
       <section>
-        <h3 className="mb-2 text-lg font-semibold text-navy-700">Confidence Levels</h3>
-        <ul className="ml-4 list-disc space-y-1 text-sm">
-          <li>
-            <strong>High</strong> — You are confident in your judgment. The relevance (or lack
-            thereof) is clear.
-          </li>
-          <li>
-            <strong>Medium</strong> — You believe your answer is likely correct but have some
-            uncertainty.
-          </li>
-          <li>
-            <strong>Low</strong> — You are unsure. The article may be tangentially related, or
-            you lack sufficient domain knowledge to judge definitively.
-          </li>
-        </ul>
-      </section>
-
-      <Separator className="bg-navy-100" />
-
-      <section>
         <h3 className="mb-2 text-lg font-semibold text-navy-700">Tips</h3>
         <ul className="ml-4 list-disc space-y-1 text-sm">
           <li>Read the <strong>full article text</strong> before making your judgment.</li>

@@ -12,7 +12,7 @@ router = APIRouter(prefix="/pairs")
 class LabelRequest(BaseModel):
     pair_id: str
     label: str
-    confidence: str
+    confidence: str = "high"
 
 
 class FlagRequest(BaseModel):

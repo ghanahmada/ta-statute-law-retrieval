@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { useAnnotation } from "@/hooks/useAnnotation"
 import { ProgressHeader } from "./ProgressHeader"
 import { PairView } from "./PairView"
@@ -22,6 +23,7 @@ export function AnnotatePage({ annotatorName, onReview, annotation }: Props) {
     submitted,
     totalAnswered,
     totalPairs,
+    init,
     goTo,
     next,
     prev,
@@ -30,7 +32,13 @@ export function AnnotatePage({ annotatorName, onReview, annotation }: Props) {
     getStatus,
   } = annotation
 
-  if (loading) {
+  useEffect(() => {
+    if (pairs.length === 0 && !loading) {
+      init()
+    }
+  }, [pairs.length, loading, init])
+
+  if (loading || (pairs.length === 0)) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-navy-50">
         <p className="text-navy-500">Loading annotation data...</p>

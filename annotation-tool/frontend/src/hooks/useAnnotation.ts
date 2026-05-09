@@ -56,12 +56,12 @@ export function useAnnotation() {
   const prev = useCallback(() => goTo(currentIndex - 1), [currentIndex, goTo])
 
   const saveLabel = useCallback(
-    async (label: "RELEVANT" | "NOT_RELEVANT", confidence: "low" | "medium" | "high") => {
+    async (label: "RELEVANT" | "NOT_RELEVANT") => {
       if (!currentPair) return
       const pairId = currentPair.pair_id
-      setLabels((prev) => ({ ...prev, [pairId]: { label, confidence } }))
+      setLabels((prev) => ({ ...prev, [pairId]: { label } }))
       try {
-        await api.saveLabel(pairId, label, confidence)
+        await api.saveLabel(pairId, label)
       } catch (e) {
         setLabels((prev) => {
           const copy = { ...prev }

@@ -33,10 +33,10 @@ export const api = {
 
   labels: () => request<LabelsResponse>("/pairs/labels"),
 
-  saveLabel: (pair_id: string, label: string, confidence: string) =>
+  saveLabel: (pair_id: string, label: string) =>
     request<{ success: boolean }>("/pairs/label", {
       method: "POST",
-      body: JSON.stringify({ pair_id, label, confidence }),
+      body: JSON.stringify({ pair_id, label }),
     }),
 
   toggleFlag: (pair_id: string, flagged: boolean) =>
