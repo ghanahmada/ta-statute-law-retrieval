@@ -24,7 +24,7 @@ export function GuidelinesDialog() {
           </Button>
         }
       />
-      <DialogContent className="max-w-2xl border-navy-200 p-0">
+      <DialogContent className="max-w-4xl border-navy-200 p-0">
         <DialogHeader className="border-b border-navy-100 px-6 py-4">
           <DialogTitle className="text-navy-800">Annotation Guidelines</DialogTitle>
         </DialogHeader>
