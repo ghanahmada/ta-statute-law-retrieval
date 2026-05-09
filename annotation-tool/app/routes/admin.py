@@ -1,7 +1,9 @@
 import csv
 import io
+from itertools import combinations
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from sklearn.metrics import cohen_kappa_score
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Annotator, Label, Pair
@@ -28,6 +30,89 @@ def progress(db: Session = Depends(get_db)):
     return {"total_pairs": total, "annotators": rows, "total_labels": overall}
 
 
+@router.get("/agreement")
+def agreement(db: Session = Depends(get_db)):
+    pairs = {p.pair_id: p.llm_label for p in db.query(Pair).order_by(Pair.pair_id).all()}
+    pair_ids = sorted(pairs.keys())
+    annotators = [a.name for a in db.query(Annotator).all()]
+
+    def norm(lbl: str) -> str:
+        lbl = lbl.upper().strip()
+        if lbl in ("RELEVAN", "RELEVANT"):
+            return "RELEVANT"
+        if lbl in ("TIDAK_RELEVAN", "NOT_RELEVANT"):
+            return "NOT_RELEVANT"
+        return lbl
+
+    labels_by_ann: dict[str, dict[str, str]] = {}
+    distribution = []
+    for ann in annotators:
+        rows = db.query(Label).filter(Label.annotator == ann).all()
+        ann_labels = {r.pair_id: r.label for r in rows}
+        labels_by_ann[ann] = ann_labels
+        total = len(ann_labels)
+        rel = sum(1 for v in ann_labels.values() if norm(v) == "RELEVANT")
+        distribution.append({
+            "annotator": ann,
+            "labeled": total,
+            "total": len(pair_ids),
+            "relevant": rel,
+            "not_relevant": total - rel,
+        })
+
+    ann_with_labels = [a for a in annotators if len(labels_by_ann.get(a, {})) > 0]
+
+    pairwise = []
+    for a1, a2 in combinations(ann_with_labels, 2):
+        common = [pid for pid in pair_ids
+                  if pid in labels_by_ann[a1] and pid in labels_by_ann[a2]]
+        if len(common) < 2:
+            pairwise.append({
+                "annotator1": a1, "annotator2": a2,
+                "kappa": None, "overlap": len(common),
+                "agreement_pct": None,
+            })
+            continue
+        y1 = [norm(labels_by_ann[a1][pid]) for pid in common]
+        y2 = [norm(labels_by_ann[a2][pid]) for pid in common]
+        k = cohen_kappa_score(y1, y2)
+        agree = sum(1 for a, b in zip(y1, y2) if a == b)
+        pairwise.append({
+            "annotator1": a1, "annotator2": a2,
+            "kappa": round(k, 4), "overlap": len(common),
+            "agreement_pct": round(agree / len(common) * 100, 1),
+        })
+
+    vs_llm = []
+    for ann in ann_with_labels:
+        common = [pid for pid in pair_ids
+                  if pid in labels_by_ann[ann] and pairs[pid]]
+        if len(common) < 2:
+            vs_llm.append({"annotator": ann, "kappa": None, "overlap": len(common)})
+            continue
+        y_ann = [norm(labels_by_ann[ann][pid]) for pid in common]
+        y_llm = [norm(pairs[pid]) for pid in common]
+        k = cohen_kappa_score(y_ann, y_llm)
+        agree = sum(1 for a, b in zip(y_ann, y_llm) if a == b)
+        vs_llm.append({
+            "annotator": ann, "kappa": round(k, 4),
+            "overlap": len(common),
+            "agreement_pct": round(agree / len(common) * 100, 1),
+        })
+
+    avg_kappa = None
+    kappas = [p["kappa"] for p in pairwise if p["kappa"] is not None]
+    if kappas:
+        avg_kappa = round(sum(kappas) / len(kappas), 4)
+
+    return {
+        "distribution": distribution,
+        "pairwise_kappa": pairwise,
+        "average_kappa": avg_kappa,
+        "vs_llm": vs_llm,
+    }
+
+
 @router.get("/export")
 def export(db: Session = Depends(get_db)):
     labels = db.query(Label).all()
@@ -36,7 +121,8 @@ def export(db: Session = Depends(get_db)):
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(["annotator", "pair_id", "case_id", "variant", "article_id",
-                     "kuhperdata_book", "llm_label", "label", "confidence", "created_at"])
+                     "kuhperdata_book", "llm_label", "label", "confidence",
+                     "reasoning", "created_at"])
     for lbl in labels:
         pair = pairs.get(lbl.pair_id)
         writer.writerow([
@@ -49,6 +135,7 @@ def export(db: Session = Depends(get_db)):
             pair.llm_label if pair else "",
             lbl.label,
             lbl.confidence,
+            lbl.reasoning or "",
             lbl.created_at.isoformat() if lbl.created_at else "",
         ])
 

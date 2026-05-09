@@ -73,11 +73,11 @@ def main():
             k = cohen_kappa_score(y1, y2)
             agree = sum(1 for a, b in zip(y1, y2) if a == b)
             kappas.append(k)
-            print(f"  {a1} vs {a2}: κ = {k:.4f}  "
+            print(f"  {a1} vs {a2}: kappa = {k:.4f}  "
                   f"(agreement: {agree}/{len(common)} = {agree/len(common):.1%})")
 
         if kappas:
-            print(f"\n  Average pairwise κ = {sum(kappas)/len(kappas):.4f}")
+            print(f"\n  Average pairwise kappa = {sum(kappas)/len(kappas):.4f}")
 
     # Annotator vs LLM
     print("\n--- Annotator vs LLM Label ---")
@@ -91,12 +91,12 @@ def main():
         y_llm = [norm(pairs[pid]) for pid in common]
         k = cohen_kappa_score(y_ann, y_llm)
         agree = sum(1 for a, b in zip(y_ann, y_llm) if a == b)
-        print(f"  {ann} vs LLM: κ = {k:.4f}  "
+        print(f"  {ann} vs LLM: kappa = {k:.4f}  "
               f"(agreement: {agree}/{len(common)} = {agree/len(common):.1%})")
 
     # Interpretation guide
     print("\n--- Interpretation ---")
-    print("  κ < 0.20  Poor")
+    print("  kappa < 0.20  Poor")
     print("  0.20-0.40 Fair")
     print("  0.40-0.60 Moderate")
     print("  0.60-0.80 Substantial")
