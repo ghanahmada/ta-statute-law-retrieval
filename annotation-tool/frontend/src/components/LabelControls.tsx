@@ -28,10 +28,11 @@ export function LabelControls({
 
   const selectLabel = useCallback(
     (value: "RELEVANT" | "NOT_RELEVANT") => {
+      if (submitted) return
       setLabel(value)
       onSave(value, reasoning)
     },
-    [onSave, reasoning],
+    [onSave, reasoning, submitted],
   )
 
   const handleReasoningChange = useCallback(
@@ -54,20 +55,21 @@ export function LabelControls({
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <button
-        onClick={() => selectLabel("RELEVANT")}
-        disabled={submitted}
+      <div
         className={cn(
           "rounded-lg border-2 p-4 text-left transition-all",
           label === "RELEVANT"
             ? "border-navy-600 bg-navy-50 shadow-md"
             : "border-slate-200 bg-white hover:border-navy-300 hover:bg-navy-50/50",
-          submitted && "opacity-60 cursor-not-allowed",
+          submitted && "opacity-60",
         )}
       >
-        <div className="flex items-center gap-2">
+        <div
+          onClick={() => selectLabel("RELEVANT")}
+          className={cn("flex cursor-pointer items-center gap-2", submitted && "cursor-not-allowed")}
+        >
           <span className={cn(
-            "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
             label === "RELEVANT"
               ? "bg-navy-600 text-white"
               : "border-2 border-slate-300 text-slate-400",
@@ -85,29 +87,29 @@ export function LabelControls({
           <textarea
             value={reasoning}
             onChange={(e) => handleReasoningChange(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
             placeholder="Reasoning (optional)"
             disabled={submitted}
             rows={2}
             className="mt-3 w-full resize-none rounded-md border border-navy-200 bg-white px-3 py-2 text-sm text-navy-700 placeholder:text-navy-300 focus:border-navy-400 focus:outline-none"
           />
         )}
-      </button>
+      </div>
 
-      <button
-        onClick={() => selectLabel("NOT_RELEVANT")}
-        disabled={submitted}
+      <div
         className={cn(
           "rounded-lg border-2 p-4 text-left transition-all",
           label === "NOT_RELEVANT"
             ? "border-slate-500 bg-slate-50 shadow-md"
             : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50",
-          submitted && "opacity-60 cursor-not-allowed",
+          submitted && "opacity-60",
         )}
       >
-        <div className="flex items-center gap-2">
+        <div
+          onClick={() => selectLabel("NOT_RELEVANT")}
+          className={cn("flex cursor-pointer items-center gap-2", submitted && "cursor-not-allowed")}
+        >
           <span className={cn(
-            "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
             label === "NOT_RELEVANT"
               ? "bg-slate-500 text-white"
               : "border-2 border-slate-300 text-slate-400",
@@ -125,14 +127,13 @@ export function LabelControls({
           <textarea
             value={reasoning}
             onChange={(e) => handleReasoningChange(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
             placeholder="Reasoning (optional)"
             disabled={submitted}
             rows={2}
             className="mt-3 w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:border-slate-400 focus:outline-none"
           />
         )}
-      </button>
+      </div>
     </div>
   )
 }
