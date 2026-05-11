@@ -1,7 +1,8 @@
 import csv
 import io
+import os
 from itertools import combinations
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from sklearn.metrics import cohen_kappa_score
 from sqlalchemy.orm import Session
@@ -10,9 +11,19 @@ from app.models import Annotator, Flag, Label, Pair
 
 router = APIRouter(prefix="/admin")
 
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+
+
+def _check_admin(authorization: str = Header(default="")):
+    if not ADMIN_TOKEN:
+        raise HTTPException(status_code=503, detail="ADMIN_TOKEN not configured")
+    token = authorization.replace("Bearer ", "").strip()
+    if token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+
 
 @router.post("/reset/{annotator_name}")
-def reset_annotator(annotator_name: str, db: Session = Depends(get_db)):
+def reset_annotator(annotator_name: str, _: None = Depends(_check_admin), db: Session = Depends(get_db)):
     ann = db.query(Annotator).filter(Annotator.name == annotator_name).first()
     if not ann:
         raise HTTPException(status_code=404, detail="Annotator not found")
@@ -29,7 +40,7 @@ def reset_annotator(annotator_name: str, db: Session = Depends(get_db)):
 
 
 @router.get("/progress")
-def progress(db: Session = Depends(get_db)):
+def progress(_: None = Depends(_check_admin), db: Session = Depends(get_db)):
     total = db.query(Pair).count()
     annotators = db.query(Annotator).all()
     rows = []
@@ -48,7 +59,7 @@ def progress(db: Session = Depends(get_db)):
 
 
 @router.get("/agreement")
-def agreement(db: Session = Depends(get_db)):
+def agreement(_: None = Depends(_check_admin), db: Session = Depends(get_db)):
     pairs = {p.pair_id: p.llm_label for p in db.query(Pair).order_by(Pair.pair_id).all()}
     pair_ids = sorted(pairs.keys())
     annotators = [a.name for a in db.query(Annotator).all()]
@@ -131,7 +142,7 @@ def agreement(db: Session = Depends(get_db)):
 
 
 @router.get("/export")
-def export(db: Session = Depends(get_db)):
+def export(_: None = Depends(_check_admin), db: Session = Depends(get_db)):
     labels = db.query(Label).all()
     pairs = {p.pair_id: p for p in db.query(Pair).all()}
 
