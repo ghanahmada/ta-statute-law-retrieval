@@ -23,7 +23,7 @@ export function GuidelinesContent() {
             Your annotations, along with those from <strong>2 other annotators</strong>, will be used to
             compute <strong>Cohen&apos;s Kappa</strong> (inter-annotator agreement score) to measure the
             reliability of the expanded ground truth. Your identity will remain anonymous in the
-            published results — only the aggregate agreement scores will be reported.
+            published results, only the aggregate agreement scores will be reported.
           </p>
         </div>
       </section>
