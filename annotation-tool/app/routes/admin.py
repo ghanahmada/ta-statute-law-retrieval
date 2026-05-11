@@ -1,14 +1,31 @@
 import csv
 import io
 from itertools import combinations
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sklearn.metrics import cohen_kappa_score
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Annotator, Label, Pair
+from app.models import Annotator, Flag, Label, Pair
 
 router = APIRouter(prefix="/admin")
+
+
+@router.post("/reset/{annotator_name}")
+def reset_annotator(annotator_name: str, db: Session = Depends(get_db)):
+    ann = db.query(Annotator).filter(Annotator.name == annotator_name).first()
+    if not ann:
+        raise HTTPException(status_code=404, detail="Annotator not found")
+    deleted_labels = db.query(Label).filter(Label.annotator == annotator_name).delete()
+    deleted_flags = db.query(Flag).filter(Flag.annotator == annotator_name).delete()
+    ann.submitted_at = None
+    db.commit()
+    return {
+        "success": True,
+        "annotator": annotator_name,
+        "labels_deleted": deleted_labels,
+        "flags_deleted": deleted_flags,
+    }
 
 
 @router.get("/progress")

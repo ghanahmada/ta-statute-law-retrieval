@@ -144,6 +144,7 @@ export function AnnotatePage({ annotatorName, onReview, annotation }: Props) {
       <Sidebar
         total={totalPairs}
         currentIndex={currentIndex}
+        submitted={submitted}
         getStatus={(i) => getStatus(pairs[i]?.pair_id ?? "")}
         getPairId={(i) => pairs[i]?.pair_id ?? ""}
         onGoTo={goTo}

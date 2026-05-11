@@ -45,6 +45,11 @@ export default function App() {
     }
   }, [annotation])
 
+  const handleReviewAnswers = useCallback(async () => {
+    await annotation.init()
+    setView("annotate")
+  }, [annotation])
+
   return (
     <TooltipProvider>
       {view === "login" && <LoginPage onLogin={handleLogin} />}
@@ -54,7 +59,7 @@ export default function App() {
       {view === "annotate" && (
         <AnnotatePage
           annotatorName={annotatorName}
-          onReview={() => setView("confirmation")}
+          onReview={() => annotation.submitted ? setView("complete") : setView("confirmation")}
           annotation={annotation}
         />
       )}
@@ -65,7 +70,9 @@ export default function App() {
           onSubmitted={() => setView("complete")}
         />
       )}
-      {view === "complete" && <CompletePage />}
+      {view === "complete" && (
+        <CompletePage onReview={handleReviewAnswers} />
+      )}
     </TooltipProvider>
   )
 }

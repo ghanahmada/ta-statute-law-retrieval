@@ -2,13 +2,14 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-import { ClipboardCheck } from "lucide-react"
+import { ArrowLeft, ClipboardCheck } from "lucide-react"
 
 type PairStatus = "unanswered" | "answered" | "flagged" | "flagged-answered"
 
 interface Props {
   total: number
   currentIndex: number
+  submitted?: boolean
   getStatus: (index: number) => PairStatus
   getPairId: (index: number) => string
   onGoTo: (index: number) => void
@@ -25,6 +26,7 @@ const statusStyles: Record<PairStatus, string> = {
 export function Sidebar({
   total,
   currentIndex,
+  submitted,
   getStatus,
   getPairId,
   onGoTo,
@@ -62,10 +64,24 @@ export function Sidebar({
           variant="outline"
           size="sm"
           onClick={onReview}
-          className="w-full border-amber-400 text-amber-700 hover:bg-amber-50"
+          className={cn(
+            "w-full",
+            submitted
+              ? "border-navy-300 text-navy-700 hover:bg-navy-50"
+              : "border-amber-400 text-amber-700 hover:bg-amber-50",
+          )}
         >
-          <ClipboardCheck className="mr-1.5 h-4 w-4" />
-          Review & Submit
+          {submitted ? (
+            <>
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
+              Back
+            </>
+          ) : (
+            <>
+              <ClipboardCheck className="mr-1.5 h-4 w-4" />
+              Review & Submit
+            </>
+          )}
         </Button>
       </div>
 
