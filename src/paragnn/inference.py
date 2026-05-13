@@ -22,6 +22,7 @@ from paragnn.graph_builder import ParagraphStore, GraphBuilder
 from paragnn.model import TestCaseGnn
 from paragnn.structure import precompute_structure_features, get_query_structure_features
 from util.dataloader import DataLoader
+from util.metrics import save_predictions
 
 
 def load_precomputed(output_dir: str):
@@ -303,6 +304,18 @@ def main():
               f"mean={np.mean(gt_ranks):.0f}, "
               f"p90={np.percentile(gt_ranks, 90):.0f}, "
               f"in-top-{args.top_k}={sum(1 for r in gt_ranks if r <= args.top_k)}/{len(gt_ranks)}")
+
+    # Save to outputs/predictions/ in standard format
+    method_name = {"none": "paragnn", "proximity": "proxgnn", "structural": "structgnn"}[mode]
+    top_k = min(args.top_k, final_scores.shape[1])
+    std_rankings: dict = {}
+    std_scores: dict = {}
+    for qi, qid in enumerate(test_qids):
+        idx = torch.argsort(final_scores[qi], descending=True)[:top_k].tolist()
+        std_rankings[qid] = [corpus_doc_ids[i] for i in idx]
+        std_scores[qid] = {corpus_doc_ids[i]: float(final_scores[qi, i]) for i in idx}
+    std_gt = {qid: list(test_loader.qrels[qid].keys()) for qid in test_qids if qid in test_loader.qrels}
+    save_predictions(std_rankings, std_gt, method=method_name, dataset=args.dataset, scores=std_scores)
 
     # Also export both original and debiased for analysis
     out_orig = f"{model_dir}/rankings_top{args.top_k}_original.jsonl"
