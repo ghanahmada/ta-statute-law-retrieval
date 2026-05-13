@@ -23,7 +23,7 @@ import csv
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-TEST_YEAR = "R04"
+TEST_YEARS = {"R03", "R04"}
 OUTPUT_DIR = Path("data/coliee")
 
 
@@ -102,13 +102,13 @@ def extract_article_no(t1_text: str) -> str | None:
 
 def process_train_files(
     train_dir: Path,
-    test_year: str,
+    test_years: set[str],
 ) -> tuple[dict, dict, dict]:
     """Return (queries, train_qrels, test_qrels).
 
     queries     : pair_id -> t2 text
     train_qrels : pair_id -> article_no  (Y-labeled, non-test years)
-    test_qrels  : pair_id -> article_no  (Y-labeled, test year)
+    test_qrels  : pair_id -> article_no  (Y-labeled, test years)
     """
     queries: dict[str, str] = {}
     train_qrels: dict[str, str] = {}
@@ -116,7 +116,7 @@ def process_train_files(
 
     for xml_file in sorted(train_dir.glob("riteval_*_en.xml")):
         year = xml_file.stem.replace("riteval_", "").replace("_en", "")
-        is_test = year == test_year
+        is_test = year in test_years
 
         tree = ET.parse(xml_file)
         for pair in tree.getroot().findall(".//pair"):
@@ -173,22 +173,23 @@ def main():
         help="Path to unpacked COLIEE 2024 statute data directory",
     )
     parser.add_argument(
-        "--test_year", default=TEST_YEAR,
-        help="Year to hold out as test set (default: R04)",
+        "--test_years", nargs="+", default=sorted(TEST_YEARS),
+        help="Year(s) to hold out as test set (default: R03 R04)",
     )
     parser.add_argument("--output_dir", default=str(OUTPUT_DIR))
     args = parser.parse_args()
 
     raw_dir = Path(args.raw_dir)
     out_dir = Path(args.output_dir)
+    test_years = set(args.test_years)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print("Parsing Civil Code corpus...")
     articles = parse_corpus(raw_dir / "text" / "civil_code_en-1to724-2-processed.txt")
     print(f"  {len(articles)} articles parsed")
 
-    print(f"Processing train XML files (test_year={args.test_year})...")
-    queries, train_qrels, test_qrels = process_train_files(raw_dir / "train", args.test_year)
+    print(f"Processing train XML files (test_years={sorted(test_years)})...")
+    queries, train_qrels, test_qrels = process_train_files(raw_dir / "train", test_years)
     print(f"  {len(queries)} queries | {len(train_qrels)} train positives | {len(test_qrels)} test positives")
 
     print("Writing output files...")
@@ -203,8 +204,8 @@ def main():
     print("\nDone.")
     print(f"  Corpus  : {len(articles)} articles")
     print(f"  Queries : {len(queries)} (all pairs including N-labeled)")
-    print(f"  Train   : {len(train_qrels)} positive pairs (years H18–{args.test_year} excl.)")
-    print(f"  Test    : {len(test_qrels)} positive pairs (year {args.test_year})")
+    print(f"  Train   : {len(train_qrels)} positive pairs")
+    print(f"  Test    : {len(test_qrels)} positive pairs (years {sorted(test_years)})")
 
 
 if __name__ == "__main__":
