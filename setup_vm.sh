@@ -25,14 +25,6 @@ python src/scripts/prepare_bsard.py
 python src/scripts/prepare_ilpcsr.py
 python src/scripts/prepare_stard.py
 
-echo "Downloading expansion logs from HuggingFace..."
-python -c "
-from huggingface_hub import hf_hub_download
-import shutil
-shutil.copy(hf_hub_download('ghanahmada/kuhperdata', 'humanized-expanded/expansion_logs.jsonl', repo_type='dataset'), 'data/kuhperdata-exp/expansion_logs.jsonl')
-shutil.copy(hf_hub_download('ghanahmada/kuhperdata', 'summarized-expanded/expansion_log.jsonl', repo_type='dataset'), 'data/kuhperdata-summ-exp/expansion_log.jsonl')
-print('Expansion logs downloaded.')
-"
 deactivate
 
 # --- JNLP venv (Python 3.12) ---
@@ -44,6 +36,18 @@ uv pip install pymupdf hf_transfer
 
 echo "Importing kuhperdata-exp and kuhperdata-summ-exp from HuggingFace..."
 python src/scripts/import_kuhperdata.py
+
+echo "Downloading expansion logs from HuggingFace..."
+python -c "
+import os
+os.makedirs('data/kuhperdata-exp', exist_ok=True)
+os.makedirs('data/kuhperdata-summ-exp', exist_ok=True)
+from huggingface_hub import hf_hub_download
+import shutil
+shutil.copy(hf_hub_download('ghanahmada/kuhperdata', 'humanized-expanded/expansion_logs.jsonl', repo_type='dataset'), 'data/kuhperdata-exp/expansion_logs.jsonl')
+shutil.copy(hf_hub_download('ghanahmada/kuhperdata', 'summarized-expanded/expansion_log.jsonl', repo_type='dataset'), 'data/kuhperdata-summ-exp/expansion_log.jsonl')
+print('Expansion logs downloaded.')
+"
 deactivate
 
 echo ""
