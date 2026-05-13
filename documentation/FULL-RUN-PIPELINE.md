@@ -1,6 +1,6 @@
 # Full Experiment Rerun Pipeline
 
-All retrieval baselines across 5 datasets: `kuhperdata-exp`, `kuhperdata-summ-exp`, `bsard`, `ilpcsr`, `stard`.
+All retrieval baselines across 6 datasets: `kuhperdata-exp`, `kuhperdata-summ-exp`, `bsard`, `stard`, `coliee`, `ilpcsr`.
 Run on GPU VPS. Commands verified against actual argparse interfaces.
 
 ---
@@ -35,9 +35,13 @@ export HF_HUB_ENABLE_HF_TRANSFER=1
 ```bash
 python src/scripts/prepare_kuhperdata.py
 python src/scripts/prepare_bsard.py
-python src/scripts/prepare_ilpcsr.py
 python src/scripts/prepare_stard.py
+python src/scripts/import_coliee.py
+python src/scripts/prepare_ilpcsr.py
 ```
+
+> `import_coliee.py` downloads the `coliee` config from `ghanahmada/kuhperdata` on HuggingFace.
+> `prepare_ilpcsr.py` downloads from HuggingFace — may take longer due to large document size.
 
 ---
 
@@ -49,8 +53,9 @@ Val is carved from train; `qrels_test.tsv` is never modified.
 python src/scripts/split_test_to_val.py --dataset_dir data/kuhperdata-exp      --val_scale 0.5
 python src/scripts/split_test_to_val.py --dataset_dir data/kuhperdata-summ-exp --val_scale 0.5
 python src/scripts/split_test_to_val.py --dataset_dir data/bsard               --val_scale 0.5
-python src/scripts/split_test_to_val.py --dataset_dir data/ilpcsr              --val_scale 0.5
 python src/scripts/split_test_to_val.py --dataset_dir data/stard               --val_scale 0.5
+python src/scripts/split_test_to_val.py --dataset_dir data/coliee              --val_scale 0.5
+python src/scripts/split_test_to_val.py --dataset_dir data/ilpcsr              --val_scale 0.5
 ```
 
 ---
@@ -61,8 +66,9 @@ python src/scripts/split_test_to_val.py --dataset_dir data/stard               -
 python src/evaluate_bm25.py --dataset kuhperdata-exp      --split test --max_relevant 0
 python src/evaluate_bm25.py --dataset kuhperdata-summ-exp --split test --max_relevant 0
 python src/evaluate_bm25.py --dataset bsard               --split test --max_relevant 0
-python src/evaluate_bm25.py --dataset ilpcsr              --split test --max_relevant 0
 python src/evaluate_bm25.py --dataset stard               --split test --max_relevant 0
+python src/evaluate_bm25.py --dataset coliee              --split test --max_relevant 0
+python src/evaluate_bm25.py --dataset ilpcsr              --split test --max_relevant 0
 ```
 
 ---
@@ -73,20 +79,24 @@ python src/evaluate_bm25.py --dataset stard               --split test --max_rel
 python src/evaluate_dense_retrieval.py --dataset kuhperdata-exp      --split test --max_relevant 0 --save_embeddings
 python src/evaluate_dense_retrieval.py --dataset kuhperdata-summ-exp --split test --max_relevant 0 --save_embeddings
 python src/evaluate_dense_retrieval.py --dataset bsard               --split test --max_relevant 0 --save_embeddings
-python src/evaluate_dense_retrieval.py --dataset ilpcsr              --split test --max_relevant 0 --save_embeddings --max_length 8192 --batch_size 8
 python src/evaluate_dense_retrieval.py --dataset stard               --split test --max_relevant 0 --save_embeddings
+python src/evaluate_dense_retrieval.py --dataset coliee              --split test --max_relevant 0 --save_embeddings
+python src/evaluate_dense_retrieval.py --dataset ilpcsr              --split test --max_relevant 0 --save_embeddings --max_length 8192 --batch_size 8
 ```
 
 ---
 
 ## 5. JNLP Stage 1
 
+> `bsard` and `kuhperdata-summ-exp` require `--batch_size 16` to avoid FlagEmbedding OOM crash (batch shrink bug).
+
 ```bash
 python src/evaluate_jnlp.py --dataset kuhperdata-exp      --stage 1 --feature_type product --max_relevant 0
-python src/evaluate_jnlp.py --dataset kuhperdata-summ-exp --stage 1 --feature_type product --max_relevant 0
-python src/evaluate_jnlp.py --dataset bsard               --stage 1 --feature_type product --max_relevant 0
-python src/evaluate_jnlp.py --dataset ilpcsr              --stage 1 --feature_type product --max_relevant 0
+python src/evaluate_jnlp.py --dataset kuhperdata-summ-exp --stage 1 --feature_type product --max_relevant 0 --batch_size 16
+python src/evaluate_jnlp.py --dataset bsard               --stage 1 --feature_type product --max_relevant 0 --batch_size 16
 python src/evaluate_jnlp.py --dataset stard               --stage 1 --feature_type product --max_relevant 0
+python src/evaluate_jnlp.py --dataset coliee              --stage 1 --feature_type product --max_relevant 0
+python src/evaluate_jnlp.py --dataset ilpcsr              --stage 1 --feature_type product --max_relevant 0
 ```
 
 ---
@@ -98,49 +108,58 @@ python src/evaluate_jnlp.py --dataset stard               --stage 1 --feature_ty
 python src/evaluate_gar.py --dataset kuhperdata-exp      --scorer bge --max_relevant 0
 python src/evaluate_gar.py --dataset kuhperdata-summ-exp --scorer bge --max_relevant 0
 python src/evaluate_gar.py --dataset bsard               --scorer bge --max_relevant 0
-python src/evaluate_gar.py --dataset ilpcsr              --scorer bge --max_relevant 0
 python src/evaluate_gar.py --dataset stard               --scorer bge --max_relevant 0
+python src/evaluate_gar.py --dataset coliee              --scorer bge --max_relevant 0
+python src/evaluate_gar.py --dataset ilpcsr              --scorer bge --max_relevant 0
 
 # BM25 + Reranker
 python src/evaluate_rerank.py --dataset kuhperdata-exp      --scorer bge --max_relevant 0
 python src/evaluate_rerank.py --dataset kuhperdata-summ-exp --scorer bge --max_relevant 0
 python src/evaluate_rerank.py --dataset bsard               --scorer bge --max_relevant 0
-python src/evaluate_rerank.py --dataset ilpcsr              --scorer bge --max_relevant 0
 python src/evaluate_rerank.py --dataset stard               --scorer bge --max_relevant 0
+python src/evaluate_rerank.py --dataset coliee              --scorer bge --max_relevant 0
+python src/evaluate_rerank.py --dataset ilpcsr              --scorer bge --max_relevant 0
 ```
 
 ---
 
 ## 7. Para-GNN + StructGNN
 
+> **Large-corpus datasets** (`bsard` ~22k docs, `stard` ~55k docs) require reduced batch size to avoid OOM.
+> Default params work for `kuhperdata-*` (~2k docs), `coliee` (~768 docs), and `ilpcsr`.
+
 ```bash
 # Precompute BM25 scores + embeddings (reads qrels_val.tsv automatically)
 python src/paragnn/precompute.py --dataset kuhperdata-exp      --max_relevant 0
 python src/paragnn/precompute.py --dataset kuhperdata-summ-exp --max_relevant 0
 python src/paragnn/precompute.py --dataset bsard               --max_relevant 0
-python src/paragnn/precompute.py --dataset ilpcsr              --max_relevant 0
 python src/paragnn/precompute.py --dataset stard               --max_relevant 0
+python src/paragnn/precompute.py --dataset coliee              --max_relevant 0
+python src/paragnn/precompute.py --dataset ilpcsr              --max_relevant 0
 
 # Para-GNN (no structural features)
 python src/evaluate_paragnn.py --dataset kuhperdata-exp      --structure_mode none --max_relevant 0
 python src/evaluate_paragnn.py --dataset kuhperdata-summ-exp --structure_mode none --max_relevant 0
-python src/evaluate_paragnn.py --dataset bsard               --structure_mode none --max_relevant 0
+python src/evaluate_paragnn.py --dataset bsard               --structure_mode none --max_relevant 0 --batch_size 64 --num_negatives 99
+python src/evaluate_paragnn.py --dataset stard               --structure_mode none --max_relevant 0 --batch_size 64 --num_negatives 99
+python src/evaluate_paragnn.py --dataset coliee              --structure_mode none --max_relevant 0
 python src/evaluate_paragnn.py --dataset ilpcsr              --structure_mode none --max_relevant 0
-python src/evaluate_paragnn.py --dataset stard               --structure_mode none --max_relevant 0
 
 # StructGNN (structural node features)
 python src/evaluate_paragnn.py --dataset kuhperdata-exp      --structure_mode structural --max_relevant 0
-python src/evaluate_paragnn.py --dataset kuhperdata-summ-exp --structure_mode structural --max_relevant 0
-python src/evaluate_paragnn.py --dataset bsard               --structure_mode structural --max_relevant 0
+python src/evaluate_paragnn.py --dataset kuhperdata-summ-exp --structure_mode structural --max_relevant 0 --lr 1e-5
+python src/evaluate_paragnn.py --dataset bsard               --structure_mode structural --max_relevant 0 --batch_size 64 --num_negatives 99
+python src/evaluate_paragnn.py --dataset stard               --structure_mode structural --max_relevant 0 --batch_size 64 --num_negatives 99
+python src/evaluate_paragnn.py --dataset coliee              --structure_mode structural --max_relevant 0
 python src/evaluate_paragnn.py --dataset ilpcsr              --structure_mode structural --max_relevant 0
-python src/evaluate_paragnn.py --dataset stard               --structure_mode structural --max_relevant 0
 
-# Export StructGNN corpus embeddings (required for Step 8 Agentic+StructGNN)
+# Export StructGNN corpus embeddings (required for Step 8 Agentic+StructGNN, kuhperdata only)
 python src/paragnn/inference.py --dataset kuhperdata-exp      --structure_mode structural --export_embeddings --max_relevant 0
 python src/paragnn/inference.py --dataset kuhperdata-summ-exp --structure_mode structural --export_embeddings --max_relevant 0
 ```
 
-Model outputs saved to: `outputs/paragnn/{dataset}/adapted_struct/`
+> Predictions saved automatically to `outputs/predictions/{method}_{dataset}.jsonl`.
+> Model checkpoints saved to `outputs/paragnn/{dataset}/adapted_{none→base,struct}/`.
 
 ---
 
@@ -201,7 +220,7 @@ python src/context_1/evaluate_context1.py \
 
 ## 9. Ablation — Agentic Flat (all supported datasets)
 
-Disables hierarchy, coverage gate, and similarity guard. `ilpcsr` not supported by context_1.
+Disables hierarchy, coverage gate, and similarity guard. `ilpcsr` and `coliee` not supported by context_1.
 
 ```bash
 python src/context_1/evaluate_context1.py \
@@ -244,3 +263,4 @@ python src/context_1/evaluate_context1.py \
 | Para-GNN / StructGNN final eval | full original test | Never |
 
 Alpha (α) tuned on held-out val; test results reported with frozen α.
+Per-epoch early stopping tracks **blended val MRR** (GNN + BM25), not pure GNN MRR.
