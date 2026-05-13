@@ -33,7 +33,7 @@ from sklearn.metrics.pairwise import cosine_distances
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dataset import embed_queries_for_splitting
 
-MIN_VAL_SIZE = 50
+MIN_VAL_SIZE = 25
 
 
 def load_qrels(path: Path) -> dict[str, list[str]]:

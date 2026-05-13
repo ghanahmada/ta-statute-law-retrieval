@@ -65,6 +65,7 @@ DATASETS = {
     "kuhperdata-exp": "data/kuhperdata-exp",
     "kuhperdata-summ-exp": "data/kuhperdata-summ-exp",
     "bsard": "data/bsard",
+    "coliee": "data/coliee",
     "ilpcsr": "data/ilpcsr",
     "stard": "data/stard",
 }

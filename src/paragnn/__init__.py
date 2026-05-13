@@ -97,6 +97,7 @@ DATASETS = {
     "kuhperdata-exp": {"path": "data/kuhperdata-exp", "lang": "id"},
     "kuhperdata-summ-exp": {"path": "data/kuhperdata-summ-exp", "lang": "id"},
     "bsard": {"path": "data/bsard", "lang": "fr"},
+    "coliee": {"path": "data/coliee", "lang": "en"},
     "ilpcsr": {"path": "data/ilpcsr", "lang": "en"},
     "stard": {"path": "data/stard", "lang": "zh"},
 }

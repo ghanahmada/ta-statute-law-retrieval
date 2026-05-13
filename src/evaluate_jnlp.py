@@ -9,6 +9,7 @@ DATASETS = {
     "kuhperdata-exp": {"path": "data/kuhperdata-exp", "max_length": 1024, "batch_size": 64},
     "kuhperdata-summ-exp": {"path": "data/kuhperdata-summ-exp", "max_length": 1024, "batch_size": 16},
     "bsard": {"path": "data/bsard", "max_length": 1024, "batch_size": 16},
+    "coliee": {"path": "data/coliee", "max_length": 512, "batch_size": 64},
     "ilpcsr": {"path": "data/ilpcsr", "max_length": 8192, "batch_size": 8},
     "stard": {"path": "data/stard", "max_length": 1024, "batch_size": 64},
 }
