@@ -187,9 +187,17 @@ class ParaGNNTrainer:
 
             avg_loss = total_loss / max(n_batches, 1)
 
-            # Evaluate on VAL for early stopping (pure GNN scores, no alpha sweep)
+            # Evaluate on VAL with alpha grid search (blended score, consistent with final eval)
             gnn_val, avg_alpha = self._get_gnn_scores(model, val_graph)
-            val_mrr, val_recall, val_hit = self._compute_metrics(gnn_val, val_gold_matrix)
+            gnn_val_debiased = gnn_val - gnn_val.mean(dim=0, keepdim=True)
+            best_alpha_v, val_mrr, val_recall, val_hit = self._grid_search_alpha(
+                gnn_val, bm25_val_scores.cpu(), val_gold_matrix
+            )
+            best_alpha_vd, val_mrr_d, val_recall_d, val_hit_d = self._grid_search_alpha(
+                gnn_val_debiased, bm25_val_scores.cpu(), val_gold_matrix
+            )
+            if val_mrr_d > val_mrr:
+                val_mrr, val_recall, val_hit, best_alpha_v = val_mrr_d, val_recall_d, val_hit_d, best_alpha_vd
 
             log_entry = {
                 "epoch": epoch + 1,
@@ -197,10 +205,11 @@ class ParaGNNTrainer:
                 "val_mrr@10": val_mrr,
                 "val_recall@10": val_recall,
                 "val_hit_rate": val_hit,
+                "val_alpha": float(best_alpha_v),
                 "learned_alpha": avg_alpha,
             }
             log.append(log_entry)
-            print(f"  Epoch {epoch+1}: loss={avg_loss:.4f} val_MRR={val_mrr:.4f} val_R@10={val_recall:.4f} val_Hit={val_hit:.1%} (learned_alpha={avg_alpha:.3f})")
+            print(f"  Epoch {epoch+1}: loss={avg_loss:.4f} val_MRR={val_mrr:.4f} val_R@10={val_recall:.4f} val_Hit={val_hit:.1%} alpha={best_alpha_v:.1f} (learned={avg_alpha:.3f})")
 
             if val_mrr > best_metric:
                 best_metric = val_mrr
