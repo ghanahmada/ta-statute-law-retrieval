@@ -304,29 +304,6 @@ class ParaGNNTrainer:
         print(f"    Recall@10: {test_recall:.4f}")
         print(f"    Hit Rate:  {test_hit:.1%}")
 
-        # Also report test-optimal alpha for transparency
-        print(f"\n  Alpha sweep on TEST (for transparency only — NOT used for selection):")
-        print(f"  {'Alpha':<8} {'MRR@10':<10} {'R@10':<10} {'Hit':<10}")
-        print(f"  {'-'*38}")
-        best_test_alpha, best_test_mrr = 0, 0
-        gnn_test_chosen = gnn_test_debiased if use_debiased else gnn_test
-        for alpha in np.arange(0.0, 1.05, 0.1):
-            scores = alpha * gnn_test_chosen + (1 - alpha) * bm25_test_scores.cpu()
-            mrr, recall, hit = self._compute_metrics(scores, test_gold_matrix)
-            marker = " ←" if mrr > best_test_mrr else ""
-            print(f"  {alpha:<8.1f} {mrr:<10.4f} {recall:<10.4f} {hit:<10.1%}{marker}")
-            if mrr > best_test_mrr:
-                best_test_mrr = mrr
-                best_test_alpha = alpha
-
-        alpha_gap = abs(chosen_alpha - best_test_alpha)
-        print(f"\n  Val-selected alpha: {chosen_alpha:.1f}")
-        print(f"  Test-optimal alpha: {best_test_alpha:.1f}")
-        print(f"  Gap: {alpha_gap:.1f} {'✓' if alpha_gap <= 0.1 else '⚠ >0.1'}")
-        print(f"  Test MRR (val alpha): {test_mrr:.4f}")
-        print(f"  Test MRR (test alpha): {best_test_mrr:.4f}")
-        print(f"  MRR difference: {best_test_mrr - test_mrr:+.4f}")
-
         print(f"\nTraining complete. Test MRR@10: {test_mrr:.4f}")
         ground_truth = {qid: list(test_gold[qid].keys()) for qid in test_query_ids if qid in test_gold}
         return test_mrr, rankings, ground_truth, pred_scores
