@@ -5,6 +5,20 @@ Run on GPU VPS. Commands verified against actual argparse interfaces.
 
 ---
 
+## VM Requirements
+
+| Requirement | Spec | Notes |
+|-------------|------|-------|
+| **GPU** | RTX A6000 (Ada Lovelace, SM 8.9) | Do NOT use Blackwell (SM 10.x) — DGL is incompatible with Blackwell architecture |
+| **CUDA driver** | ≥ 13.0 | Required by vLLM 0.20.2; CUDA 13.0 drivers are backward-compatible so DGL (compiled for CUDA 12.4) will still work |
+| **CUDA toolkit** | 12.4 | For DGL and PyTorch compilation |
+| **RAM** | ≥ 48 GB | vLLM + BGE-M3 encoder running concurrently |
+| **Disk** | ≥ 100 GB | Model weights + dataset + embeddings + outputs |
+
+> **CUDA compatibility note:** A VM provisioned with CUDA 13.0 drivers can run code compiled against CUDA 12.4 (backward-compatible). So a single VM satisfies both requirements — just ensure the CUDA *driver* version is ≥ 13.0 and the CUDA *toolkit* (nvcc) is 12.4.
+
+---
+
 ## 0. Setup (once)
 
 ```bash
