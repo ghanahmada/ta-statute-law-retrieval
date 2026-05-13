@@ -354,27 +354,17 @@ class ParaGNNTrainer:
         return best_alpha, best_mrr, best_recall, best_hit
 
     def _compute_metrics(self, scores, gold_matrix, k=10):
-        """Compute MRR@k, Recall@k, Hit Rate from score matrix."""
-        mrr_sum = 0
-        recall_sum = 0
-        hit_count = 0
+        """Compute MRR@k, Recall@k, Hit Rate — fully vectorized."""
         n_queries = gold_matrix.shape[0]
+        top_k_idx = torch.argsort(scores, dim=1, descending=True)[:, :k]   # [Q, k]
+        top_k_rel = gold_matrix.gather(1, top_k_idx).float()                # [Q, k]
 
-        for qi in range(n_queries):
-            relevant = gold_matrix[qi].nonzero(as_tuple=True)[0].tolist()
-            if not relevant:
-                continue
+        ranks = torch.arange(1, k + 1, dtype=torch.float32)
+        first_hit = (top_k_rel.cumsum(dim=1) <= 1) & top_k_rel.bool()
+        mrr = (first_hit.float() / ranks).sum(dim=1).mean().item()
 
-            ranked = torch.argsort(scores[qi], descending=True)[:k].tolist()
+        n_rel = gold_matrix.sum(dim=1).clamp(min=1)
+        recall = (top_k_rel.sum(dim=1) / n_rel).mean().item()
+        hit_rate = (top_k_rel.sum(dim=1) > 0).float().mean().item()
 
-            for rank, idx in enumerate(ranked):
-                if idx in relevant:
-                    mrr_sum += 1.0 / (rank + 1)
-                    break
-
-            hits = len(set(ranked) & set(relevant))
-            recall_sum += hits / len(relevant)
-            if hits > 0:
-                hit_count += 1
-
-        return mrr_sum / n_queries, recall_sum / n_queries, hit_count / n_queries
+        return mrr, recall, hit_rate
