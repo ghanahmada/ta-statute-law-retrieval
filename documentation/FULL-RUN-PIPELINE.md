@@ -1,0 +1,232 @@
+# Full Experiment Rerun Pipeline
+
+All retrieval baselines across 5 datasets: `kuhperdata-exp`, `kuhperdata-summ-exp`, `bsard`, `ilpcsr`, `stard`.
+Run on GPU VPS. Commands verified against actual argparse interfaces.
+
+---
+
+## 0. Setup (once)
+
+```bash
+conda activate paragnn
+pip install openai tiktoken tqdm
+export HF_TOKEN=<your_token>
+export HF_HUB_ENABLE_HF_TRANSFER=1
+```
+
+---
+
+## 1. Pull / Prepare Datasets
+
+```bash
+python src/scripts/prepare_kuhperdata.py
+python src/scripts/prepare_bsard.py
+python src/scripts/prepare_ilpcsr.py
+python src/scripts/prepare_stard.py
+```
+
+---
+
+## 2. Train/Val/Test Split (Para-GNN + StructGNN only)
+
+Val is carved from train; `qrels_test.tsv` is never modified.
+
+```bash
+python src/scripts/split_test_to_val.py --dataset_dir data/kuhperdata-exp      --val_scale 0.5
+python src/scripts/split_test_to_val.py --dataset_dir data/kuhperdata-summ-exp --val_scale 0.5
+python src/scripts/split_test_to_val.py --dataset_dir data/bsard               --val_scale 0.5
+python src/scripts/split_test_to_val.py --dataset_dir data/ilpcsr              --val_scale 0.5
+python src/scripts/split_test_to_val.py --dataset_dir data/stard               --val_scale 0.5
+```
+
+---
+
+## 3. BM25
+
+```bash
+python src/evaluate_bm25.py --dataset kuhperdata-exp      --split test --max_relevant 0
+python src/evaluate_bm25.py --dataset kuhperdata-summ-exp --split test --max_relevant 0
+python src/evaluate_bm25.py --dataset bsard               --split test --max_relevant 0
+python src/evaluate_bm25.py --dataset ilpcsr              --split test --max_relevant 0
+python src/evaluate_bm25.py --dataset stard               --split test --max_relevant 0
+```
+
+---
+
+## 4. BGE-M3 Dense
+
+```bash
+python src/evaluate_dense_retrieval.py --dataset kuhperdata-exp      --split test --max_relevant 0 --save_embeddings
+python src/evaluate_dense_retrieval.py --dataset kuhperdata-summ-exp --split test --max_relevant 0 --save_embeddings
+python src/evaluate_dense_retrieval.py --dataset bsard               --split test --max_relevant 0 --save_embeddings
+python src/evaluate_dense_retrieval.py --dataset ilpcsr              --split test --max_relevant 0 --save_embeddings --max_length 8192 --batch_size 8
+python src/evaluate_dense_retrieval.py --dataset stard               --split test --max_relevant 0 --save_embeddings
+```
+
+---
+
+## 5. JNLP Stage 1
+
+```bash
+python src/evaluate_jnlp.py --dataset kuhperdata-exp      --stage 1 --feature_type product --max_relevant 0
+python src/evaluate_jnlp.py --dataset kuhperdata-summ-exp --stage 1 --feature_type product --max_relevant 0
+python src/evaluate_jnlp.py --dataset bsard               --stage 1 --feature_type product --max_relevant 0
+python src/evaluate_jnlp.py --dataset ilpcsr              --stage 1 --feature_type product --max_relevant 0
+python src/evaluate_jnlp.py --dataset stard               --stage 1 --feature_type product --max_relevant 0
+```
+
+---
+
+## 6. GAR / Rerank
+
+```bash
+# GAR
+python src/evaluate_gar.py --dataset kuhperdata-exp      --scorer bge --max_relevant 0
+python src/evaluate_gar.py --dataset kuhperdata-summ-exp --scorer bge --max_relevant 0
+python src/evaluate_gar.py --dataset bsard               --scorer bge --max_relevant 0
+python src/evaluate_gar.py --dataset ilpcsr              --scorer bge --max_relevant 0
+python src/evaluate_gar.py --dataset stard               --scorer bge --max_relevant 0
+
+# BM25 + Reranker
+python src/evaluate_rerank.py --dataset kuhperdata-exp      --scorer bge --max_relevant 0
+python src/evaluate_rerank.py --dataset kuhperdata-summ-exp --scorer bge --max_relevant 0
+python src/evaluate_rerank.py --dataset bsard               --scorer bge --max_relevant 0
+python src/evaluate_rerank.py --dataset ilpcsr              --scorer bge --max_relevant 0
+python src/evaluate_rerank.py --dataset stard               --scorer bge --max_relevant 0
+```
+
+---
+
+## 7. Para-GNN + StructGNN
+
+```bash
+# Precompute BM25 scores + embeddings (reads qrels_val.tsv automatically)
+python src/paragnn/precompute.py --dataset kuhperdata-exp      --max_relevant 0
+python src/paragnn/precompute.py --dataset kuhperdata-summ-exp --max_relevant 0
+python src/paragnn/precompute.py --dataset bsard               --max_relevant 0
+python src/paragnn/precompute.py --dataset ilpcsr              --max_relevant 0
+python src/paragnn/precompute.py --dataset stard               --max_relevant 0
+
+# Para-GNN (no structural features)
+python src/evaluate_paragnn.py --dataset kuhperdata-exp      --structure_mode none --max_relevant 0
+python src/evaluate_paragnn.py --dataset kuhperdata-summ-exp --structure_mode none --max_relevant 0
+python src/evaluate_paragnn.py --dataset bsard               --structure_mode none --max_relevant 0
+python src/evaluate_paragnn.py --dataset ilpcsr              --structure_mode none --max_relevant 0
+python src/evaluate_paragnn.py --dataset stard               --structure_mode none --max_relevant 0
+
+# StructGNN (structural node features)
+python src/evaluate_paragnn.py --dataset kuhperdata-exp      --structure_mode structural --max_relevant 0
+python src/evaluate_paragnn.py --dataset kuhperdata-summ-exp --structure_mode structural --max_relevant 0
+python src/evaluate_paragnn.py --dataset bsard               --structure_mode structural --max_relevant 0
+python src/evaluate_paragnn.py --dataset ilpcsr              --structure_mode structural --max_relevant 0
+python src/evaluate_paragnn.py --dataset stard               --structure_mode structural --max_relevant 0
+
+# Export StructGNN corpus embeddings (required for Step 8 Agentic+StructGNN)
+python src/paragnn/inference.py --dataset kuhperdata-exp      --structure_mode structural --export_embeddings --max_relevant 0
+python src/paragnn/inference.py --dataset kuhperdata-summ-exp --structure_mode structural --export_embeddings --max_relevant 0
+```
+
+Model outputs saved to: `outputs/paragnn/{dataset}/adapted_struct/`
+
+---
+
+## 8. Agentic Retrieval (kuhperdata only)
+
+> **Note:** `--served-model-name` in vLLM must match `--model` in client calls exactly.
+> vLLM at 0.85 utilization leaves room for BGE-M3 encoder on the same GPU.
+
+```bash
+# Terminal 1 — start vLLM
+vllm serve QuantTrio/Qwen3.6-27B-AWQ \
+  --served-model-name qwen3.6-27b \
+  --tool-call-parser openai \
+  --enable-auto-tool-choice \
+  --max-model-len 32768 \
+  --gpu-memory-utilization 0.85 \
+  --host 0.0.0.0 --port 8000
+
+# Terminal 2
+conda activate paragnn
+
+# Sanity check (single query)
+python src/context_1/evaluate_context1.py \
+  --dataset kuhperdata-exp \
+  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --max_relevant 0 --pad_to_k 10 --encoder_device cuda --debug_qid q324
+
+# Agentic + BGE-M3
+python src/context_1/evaluate_context1.py \
+  --dataset kuhperdata-exp \
+  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --max_relevant 0 --pad_to_k 10 --concurrency 4 --encoder_device cuda
+
+python src/context_1/evaluate_context1.py \
+  --dataset kuhperdata-summ-exp \
+  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --max_relevant 0 --pad_to_k 10 --concurrency 4 --encoder_device cuda
+
+# Agentic + StructGNN (run Step 7 export first)
+python src/context_1/evaluate_context1.py \
+  --dataset kuhperdata-exp \
+  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --dense_source structgnn \
+  --gnn_model_dir outputs/paragnn/kuhperdata-exp/adapted_struct \
+  --gnn_alpha 0.8 \
+  --max_relevant 0 --pad_to_k 10 --concurrency 4 --encoder_device cuda
+
+python src/context_1/evaluate_context1.py \
+  --dataset kuhperdata-summ-exp \
+  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --dense_source structgnn \
+  --gnn_model_dir outputs/paragnn/kuhperdata-summ-exp/adapted_struct \
+  --gnn_alpha 0.8 \
+  --max_relevant 0 --pad_to_k 10 --concurrency 4 --encoder_device cuda
+```
+
+---
+
+## 9. Ablation — Agentic Flat (all supported datasets)
+
+Disables hierarchy, coverage gate, and similarity guard. `ilpcsr` not supported by context_1.
+
+```bash
+python src/context_1/evaluate_context1.py \
+  --dataset kuhperdata-exp \
+  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --max_relevant 0 --max_turns 5 --concurrency 16 --pad_to_k 10 \
+  --no_hierarchy --no_coverage_gate --no_similarity_guard \
+  --output_dir outputs/context_1/kuhperdata-exp_flat
+
+python src/context_1/evaluate_context1.py \
+  --dataset kuhperdata-summ-exp \
+  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --max_relevant 0 --max_turns 5 --concurrency 16 --pad_to_k 10 \
+  --no_hierarchy --no_coverage_gate --no_similarity_guard \
+  --output_dir outputs/context_1/kuhperdata-summ-exp_flat
+
+python src/context_1/evaluate_context1.py \
+  --dataset bsard \
+  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --max_relevant 0 --max_turns 5 --concurrency 16 --pad_to_k 10 \
+  --no_hierarchy --no_coverage_gate --no_similarity_guard \
+  --output_dir outputs/context_1/bsard_flat
+
+python src/context_1/evaluate_context1.py \
+  --dataset stard \
+  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --max_relevant 0 --max_turns 5 --concurrency 16 --pad_to_k 10 \
+  --no_hierarchy --no_coverage_gate --no_similarity_guard \
+  --output_dir outputs/context_1/stard_flat
+```
+
+---
+
+## Split Logic Recap
+
+| Method | Split used | `qrels_test.tsv` modified? |
+|--------|------------|---------------------------|
+| BM25, Dense, JNLP, GAR, Rerank, Agentic | full original test | Never |
+| Para-GNN / StructGNN precompute + train | `qrels_val.tsv` (carved from train) | Never |
+| Para-GNN / StructGNN final eval | full original test | Never |
+
+Alpha (α) tuned on held-out val; test results reported with frozen α.
