@@ -7,8 +7,8 @@ DATASETS = {
     "kuhperdata-humanized": {"path": "data/kuhperdata-humanized", "max_length": 1024, "batch_size": 64},
     "kuhperdata-summarized": {"path": "data/kuhperdata-summarized", "max_length": 1024, "batch_size": 64},
     "kuhperdata-exp": {"path": "data/kuhperdata-exp", "max_length": 1024, "batch_size": 64},
-    "kuhperdata-summ-exp": {"path": "data/kuhperdata-summ-exp", "max_length": 1024, "batch_size": 64},
-    "bsard": {"path": "data/bsard", "max_length": 1024, "batch_size": 64},
+    "kuhperdata-summ-exp": {"path": "data/kuhperdata-summ-exp", "max_length": 1024, "batch_size": 16},
+    "bsard": {"path": "data/bsard", "max_length": 1024, "batch_size": 16},
     "ilpcsr": {"path": "data/ilpcsr", "max_length": 8192, "batch_size": 8},
     "stard": {"path": "data/stard", "max_length": 1024, "batch_size": 64},
 }
@@ -29,6 +29,10 @@ parser.add_argument("--llm_model", type=str, default="qwen2.5", choices=LLM_MODE
 parser.add_argument("--reranker", action="store_true", help="Enable re-ranker (slow)")
 parser.add_argument("--max_relevant", type=int, default=5,
                     help="Max ground-truth docs per query (queries with more are excluded)")
+parser.add_argument("--max_length", type=int, default=None,
+                    help="Override encode max length (default: per-dataset value)")
+parser.add_argument("--batch_size", type=int, default=None,
+                    help="Override encode batch size (default: per-dataset value)")
 parser.add_argument("--save_predictions", type=str, default=None,
                     help="Path to save per-query top-100 predictions as JSONL")
 args = parser.parse_args()
@@ -48,6 +52,9 @@ for name, cfg in datasets.items():
     # Stage 1 always in base dir; Stage 2 in LLM-specific subdir
     base_dir = f"outputs/jnlp/{name}"
 
+    encode_max_length = args.max_length if args.max_length is not None else cfg["max_length"]
+    encode_batch_size = args.batch_size if args.batch_size is not None else cfg["batch_size"]
+
     config = Config(
         corpus_path=f"{data_dir}/corpus.jsonl",
         queries_path=f"{data_dir}/queries.jsonl",
@@ -55,8 +62,8 @@ for name, cfg in datasets.items():
         qrels_train_path=f"{data_dir}/qrels_train.tsv",
         qrels_test_path=f"{data_dir}/qrels_test.tsv",
         stage1_feature_type=args.feature_type,
-        encode_max_length=cfg["max_length"],
-        encode_batch_size=cfg["batch_size"],
+        encode_max_length=encode_max_length,
+        encode_batch_size=encode_batch_size,
         llm_model_name=llm_name,
         max_relevant=args.max_relevant,
         output_dir=base_dir,
