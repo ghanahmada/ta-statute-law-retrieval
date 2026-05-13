@@ -32,6 +32,7 @@ from paragnn.dataset import ParaGNNDataset, ParaGNNCollator
 from paragnn.trainer import ParaGNNTrainer
 from paragnn.structure import precompute_structure_features, get_query_structure_features
 from util.dataloader import DataLoader
+from util.metrics import save_predictions, predictions_path
 
 
 def main():
@@ -194,7 +195,9 @@ def main():
             query_structure_feature=query_structure_feature,
             use_fact_types=args.use_fact_types,
         )
-        best_mrr = trainer.train(
+        method_name = {"none": "paragnn", "proximity": "proxgnn", "structural": "structgnn"}[args.structure_mode]
+
+        best_mrr, rankings, ground_truth, pred_scores = trainer.train(
             train_dataset=train_dataset,
             collator=collator,
             bm25_val_scores=bm25_val_scores,
@@ -207,6 +210,7 @@ def main():
             test_gold=test_loader.qrels,
         )
 
+        save_predictions(rankings, ground_truth, method=method_name, dataset=name, scores=pred_scores)
         print(f"\n  Final best MRR@10: {best_mrr:.4f}")
 
 

@@ -281,6 +281,15 @@ class ParaGNNTrainer:
             test_scores = chosen_alpha * gnn_test + (1 - chosen_alpha) * bm25_test_scores.cpu()
         test_mrr, test_recall, test_hit = self._compute_metrics(test_scores, test_gold_matrix)
 
+        # Build top-100 rankings for save_predictions
+        top_k = min(100, test_scores.shape[1])
+        rankings: dict = {}
+        pred_scores: dict = {}
+        for qi, qid in enumerate(test_query_ids):
+            idx = torch.argsort(test_scores[qi], descending=True)[:top_k].tolist()
+            rankings[qid] = [test_corpus_ids[i] for i in idx]
+            pred_scores[qid] = {test_corpus_ids[i]: float(test_scores[qi, i]) for i in idx}
+
         print(f"\n  TEST results (alpha={chosen_alpha:.1f} frozen from val):")
         print(f"    MRR@10:    {test_mrr:.4f}")
         print(f"    Recall@10: {test_recall:.4f}")
@@ -310,7 +319,8 @@ class ParaGNNTrainer:
         print(f"  MRR difference: {best_test_mrr - test_mrr:+.4f}")
 
         print(f"\nTraining complete. Test MRR@10: {test_mrr:.4f}")
-        return test_mrr
+        ground_truth = {qid: list(test_gold[qid].keys()) for qid in test_query_ids if qid in test_gold}
+        return test_mrr, rankings, ground_truth, pred_scores
 
     @torch.no_grad()
     def _get_gnn_scores(self, train_model, graph):
