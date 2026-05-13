@@ -20,7 +20,7 @@ uv pip install datasets huggingface_hub hf_transfer pymupdf tqdm
 export HF_HUB_ENABLE_HF_TRANSFER=1
 
 echo "Generating datasets..."
-python src/scripts/prepare_kuhperdata.py --skip_existing_raw_pdfs --raw_pdf_download_workers 32
+python src/scripts/prepare_kuhperdata.py --skip_raw_pdfs
 python src/scripts/prepare_bsard.py
 python src/scripts/prepare_ilpcsr.py
 python src/scripts/prepare_stard.py

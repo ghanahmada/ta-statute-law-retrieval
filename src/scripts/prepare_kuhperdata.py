@@ -145,6 +145,11 @@ def main():
         default=32,
         help="Parallel workers for raw PDF download (default: 32)",
     )
+    parser.add_argument(
+        "--skip_raw_pdfs",
+        action="store_true",
+        help="Skip downloading raw PDF files entirely (only parquet files)",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -166,12 +171,18 @@ def main():
     qrels_test_df = load_parquet("qrels_test")
 
     # --- downloads/*.pdf (raw source files) ---
-    num_raw_pdfs_downloaded, num_raw_pdfs_skipped_existing, num_raw_pdfs_remote = download_raw_pdfs(
-        args.output_dir,
-        skip_existing=args.skip_existing_raw_pdfs,
-        clean_local_first=args.clean_local_raw_pdfs,
-        max_workers=args.raw_pdf_download_workers,
-    )
+    if args.skip_raw_pdfs:
+        print("Skipping raw PDF download (--skip_raw_pdfs)")
+        num_raw_pdfs_downloaded = 0
+        num_raw_pdfs_skipped_existing = 0
+        num_raw_pdfs_remote = 0
+    else:
+        num_raw_pdfs_downloaded, num_raw_pdfs_skipped_existing, num_raw_pdfs_remote = download_raw_pdfs(
+            args.output_dir,
+            skip_existing=args.skip_existing_raw_pdfs,
+            clean_local_first=args.clean_local_raw_pdfs,
+            max_workers=args.raw_pdf_download_workers,
+        )
 
     # --- corpus.jsonl ---
     corpus_path = os.path.join(args.output_dir, "corpus.jsonl")
