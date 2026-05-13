@@ -41,6 +41,9 @@ uv venv .venv-jnlp --python 3.12
 source .venv-jnlp/bin/activate
 uv pip install -r requirements-jnlp.txt
 uv pip install pymupdf hf_transfer
+
+echo "Importing kuhperdata-exp and kuhperdata-summ-exp from HuggingFace..."
+python src/scripts/import_kuhperdata.py
 deactivate
 
 echo ""
