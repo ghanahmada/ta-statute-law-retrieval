@@ -169,7 +169,7 @@ def load_queries_v2(jsonl_path: str) -> Dict[str, Tuple[List[str], List[List[str
 
 def embed_queries_for_splitting(
     queries: List[str],
-    model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    model_name: str = "BAAI/bge-m3"
 ) -> np.ndarray:
     print(f"Loading embedding model: {model_name}")
     model = SentenceTransformer(model_name)
