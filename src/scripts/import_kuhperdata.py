@@ -37,22 +37,34 @@ def export_tsv(rows, path):
 
 
 def import_config(config_name, data_dir):
-    from datasets import load_dataset
+    from huggingface_hub import hf_hub_download
+    import pandas as pd
 
     print(f"\n{'='*50}")
     print(f"Importing {config_name} -> {data_dir}")
     print(f"{'='*50}")
     os.makedirs(data_dir, exist_ok=True)
 
-    ds = load_dataset(HF_DATASET_ID, config_name)
+    SPLITS = {
+        "corpus":      ("jsonl", f"{data_dir}/corpus.jsonl"),
+        "queries":     ("jsonl", f"{data_dir}/queries.jsonl"),
+        "qrels_train": ("tsv",   f"{data_dir}/qrels_train.tsv"),
+        "qrels_test":  ("tsv",   f"{data_dir}/qrels_test.tsv"),
+    }
 
-    export_jsonl([dict(r) for r in ds["corpus"]], f"{data_dir}/corpus.jsonl")
-    export_jsonl([dict(r) for r in ds["queries"]], f"{data_dir}/queries.jsonl")
-    export_tsv([dict(r) for r in ds["qrels_train"]], f"{data_dir}/qrels_train.tsv")
-    export_tsv([dict(r) for r in ds["qrels_test"]], f"{data_dir}/qrels_test.tsv")
-
-    if "qrels_val" in ds:
-        export_tsv([dict(r) for r in ds["qrels_val"]], f"{data_dir}/qrels_val.tsv")
+    for split, (fmt, out_path) in SPLITS.items():
+        repo_path = f"{config_name}/{split}-00000-of-00001.parquet"
+        try:
+            local = hf_hub_download(HF_DATASET_ID, repo_path, repo_type="dataset")
+        except Exception:
+            print(f"  SKIP: {repo_path} not found on HF")
+            continue
+        df = pd.read_parquet(local)
+        rows = df.to_dict(orient="records")
+        if fmt == "jsonl":
+            export_jsonl(rows, out_path)
+        else:
+            export_tsv(rows, out_path)
 
 
 def main():
