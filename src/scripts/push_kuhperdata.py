@@ -16,6 +16,7 @@ CONFIGS = {
     "summarized-expanded": "data/kuhperdata-summ-exp",
     "bsard": "data/bsard",
     "stard": "data/stard",
+    "coliee": "data/coliee",
 }
 
 
@@ -109,7 +110,7 @@ def build_readme(uploaded_configs):
     lines.append("")
     lines.append("# Statute Law Retrieval Benchmark")
     lines.append("")
-    lines.append("Multi-lingual statute article retrieval benchmark covering Indonesian (KUHPerdata), French (BSARD), and Chinese (STARD) legal corpora.")
+    lines.append("Multi-lingual statute article retrieval benchmark covering Indonesian (KUHPerdata), French (BSARD), Chinese (STARD), and English (COLIEE) legal corpora.")
     lines.append("")
     lines.append("## Configs")
     lines.append("")
@@ -122,6 +123,7 @@ def build_readme(uploaded_configs):
         "summarized-expanded": ("id", "KUHPerdata — case summary queries, LLM-validated expanded qrels"),
         "bsard": ("fr", "Belgian Statutory Article Retrieval Dataset"),
         "stard": ("zh", "Chinese Statute Article Retrieval Dataset"),
+        "coliee": ("en", "COLIEE 2024 — Japanese Civil Code statute retrieval (English), R04 test split"),
     }
     for cfg in uploaded_configs:
         lang, description = desc.get(cfg, ("", ""))
