@@ -78,6 +78,7 @@ class ParaGNNConfig:
     learning_rate: float = 1e-4
     warmup_ratio: float = 0.1
     grad_accumulation: int = 1
+    patience: int = 10
 
     # BM25
     bm25_b: float = 0.75

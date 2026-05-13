@@ -48,6 +48,8 @@ def main():
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--num_negatives", type=int, default=299)
     parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--patience", type=int, default=10,
+                        help="Early stopping patience (epochs without val improvement)")
     parser.add_argument("--use_fact_types", action="store_true",
                         help="Use fact-type edge features for query paragraphs (requires precompute --encode_fact_types)")
     args = parser.parse_args()
@@ -80,6 +82,7 @@ def main():
             batch_size=args.batch_size,
             num_negatives=args.num_negatives,
             learning_rate=args.lr,
+            patience=args.patience,
         )
         output_dir = f"{config.output_dir}/{name}"
 

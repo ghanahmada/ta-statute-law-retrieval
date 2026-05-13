@@ -116,7 +116,7 @@ class ParaGNNTrainer:
             num_training_steps=int(total_steps * 1.2),
         )
 
-        patience = 10
+        patience = self.config.patience
         epochs_without_improvement = 0
 
         train_dl = TorchDataLoader(
