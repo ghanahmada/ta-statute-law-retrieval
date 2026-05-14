@@ -33,6 +33,7 @@ DATASET_QRELS = {
     "kuhperdata-summ-exp": "data/kuhperdata-summ-exp/qrels_test.tsv",
     "kuhperdata-humanized":"data/kuhperdata-humanized/qrels_test.tsv",
     "bsard":               "data/bsard/qrels_test.tsv",
+    "coliee":              "data/coliee/qrels_test.tsv",
     "stard":               "data/stard/qrels_test.tsv",
 }
 
