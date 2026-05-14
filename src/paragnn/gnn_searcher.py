@@ -88,9 +88,6 @@ class StructGNNSearcher:
         # text → precomputed GNN query embedding (populated by preindex_queries)
         self._query_cache: dict[str, torch.Tensor] = {}
 
-        # per-doc bias for debiasing (populated by set_corpus_bias)
-        self._corpus_bias: np.ndarray | None = None
-
     def _get_rr_emb(self, label: str) -> torch.Tensor:
         idx = self._rr_label_to_idx.get(label, self._rr_label_to_idx["NONE"])
         return self.rr_const_emb[idx]
@@ -150,12 +147,6 @@ class StructGNNSearcher:
         norm = q.norm()
         return q / norm if norm > 0 else q
 
-    def set_corpus_bias(self, bias: np.ndarray) -> None:
-        """Set per-doc bias vector for debiasing, matching inference.py's
-        gnn_test_debiased = gnn_test - gnn_test.mean(dim=0). Load from
-        gnn_corpus_bias.npy exported alongside gnn_corpus_embeddings.npy."""
-        self._corpus_bias = bias
-
     def preindex_queries(self, qids: list[str], texts: list[str], para_store) -> None:
         """Pre-encode original test queries using their exact precomputed embeddings
         and RR role labels from para_store, matching inference.py encoding exactly.
@@ -211,11 +202,7 @@ class StructGNNSearcher:
             bm25_scores = np.array(bm25_scores).flatten()
 
         query_encoded = self._encode_query_gnn(query)
-        gnn_scores = query_encoded @ self.corpus_embeddings.T
-        if self._corpus_bias is not None:
-            gnn_scores = gnn_scores.numpy() - self._corpus_bias
-        else:
-            gnn_scores = gnn_scores.numpy()
+        gnn_scores = (query_encoded @ self.corpus_embeddings.T).numpy()
         mean_s = gnn_scores.mean()
         std_s = gnn_scores.std()
         gnn_scores = (gnn_scores - mean_s) / (std_s + 1e-8)

@@ -336,12 +336,6 @@ async def main():
             device=args.encoder_device,
             reranker=reranker,
         )
-        bias_path = Path(gnn_model_dir) / "gnn_corpus_bias.npy"
-        if bias_path.exists():
-            searcher.set_corpus_bias(np.load(bias_path))
-            print(f"  Loaded corpus bias for debiasing: {bias_path}")
-        else:
-            print(f"  No corpus bias found — run inference.py --export_embeddings to generate it")
         print(f"  StructGNN searcher ready (alpha={searcher.alpha})")
     else:
         print("Loading corpus embeddings...")

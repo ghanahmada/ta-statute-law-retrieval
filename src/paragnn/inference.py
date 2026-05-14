@@ -286,14 +286,6 @@ def main():
         np.save(emb_path, emb_np)
         print(f"  Exported GNN corpus embeddings: {emb_path} {emb_np.shape}")
 
-        # Export per-doc bias for debiasing in agentic search
-        # bias[j] = mean score of doc j across all test queries (before normalization)
-        raw_scores = gnn_test.numpy()  # [n_queries, n_corpus]
-        corpus_bias = raw_scores.mean(axis=0)  # [n_corpus]
-        bias_path = f"{model_dir}/gnn_corpus_bias.npy"
-        np.save(bias_path, corpus_bias)
-        print(f"  Exported GNN corpus bias: {bias_path} {corpus_bias.shape}")
-
     bm25_val_cpu = bm25_val_scores.cpu()
     bm25_test_cpu = bm25_test_scores.cpu()
 
