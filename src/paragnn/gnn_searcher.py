@@ -100,7 +100,7 @@ class StructGNNSearcher:
     ) -> torch.Tensor:
         """Run GNN on a query's paragraph embeddings with given RR edge labels.
 
-        Returns the query doc-node embedding (h[0]).
+        Returns the query doc-node embedding (h[0]), raw unnormalized to match inference scoring.
         """
         doc_feat = para_emb.mean(dim=0)
 
@@ -142,10 +142,7 @@ class StructGNNSearcher:
             node_h = self.model.struct_proj(node_h)
         h = self.model.eugat_gnn(g, node_h, edge_h)
 
-        # L2-normalize to match corpus embeddings (normalized on export in inference.py)
-        q = h[0].cpu()
-        norm = q.norm()
-        return q / norm if norm > 0 else q
+        return h[0].cpu()
 
     def preindex_queries(self, qids: list[str], texts: list[str], para_store) -> None:
         """Pre-encode original test queries using their exact precomputed embeddings

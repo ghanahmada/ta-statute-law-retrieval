@@ -276,12 +276,9 @@ def main():
     gnn_val_debiased = gnn_val - gnn_val.mean(dim=0, keepdim=True)
     gnn_test_debiased = gnn_test - gnn_test.mean(dim=0, keepdim=True)
 
-    # Export GNN corpus embeddings for hybrid search
+    # Export GNN corpus embeddings for hybrid search (raw, unnormalized to match scoring)
     if args.export_embeddings:
         emb_np = candidate_embeddings.numpy()
-        norms = np.linalg.norm(emb_np, axis=1, keepdims=True)
-        norms[norms == 0] = 1
-        emb_np = emb_np / norms
         emb_path = f"{model_dir}/gnn_corpus_embeddings.npy"
         np.save(emb_path, emb_np)
         print(f"  Exported GNN corpus embeddings: {emb_path} {emb_np.shape}")
