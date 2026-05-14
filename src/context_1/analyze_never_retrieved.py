@@ -4,7 +4,9 @@ Usage:
   python src/context_1/analyze_never_retrieved.py \
     --logs outputs/context_1/kuhperdata-exp_structgnn/agent_log.jsonl \
            outputs/context_1/kuhperdata-exp_flat/agent_log.jsonl \
-    --names structgnn dense_flat \
+    --names structgnn_agent dense_flat \
+    --preds outputs/predictions/structgnn_kuhperdata-exp.jsonl \
+    --pred_names structgnn_solo \
     --top 25
 """
 
@@ -30,18 +32,27 @@ def never_retrieved(path: str) -> Counter:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--logs", nargs="+", required=True,
+    parser.add_argument("--logs", nargs="+", default=[],
                         help="agent_log.jsonl files to compare")
     parser.add_argument("--names", nargs="+", default=None,
-                        help="Display names for each log (default: filename)")
+                        help="Display names for each log")
+    parser.add_argument("--preds", nargs="+", default=[],
+                        help="predictions JSONL files (outputs/predictions/*.jsonl)")
+    parser.add_argument("--pred_names", nargs="+", default=None,
+                        help="Display names for each predictions file")
     parser.add_argument("--top", type=int, default=25,
                         help="Number of top problematic docs to show")
     parser.add_argument("--sort_by", choices=["total", "delta"], default="total",
                         help="Sort by total failures or by delta (log[0] - log[1])")
     args = parser.parse_args()
 
-    names = args.names or [p.split("/")[-2] for p in args.logs]
-    counters = [never_retrieved(p) for p in args.logs]
+    if not args.logs and not args.preds:
+        parser.error("Provide at least one --logs or --preds file.")
+
+    log_names = args.names or [p.split("/")[-2] for p in args.logs]
+    pred_names = args.pred_names or [p.split("/")[-1].replace(".jsonl", "") for p in args.preds]
+    names = log_names + pred_names
+    counters = [never_retrieved(p) for p in args.logs + args.preds]
 
     all_docs = set()
     for c in counters:
