@@ -59,9 +59,10 @@ DATASETS = {
 }
 
 
-def load_done(log_path: str) -> tuple[set[str], dict[str, list[str]]]:
+def load_done(log_path: str) -> tuple[set[str], dict[str, list[str]], dict[str, list[str]]]:
     done = set()
     rankings = {}
+    seen_rankings = {}
     if os.path.exists(log_path):
         with open(log_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -73,9 +74,10 @@ def load_done(log_path: str) -> tuple[set[str], dict[str, list[str]]]:
                     qid = rec["qid"]
                     done.add(qid)
                     rankings[qid] = rec["ranked_doc_ids"]
+                    seen_rankings[qid] = rec.get("ranked_seen_100", rec["ranked_doc_ids"])
                 except (json.JSONDecodeError, KeyError):
                     continue
-    return done, rankings
+    return done, rankings, seen_rankings
 
 
 def build_bm25(doc_texts: list[str], lang: str) -> BM25:
@@ -384,7 +386,7 @@ async def main():
     )
 
     # --- Resume ---
-    done_qids, prev_rankings = load_done(log_path)
+    done_qids, prev_rankings, prev_seen_rankings = load_done(log_path)
     if done_qids:
         print(f"\nResuming: {len(done_qids)} queries already processed")
 
@@ -446,6 +448,7 @@ async def main():
                 result = await coro
                 results.append(result)
                 prev_rankings[result["qid"]] = result["ranked_doc_ids"]
+                prev_seen_rankings[result["qid"]] = result.get("ranked_seen_100", result["ranked_doc_ids"])
 
                 conversation = result.pop("conversation", [])
                 qid = result["qid"]
@@ -527,6 +530,22 @@ async def main():
     print(f"  Precision@{k}: {metrics[f'precision@{k}']:.4f}")
     print(f"  Hit Rate:      {metrics['hit_rate']:.4f}")
     print(f"  Queries:       {metrics['n_queries']}")
+
+    # --- Save predictions ---
+    os.makedirs("outputs/predictions", exist_ok=True)
+    if args.dense_source != "bge":
+        tag = f"context1_{args.dense_source}"
+    elif args.no_hierarchy and args.no_coverage_gate and args.no_similarity_guard:
+        tag = "context1_flat"
+    else:
+        tag = "context1"
+    pred_path = f"outputs/predictions/{tag}_{args.dataset}.jsonl"
+    with open(pred_path, "w", encoding="utf-8") as f:
+        for qid in test_qids:
+            if qid in prev_seen_rankings:
+                f.write(json.dumps({"qid": qid, "ranked_doc_ids": prev_seen_rankings[qid]},
+                                   ensure_ascii=False) + "\n")
+    print(f"  Predictions:   {pred_path}  ({len(prev_seen_rankings)} queries, @n_seen)")
 
 
 if __name__ == "__main__":
