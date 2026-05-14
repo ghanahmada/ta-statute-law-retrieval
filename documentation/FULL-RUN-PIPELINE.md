@@ -147,7 +147,7 @@ python src/evaluate_paragnn.py --dataset ilpcsr              --structure_mode no
 
 # StructGNN (structural node features)
 python src/evaluate_paragnn.py --dataset kuhperdata-exp      --structure_mode structural --max_relevant 0
-python src/evaluate_paragnn.py --dataset kuhperdata-summ-exp --structure_mode structural --max_relevant 0 --lr 1e-5
+python src/evaluate_paragnn.py --dataset kuhperdata-summ-exp --structure_mode structural --max_relevant 0 
 python src/evaluate_paragnn.py --dataset bsard               --structure_mode structural --max_relevant 0 --batch_size 64 --num_negatives 99
 python src/evaluate_paragnn.py --dataset stard               --structure_mode structural --max_relevant 0 --batch_size 64 --num_negatives 99
 python src/evaluate_paragnn.py --dataset coliee              --structure_mode structural --max_relevant 0
@@ -156,6 +156,7 @@ python src/evaluate_paragnn.py --dataset ilpcsr              --structure_mode st
 # Export StructGNN corpus embeddings (required for Step 8 Agentic+StructGNN, kuhperdata only)
 python src/paragnn/inference.py --dataset kuhperdata-exp      --structure_mode structural --export_embeddings --max_relevant 0
 python src/paragnn/inference.py --dataset kuhperdata-summ-exp --structure_mode structural --export_embeddings --max_relevant 0
+python src/paragnn/inference.py --dataset coliee      --structure_mode structural --export_embeddings --max_relevant 0
 ```
 
 > Predictions saved automatically to `outputs/predictions/{method}_{dataset}.jsonl`.
@@ -170,12 +171,16 @@ python src/paragnn/inference.py --dataset kuhperdata-summ-exp --structure_mode s
 
 ```bash
 # Terminal 1 — start vLLM
-vllm serve QuantTrio/Qwen3.6-27B-AWQ \
-  --served-model-name qwen3.6-27b \
-  --tool-call-parser openai \
+vllm serve Qwen/Qwen3.5-9B \
+  --served-model-name qwen3.5-9b \
+  --tool-call-parser qwen3_coder \
   --enable-auto-tool-choice \
+  --reasoning-parser qwen3 \
+  --enable-prefix-caching \
   --max-model-len 32768 \
   --gpu-memory-utilization 0.85 \
+  --tensor-parallel-size 1 \
+  --trust-remote-code \
   --host 0.0.0.0 --port 8000
 
 # Terminal 2
@@ -184,24 +189,24 @@ conda activate paragnn
 # Sanity check (single query)
 python src/context_1/evaluate_context1.py \
   --dataset kuhperdata-exp \
-  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --base_url http://localhost:8000/v1 --model qwen3.5-9b \
   --max_relevant 0 --pad_to_k 10 --encoder_device cuda --debug_qid q324
 
 # Agentic + BGE-M3
 python src/context_1/evaluate_context1.py \
   --dataset kuhperdata-exp \
-  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --base_url http://localhost:8000/v1 --model qwen3.5-9b \
   --max_relevant 0 --pad_to_k 10 --concurrency 4 --encoder_device cuda
 
 python src/context_1/evaluate_context1.py \
   --dataset kuhperdata-summ-exp \
-  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --base_url http://localhost:8000/v1 --model qwen3.5-9b \
   --max_relevant 0 --pad_to_k 10 --concurrency 4 --encoder_device cuda
 
 # Agentic + StructGNN (run Step 7 export first)
 python src/context_1/evaluate_context1.py \
   --dataset kuhperdata-exp \
-  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --base_url http://localhost:8000/v1 --model qwen3.5-9b \
   --dense_source structgnn \
   --gnn_model_dir outputs/paragnn/kuhperdata-exp/adapted_struct \
   --gnn_alpha 0.8 \
@@ -209,7 +214,7 @@ python src/context_1/evaluate_context1.py \
 
 python src/context_1/evaluate_context1.py \
   --dataset kuhperdata-summ-exp \
-  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --base_url http://localhost:8000/v1 --model qwen3.5-9b \
   --dense_source structgnn \
   --gnn_model_dir outputs/paragnn/kuhperdata-summ-exp/adapted_struct \
   --gnn_alpha 0.8 \
@@ -225,28 +230,28 @@ Disables hierarchy, coverage gate, and similarity guard. `ilpcsr` and `coliee` n
 ```bash
 python src/context_1/evaluate_context1.py \
   --dataset kuhperdata-exp \
-  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --base_url http://localhost:8000/v1 --model qwen3.5-9b \
   --max_relevant 0 --max_turns 5 --concurrency 16 --pad_to_k 10 \
   --no_hierarchy --no_coverage_gate --no_similarity_guard \
   --output_dir outputs/context_1/kuhperdata-exp_flat
 
 python src/context_1/evaluate_context1.py \
   --dataset kuhperdata-summ-exp \
-  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --base_url http://localhost:8000/v1 --model qwen3.5-9b \
   --max_relevant 0 --max_turns 5 --concurrency 16 --pad_to_k 10 \
   --no_hierarchy --no_coverage_gate --no_similarity_guard \
   --output_dir outputs/context_1/kuhperdata-summ-exp_flat
 
 python src/context_1/evaluate_context1.py \
   --dataset bsard \
-  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --base_url http://localhost:8000/v1 --model qwen3.5-9b \
   --max_relevant 0 --max_turns 5 --concurrency 16 --pad_to_k 10 \
   --no_hierarchy --no_coverage_gate --no_similarity_guard \
   --output_dir outputs/context_1/bsard_flat
 
 python src/context_1/evaluate_context1.py \
   --dataset stard \
-  --base_url http://localhost:8000/v1 --model qwen3.6-27b \
+  --base_url http://localhost:8000/v1 --model qwen3.5-9b \
   --max_relevant 0 --max_turns 5 --concurrency 16 --pad_to_k 10 \
   --no_hierarchy --no_coverage_gate --no_similarity_guard \
   --output_dir outputs/context_1/stard_flat
