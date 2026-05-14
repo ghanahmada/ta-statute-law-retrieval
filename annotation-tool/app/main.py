@@ -52,14 +52,18 @@ def load_data():
             db.commit()
             print(f"Loaded {db.query(Pair).count()} pairs")
 
-        if db.query(Annotator).count() == 0 and os.path.exists(ANNOTATORS_TXT):
+        if os.path.exists(ANNOTATORS_TXT):
+            existing = {a.name for a in db.query(Annotator).all()}
+            added = []
             with open(ANNOTATORS_TXT, encoding="utf-8") as f:
                 for line in f:
                     name = line.strip()
-                    if name:
+                    if name and name not in existing:
                         db.add(Annotator(name=name))
-            db.commit()
-            print(f"Loaded {db.query(Annotator).count()} annotators")
+                        added.append(name)
+            if added:
+                db.commit()
+                print(f"Added new annotators: {added}")
     finally:
         db.close()
 
