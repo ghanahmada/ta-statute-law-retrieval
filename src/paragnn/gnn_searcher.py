@@ -88,6 +88,9 @@ class StructGNNSearcher:
         # text → precomputed GNN query embedding (populated by preindex_queries)
         self._query_cache: dict[str, torch.Tensor] = {}
 
+        # per-doc bias for debiasing (populated by set_corpus_bias)
+        self._corpus_bias: np.ndarray | None = None
+
     def _get_rr_emb(self, label: str) -> torch.Tensor:
         idx = self._rr_label_to_idx.get(label, self._rr_label_to_idx["NONE"])
         return self.rr_const_emb[idx]
@@ -142,7 +145,16 @@ class StructGNNSearcher:
             node_h = self.model.struct_proj(node_h)
         h = self.model.eugat_gnn(g, node_h, edge_h)
 
-        return h[0].cpu()
+        # L2-normalize to match corpus embeddings (normalized on export in inference.py)
+        q = h[0].cpu()
+        norm = q.norm()
+        return q / norm if norm > 0 else q
+
+    def set_corpus_bias(self, bias: np.ndarray) -> None:
+        """Set per-doc bias vector for debiasing, matching inference.py's
+        gnn_test_debiased = gnn_test - gnn_test.mean(dim=0). Load from
+        gnn_corpus_bias.npy exported alongside gnn_corpus_embeddings.npy."""
+        self._corpus_bias = bias
 
     def preindex_queries(self, qids: list[str], texts: list[str], para_store) -> None:
         """Pre-encode original test queries using their exact precomputed embeddings
@@ -200,10 +212,13 @@ class StructGNNSearcher:
 
         query_encoded = self._encode_query_gnn(query)
         gnn_scores = query_encoded @ self.corpus_embeddings.T
+        if self._corpus_bias is not None:
+            gnn_scores = gnn_scores.numpy() - self._corpus_bias
+        else:
+            gnn_scores = gnn_scores.numpy()
         mean_s = gnn_scores.mean()
         std_s = gnn_scores.std()
         gnn_scores = (gnn_scores - mean_s) / (std_s + 1e-8)
-        gnn_scores = gnn_scores.numpy()
 
         final_scores = self.alpha * gnn_scores + (1 - self.alpha) * bm25_scores
 
