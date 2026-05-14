@@ -145,9 +145,11 @@ async def run_one_query(
     sem: asyncio.Semaphore,
     qid: str,
     query_text: str,
+    gt_docs: list[str] | None = None,
 ) -> dict:
     async with sem:
         t0 = time.time()
+        gt_set = set(gt_docs or [])
         try:
             state = await retriever.run(query_text)
             ranked = list(state.selected_doc_ids.keys())
@@ -156,6 +158,8 @@ async def run_one_query(
                 key=lambda d: state.doc_scores.get(d, 0),
                 reverse=True,
             )[:100]
+            for call in state.tool_call_log:
+                call["hit_relevant"] = bool(set(call["doc_ids_returned"]) & gt_set)
             return {
                 "qid": qid,
                 "ranked_doc_ids": ranked,
@@ -171,6 +175,7 @@ async def run_one_query(
                 "n_similarity_rejections": state.n_similarity_rejections,
                 "error": state.error,
                 "elapsed_s": round(time.time() - t0, 2),
+                "tool_call_log": state.tool_call_log,
                 "conversation": _extract_conversation(state.messages),
             }
         except Exception as e:
@@ -187,6 +192,7 @@ async def run_one_query(
                 "n_similarity_rejections": 0,
                 "error": str(e),
                 "elapsed_s": round(time.time() - t0, 2),
+                "tool_call_log": [],
                 "conversation": [],
             }
 
@@ -423,6 +429,7 @@ async def main():
         tasks = [
             run_one_query(
                 retriever, sem, qid, loader.queries[qid]["text"],
+                gt_docs=list(loader.qrels.get(qid, {}).keys()),
             )
             for qid in remaining_qids
         ]

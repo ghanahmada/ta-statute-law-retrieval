@@ -6,6 +6,7 @@ managing a token budget and deduplicating results across turns.
 
 import json
 import re
+import time
 from dataclasses import dataclass, field
 from collections import OrderedDict
 
@@ -31,6 +32,7 @@ class AgentState:
     n_gate_triggers: int = 0
     is_done: bool = False
     turn_count: int = 0
+    tool_call_log: list = field(default_factory=list)
     max_turns: int = 10
     budget: TokenBudgetTracker = field(default_factory=TokenBudgetTracker)
     error: str | None = None
@@ -237,6 +239,27 @@ class AgenticRetriever:
     def _execute_tool(
         self, state: AgentState, name: str, args: dict,
     ) -> ToolResult:
+        t0 = time.time()
+        result = self._dispatch_tool(state, name, args)
+        elapsed = round(time.time() - t0, 4)
+        input_str = (
+            args.get("query") or args.get("pattern") or args.get("doc_id")
+            or ",".join(args.get("doc_ids", [])[:3])
+            or ""
+        )
+        state.tool_call_log.append({
+            "turn": state.turn_count,
+            "tool": name,
+            "input": str(input_str)[:200],
+            "doc_ids_returned": result.doc_ids_seen[:],
+            "n_docs_returned": len(result.doc_ids_seen),
+            "elapsed_s": elapsed,
+        })
+        return result
+
+    def _dispatch_tool(
+        self, state: AgentState, name: str, args: dict,
+    ) -> ToolResult:
         # Early gate: require frame declarations before any search on early turns
         if (self.use_coverage_gate
                 and name in ("search_corpus", "grep_corpus")
@@ -311,7 +334,16 @@ class AgenticRetriever:
     async def run(self, query: str) -> AgentState:
         state = self._new_state()
 
+        t_bs = time.time()
         bootstrap = self._bootstrap_search(state, query)
+        state.tool_call_log.append({
+            "turn": 0,
+            "tool": "search_corpus",
+            "input": query[:200],
+            "doc_ids_returned": bootstrap.doc_ids_seen[:],
+            "n_docs_returned": len(bootstrap.doc_ids_seen),
+            "elapsed_s": round(time.time() - t_bs, 4),
+        })
 
         # System prompt in system role
         state.messages.append({"role": "system", "content": self._system_prompt})
