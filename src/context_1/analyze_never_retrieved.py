@@ -36,6 +36,8 @@ def main():
                         help="Display names for each log (default: filename)")
     parser.add_argument("--top", type=int, default=25,
                         help="Number of top problematic docs to show")
+    parser.add_argument("--sort_by", choices=["total", "delta"], default="total",
+                        help="Sort by total failures or by delta (log[0] - log[1])")
     args = parser.parse_args()
 
     names = args.names or [p.split("/")[-2] for p in args.logs]
@@ -45,7 +47,10 @@ def main():
     for c in counters:
         all_docs |= set(c)
 
-    all_docs = sorted(all_docs, key=lambda d: sum(c.get(d, 0) for c in counters), reverse=True)
+    if args.sort_by == "delta" and len(counters) >= 2:
+        all_docs = sorted(all_docs, key=lambda d: counters[0].get(d, 0) - counters[1].get(d, 0), reverse=True)
+    else:
+        all_docs = sorted(all_docs, key=lambda d: sum(c.get(d, 0) for c in counters), reverse=True)
 
     col_w = 12
     name_w = 12
@@ -53,17 +58,23 @@ def main():
     for name in names:
         header += " %*s" % (name_w, name[:name_w])
     header += " %*s" % (8, "total")
+    if len(counters) >= 2:
+        header += " %*s" % (8, "delta")
     print(header)
     print("-" * len(header))
 
     for doc in all_docs[:args.top]:
         row = "%-*s" % (col_w, doc)
         total = 0
+        vals = []
         for c in counters:
             v = c.get(doc, 0)
             row += " %*d" % (name_w, v)
             total += v
+            vals.append(v)
         row += " %*d" % (8, total)
+        if len(counters) >= 2:
+            row += " %*d" % (8, vals[0] - vals[1])
         print(row)
 
 
