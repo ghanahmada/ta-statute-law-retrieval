@@ -225,7 +225,7 @@ python src/context_1/evaluate_context1.py \
 
 ## 9. Ablation — Agentic Flat (all supported datasets)
 
-Disables hierarchy, coverage gate, and similarity guard. `ilpcsr` and `coliee` not supported by context_1.
+Disables hierarchy, coverage gate, and similarity guard. `ilpcsr` not supported by context_1.
 
 ```bash
 python src/context_1/evaluate_context1.py \
@@ -255,6 +255,13 @@ python src/context_1/evaluate_context1.py \
   --max_relevant 0 --max_turns 5 --concurrency 16 --pad_to_k 10 \
   --no_hierarchy --no_coverage_gate --no_similarity_guard \
   --output_dir outputs/context_1/stard_flat
+
+python src/context_1/evaluate_context1.py \
+  --dataset coliee \
+  --base_url http://localhost:8000/v1 --model qwen3.5-9b \
+  --max_relevant 0 --max_turns 5 --concurrency 16 --pad_to_k 10 \
+  --no_hierarchy --no_coverage_gate --no_similarity_guard \
+  --output_dir outputs/context_1/coliee_flat
 ```
 
 ---
