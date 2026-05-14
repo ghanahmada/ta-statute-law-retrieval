@@ -147,14 +147,19 @@ class ParaGNNTrainer:
         print(f"Training {mode_name} for epochs {start_epoch+1}-{self.config.epochs}...")
         print(f"  Early stopping on VAL set ({len(val_query_ids)} queries)")
 
+        # Pre-warm corpus embedding cache to avoid per-batch disk I/O during training
+        all_corpus_ids = set(val_corpus_ids) | set(test_corpus_ids)
+        print(f"Pre-warming corpus embedding cache ({len(all_corpus_ids)} docs)...")
+        for doc_id in all_corpus_ids:
+            self.para_store.get_corpus_embedding(doc_id)
+        print("  Cache ready.")
+
         for epoch in range(start_epoch, self.config.epochs):
             model.train()
             total_loss = 0
             n_batches = 0
 
             for batch in tqdm(train_dl, desc=f"Epoch {epoch+1}", leave=False):
-                torch.cuda.empty_cache()
-
                 batch_on_device = {
                     k: v.to(self.device) if isinstance(v, torch.Tensor) else v
                     for k, v in batch.items()
