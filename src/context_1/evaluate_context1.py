@@ -323,6 +323,12 @@ async def main():
         encoder = load_query_encoder(device=args.encoder_device)
 
         from paragnn.gnn_searcher import StructGNNSearcher
+        from paragnn.graph_builder import ParagraphStore
+        from paragnn.structure import precompute_structure_features
+
+        para_store_dir = str(Path(gnn_model_dir).parent)
+        para_store = ParagraphStore(para_store_dir)
+
         searcher = StructGNNSearcher(
             doc_ids=doc_ids,
             doc_texts=doc_texts,
@@ -336,6 +342,11 @@ async def main():
             reranker=reranker,
         )
         print(f"  StructGNN searcher ready (alpha={searcher.alpha})")
+
+        # Pre-encode test queries with exact inference-matching RR labels
+        test_qids_for_index = [q for q in loader.queries if q in loader.qrels]
+        test_texts_for_index = [loader.queries[q]["text"] for q in test_qids_for_index]
+        searcher.preindex_queries(test_qids_for_index, test_texts_for_index, para_store)
     else:
         print("Loading corpus embeddings...")
         corpus_embeddings = load_corpus_embeddings(args.embeddings_dir)
