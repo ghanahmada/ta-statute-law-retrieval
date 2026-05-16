@@ -158,12 +158,14 @@ def run_diagnostic(config, model_dir, para_store, structure_features,
         std_s = raw_scores.std(dim=1, keepdim=True)
         norm_scores = (raw_scores - mean_s) / (std_s + 1e-8)
 
+        recall = compute_recall(norm_scores, gold_matrix)
+        recall_raw = compute_recall(raw_scores, gold_matrix)
         mrr = compute_mrr(norm_scores, gold_matrix)
         mrr_raw = compute_mrr(raw_scores, gold_matrix)
 
         print(f"\n  {name}:")
-        print(f"    MRR@10 (raw):        {mrr_raw:.4f}")
-        print(f"    MRR@10 (z-normed):   {mrr:.4f}")
+        print(f"    Recall@10 (raw):        {recall_raw:.4f}  MRR@10: {mrr_raw:.4f}")
+        print(f"    Recall@10 (z-normed):   {recall:.4f}  MRR@10: {mrr:.4f}")
 
     # ── Analysis 3: Cosine similarity for hub-GT vs non-hub-GT vs random ──
     print("\n" + "=" * 60)
@@ -254,36 +256,54 @@ def run_diagnostic(config, model_dir, para_store, structure_features,
             std_s = scores.std(dim=1, keepdim=True)
             scores = (scores - mean_s) / (std_s + 1e-8)
 
-        hub_mrr_sum, hub_count = 0, 0
-        nonhub_mrr_sum, nonhub_count = 0, 0
+        hub_recall_sum, hub_mrr_sum, hub_count = 0, 0, 0
+        nonhub_recall_sum, nonhub_mrr_sum, nonhub_count = 0, 0, 0
 
         for qi, gt_ids in gold_per_query.items():
-            gt_indices = [doc_id_to_idx[d] for d in gt_ids if d in doc_id_to_idx]
+            gt_indices = set(doc_id_to_idx[d] for d in gt_ids if d in doc_id_to_idx)
             if not gt_indices:
                 continue
 
             has_hub_gt = any(idx in hub_indices for idx in gt_indices)
 
-            ranked = torch.argsort(scores[qi], descending=True)[:10].tolist()
+            ranked_list = torch.argsort(scores[qi], descending=True)[:10].tolist()
+            ranked_set = set(ranked_list)
+            recall_q = len(ranked_set & gt_indices) / len(gt_indices)
             rr = 0.0
-            for rank, idx in enumerate(ranked):
-                if idx in set(gt_indices):
+            for rank, idx in enumerate(ranked_list):
+                if idx in gt_indices:
                     rr = 1.0 / (rank + 1)
                     break
 
             if has_hub_gt:
+                hub_recall_sum += recall_q
                 hub_mrr_sum += rr
                 hub_count += 1
             else:
+                nonhub_recall_sum += recall_q
                 nonhub_mrr_sum += rr
                 nonhub_count += 1
 
+        hub_recall = hub_recall_sum / hub_count if hub_count else 0
         hub_mrr = hub_mrr_sum / hub_count if hub_count else 0
+        nonhub_recall = nonhub_recall_sum / nonhub_count if nonhub_count else 0
         nonhub_mrr = nonhub_mrr_sum / nonhub_count if nonhub_count else 0
 
         print(f"\n  {name}:")
-        print(f"    Hub-GT queries:    MRR@10={hub_mrr:.4f}  (n={hub_count})")
-        print(f"    Non-hub-GT queries: MRR@10={nonhub_mrr:.4f}  (n={nonhub_count})")
+        print(f"    Hub-GT queries:     Recall@10={hub_recall:.4f}  MRR@10={hub_mrr:.4f}  (n={hub_count})")
+        print(f"    Non-hub-GT queries: Recall@10={nonhub_recall:.4f}  MRR@10={nonhub_mrr:.4f}  (n={nonhub_count})")
+
+
+def compute_recall(scores, gold_matrix, k=10):
+    recall_sum = 0
+    n_queries = gold_matrix.shape[0]
+    for qi in range(n_queries):
+        relevant = set(gold_matrix[qi].nonzero(as_tuple=True)[0].tolist())
+        if not relevant:
+            continue
+        ranked = set(torch.argsort(scores[qi], descending=True)[:k].tolist())
+        recall_sum += len(ranked & relevant) / len(relevant)
+    return recall_sum / n_queries
 
 
 def compute_mrr(scores, gold_matrix, k=10):

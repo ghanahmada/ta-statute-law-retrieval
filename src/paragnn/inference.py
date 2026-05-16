@@ -70,29 +70,27 @@ def get_gnn_scores(model, test_graph, device):
 
 
 def grid_search_alpha(gnn_scores, bm25_scores, gold_matrix, k=10):
-    best_alpha, best_mrr = 0, 0
+    best_alpha, best_recall = 0, 0
     for alpha in np.arange(0.0, 1.05, 0.1):
         scores = alpha * gnn_scores + (1 - alpha) * bm25_scores
-        mrr = compute_mrr(scores, gold_matrix, k)
-        if mrr > best_mrr:
-            best_mrr = mrr
+        recall = compute_recall(scores, gold_matrix, k)
+        if recall > best_recall:
+            best_recall = recall
             best_alpha = alpha
-    return best_alpha, best_mrr
+    return best_alpha, best_recall
 
 
-def compute_mrr(scores, gold_matrix, k=10):
-    mrr_sum = 0
+def compute_recall(scores, gold_matrix, k=10):
+    recall_sum = 0
     n = gold_matrix.shape[0]
     for qi in range(n):
-        relevant = gold_matrix[qi].nonzero(as_tuple=True)[0].tolist()
+        relevant = set(gold_matrix[qi].nonzero(as_tuple=True)[0].tolist())
         if not relevant:
             continue
         ranked = torch.argsort(scores[qi], descending=True)[:k].tolist()
-        for rank, idx in enumerate(ranked):
-            if idx in relevant:
-                mrr_sum += 1.0 / (rank + 1)
-                break
-    return mrr_sum / n
+        found = len(set(ranked) & relevant)
+        recall_sum += found / len(relevant)
+    return recall_sum / n
 
 
 def export_rankings(
@@ -288,29 +286,29 @@ def main():
 
     # Sweep alpha on VAL (not test — no leakage)
     print("\nAlpha grid search on VAL (original):")
-    best_alpha, best_mrr = grid_search_alpha(gnn_val, bm25_val_cpu, val_gold_matrix)
-    print(f"  Best: alpha={best_alpha:.1f}, MRR@10={best_mrr:.4f}")
+    best_alpha, best_recall = grid_search_alpha(gnn_val, bm25_val_cpu, val_gold_matrix)
+    print(f"  Best: alpha={best_alpha:.1f}, Recall@10={best_recall:.4f}")
 
     print("Alpha grid search on VAL (debiased):")
-    best_alpha_d, best_mrr_d = grid_search_alpha(gnn_val_debiased, bm25_val_cpu, val_gold_matrix)
-    print(f"  Best: alpha={best_alpha_d:.1f}, MRR@10={best_mrr_d:.4f}")
+    best_alpha_d, best_recall_d = grid_search_alpha(gnn_val_debiased, bm25_val_cpu, val_gold_matrix)
+    print(f"  Best: alpha={best_alpha_d:.1f}, Recall@10={best_recall_d:.4f}")
 
     # Pick best variant based on val
-    use_debiased = best_mrr_d > best_mrr
+    use_debiased = best_recall_d > best_recall
     if use_debiased:
         final_gnn = gnn_test_debiased
         final_alpha = best_alpha_d
-        final_val_mrr = best_mrr_d
+        final_val_recall = best_recall_d
     else:
         final_gnn = gnn_test
         final_alpha = best_alpha
-        final_val_mrr = best_mrr
+        final_val_recall = best_recall
 
     final_scores = final_alpha * final_gnn + (1 - final_alpha) * bm25_test_cpu
-    final_mrr = compute_mrr(final_scores, test_gold_matrix)
+    final_recall = compute_recall(final_scores, test_gold_matrix)
 
-    print(f"\nVal-selected: alpha={final_alpha:.1f} ({'debiased' if use_debiased else 'original'}), val MRR={final_val_mrr:.4f}")
-    print(f"Test MRR@10 (val-frozen alpha): {final_mrr:.4f}")
+    print(f"\nVal-selected: alpha={final_alpha:.1f} ({'debiased' if use_debiased else 'original'}), val Recall@10={final_val_recall:.4f}")
+    print(f"Test Recall@10 (val-frozen alpha): {final_recall:.4f}")
 
     # Export rankings
     out_path = f"{model_dir}/rankings_top{args.top_k}.jsonl"

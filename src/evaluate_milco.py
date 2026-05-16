@@ -163,11 +163,11 @@ def run_dataset(args, dataset_name: str, data_dir: str, model):
         corpus_csr, query_csr, doc_ids, test_query_ids, loader.qrels, top_k_values,
     )
 
-    print(f"\n{'K':>6} | {'MRR@K':>8} | {'Recall@K':>10} | {'Precision@K':>12} | {'Hit Rate':>10}")
+    print(f"\n{'K':>6} | {'Recall@K':>10} | {'MRR@K':>8} | {'Precision@K':>12} | {'Hit Rate':>10}")
     print("-" * 60)
     for k in top_k_values:
         r = results[k]
-        print(f"{k:>6} | {r['mrr']:>8.4f} | {r['recall']:>10.4f} | {r['precision']:>12.4f} | {r['hit_rate']:>9.1%}")
+        print(f"{k:>6} | {r['recall']:>10.4f} | {r['mrr']:>8.4f} | {r['precision']:>12.4f} | {r['hit_rate']:>9.1%}")
 
     save_k = 100
     top_save = np.argsort(scores, axis=1)[:, ::-1][:, :save_k]

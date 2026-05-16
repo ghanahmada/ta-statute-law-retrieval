@@ -186,11 +186,11 @@ def main():
         top_k_values=top_k_values,
     )
 
-    print(f"\n{'K':>6} | {'MRR@K':>8} | {'Recall@K':>10} | {'Precision@K':>12} | {'Hit Rate':>10}")
+    print(f"\n{'K':>6} | {'Recall@K':>10} | {'MRR@K':>8} | {'Precision@K':>12} | {'Hit Rate':>10}")
     print("-" * 60)
     for k in top_k_values:
         r = results[k]
-        print(f"{k:>6} | {r['mrr']:>8.4f} | {r['recall']:>10.4f} | {r['precision']:>12.4f} | {r['hit_rate']:>9.1%}")
+        print(f"{k:>6} | {r['recall']:>10.4f} | {r['mrr']:>8.4f} | {r['precision']:>12.4f} | {r['hit_rate']:>9.1%}")
 
     sim_scores_full = query_embeddings @ corpus_embeddings.T
     save_k = 100

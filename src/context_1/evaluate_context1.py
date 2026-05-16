@@ -526,8 +526,8 @@ async def main():
 
     k = args.top_k
     metrics = evaluate_ranking(rankings, ground_truth, k)
-    print(f"  MRR@{k}:       {metrics[f'mrr@{k}']:.4f}")
     print(f"  Recall@{k}:    {metrics[f'recall@{k}']:.4f}")
+    print(f"  MRR@{k}:       {metrics[f'mrr@{k}']:.4f}")
     print(f"  Precision@{k}: {metrics[f'precision@{k}']:.4f}")
     print(f"  Hit Rate:      {metrics['hit_rate']:.4f}")
     print(f"  Queries:       {metrics['n_queries']}")
@@ -543,10 +543,16 @@ async def main():
     pred_path = f"outputs/predictions/{tag}_{args.dataset}.jsonl"
     with open(pred_path, "w", encoding="utf-8") as f:
         for qid in test_qids:
-            if qid in prev_seen_rankings:
-                f.write(json.dumps({"qid": qid, "ranked_doc_ids": prev_seen_rankings[qid]},
-                                   ensure_ascii=False) + "\n")
-    print(f"  Predictions:   {pred_path}  ({len(prev_seen_rankings)} queries, @n_seen)")
+            if qid in prev_rankings:
+                gt = list(loader.qrels.get(qid, {}).keys())
+                seen_100 = prev_seen_rankings.get(qid, [])
+                f.write(json.dumps({
+                    "qid": qid,
+                    "ranked_doc_ids": prev_rankings[qid],
+                    "ranked_seen_100": seen_100,
+                    "ground_truth": gt,
+                }, ensure_ascii=False) + "\n")
+    print(f"  Predictions:   {pred_path}  ({len(prev_rankings)} queries)")
 
 
 if __name__ == "__main__":

@@ -336,8 +336,8 @@ def main():
         ground_truth = {qid: list(docs.keys()) for qid, docs in loader.qrels.items()}
         results = evaluate_ranking(rankings, ground_truth, args.top_k)
 
-        print(f"\n  MRR@{args.top_k}:       {results[f'mrr@{args.top_k}']:.4f}")
-        print(f"  Recall@{args.top_k}:    {results[f'recall@{args.top_k}']:.4f}")
+        print(f"\n  Recall@{args.top_k}:    {results[f'recall@{args.top_k}']:.4f}")
+        print(f"  MRR@{args.top_k}:       {results[f'mrr@{args.top_k}']:.4f}")
         print(f"  Precision@{args.top_k}: {results[f'precision@{args.top_k}']:.4f}")
         print(f"  Hit rate:       {results['hit_rate']:.4f}")
         print(f"  N queries:      {results['n_queries']}")

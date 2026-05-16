@@ -103,21 +103,21 @@ def run_inference(config, model_dir, para_store, structure_features, query_struc
     # Alpha grid search if not specified
     if alpha is None:
         print("  Running alpha grid search...")
-        best_alpha, best_mrr = 0, 0
+        best_alpha, best_recall = 0, 0
         for a in np.arange(0.0, 1.05, 0.1):
             blended = a * gnn_scores + (1 - a) * bm25_test_scores
-            mrr = compute_mrr(blended, gold_matrix)
-            if mrr > best_mrr:
-                best_mrr = mrr
+            recall = compute_recall(blended, gold_matrix)
+            if recall > best_recall:
+                best_recall = recall
                 best_alpha = a
         alpha = best_alpha
-        print(f"  Best alpha: {alpha:.1f} (MRR@10: {best_mrr:.4f})")
+        print(f"  Best alpha: {alpha:.1f} (Recall@10: {best_recall:.4f})")
 
     final_scores = alpha * gnn_scores + (1 - alpha) * bm25_test_scores
 
     # Compute metrics
     mrr, recall, hit_rate = compute_metrics(final_scores, gold_matrix)
-    print(f"  MRR@10: {mrr:.4f}  R@10: {recall:.4f}  Hit: {hit_rate:.1%}")
+    print(f"  R@10: {recall:.4f}  MRR@10: {mrr:.4f}  Hit: {hit_rate:.1%}")
 
     # Build per-query ranked results
     results = {}
@@ -183,19 +183,17 @@ def run_inference(config, model_dir, para_store, structure_features, query_struc
     }
 
 
-def compute_mrr(scores, gold_matrix, k=10):
-    mrr_sum = 0
+def compute_recall(scores, gold_matrix, k=10):
+    recall_sum = 0
     n_queries = gold_matrix.shape[0]
     for qi in range(n_queries):
-        relevant = gold_matrix[qi].nonzero(as_tuple=True)[0].tolist()
+        relevant = set(gold_matrix[qi].nonzero(as_tuple=True)[0].tolist())
         if not relevant:
             continue
         ranked = torch.argsort(scores[qi], descending=True)[:k].tolist()
-        for rank, idx in enumerate(ranked):
-            if idx in relevant:
-                mrr_sum += 1.0 / (rank + 1)
-                break
-    return mrr_sum / n_queries
+        found = len(set(ranked) & relevant)
+        recall_sum += found / len(relevant)
+    return recall_sum / n_queries
 
 
 def compute_metrics(scores, gold_matrix, k=10):

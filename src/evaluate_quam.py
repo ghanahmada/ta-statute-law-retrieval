@@ -528,8 +528,8 @@ def main():
         )
         elapsed = time.time() - t0
 
-        print(f"\n  MRR@{args.top_k}:       {results[f'mrr@{args.top_k}']:.4f}")
-        print(f"  Recall@{args.top_k}:    {results[f'recall@{args.top_k}']:.4f}")
+        print(f"\n  Recall@{args.top_k}:    {results[f'recall@{args.top_k}']:.4f}")
+        print(f"  MRR@{args.top_k}:       {results[f'mrr@{args.top_k}']:.4f}")
         print(f"  Precision@{args.top_k}: {results[f'precision@{args.top_k}']:.4f}")
         print(f"  Hit rate:       {results['hit_rate']:.4f}")
         print(f"  N queries:      {results['n_queries']}")

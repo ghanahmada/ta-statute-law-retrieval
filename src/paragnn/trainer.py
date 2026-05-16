@@ -201,7 +201,7 @@ class ParaGNNTrainer:
             best_alpha_vd, val_mrr_d, val_recall_d, val_hit_d = self._grid_search_alpha(
                 gnn_val_debiased, bm25_val_scores.cpu(), val_gold_matrix
             )
-            if val_mrr_d > val_mrr:
+            if val_recall_d > val_recall:
                 val_mrr, val_recall, val_hit, best_alpha_v = val_mrr_d, val_recall_d, val_hit_d, best_alpha_vd
 
             log_entry = {
@@ -216,11 +216,11 @@ class ParaGNNTrainer:
             log.append(log_entry)
             print(f"  Epoch {epoch+1}: loss={avg_loss:.4f} val_MRR={val_mrr:.4f} val_R@10={val_recall:.4f} val_Hit={val_hit:.1%} alpha={best_alpha_v:.1f} (learned={avg_alpha:.3f})")
 
-            if val_mrr > best_metric:
-                best_metric = val_mrr
+            if val_recall > best_metric:
+                best_metric = val_recall
                 epochs_without_improvement = 0
                 torch.save(model.state_dict(), f"{output_dir}/best_model.pt")
-                print(f"  → New best val MRR={val_mrr:.4f}, saved model")
+                print(f"  → New best val Recall@10={val_recall:.4f}, saved model")
             else:
                 epochs_without_improvement += 1
 
@@ -254,39 +254,39 @@ class ParaGNNTrainer:
 
         # Sweep alpha on VAL (original scores)
         print(f"\n  Alpha sweep on VAL (original):")
-        print(f"  {'Alpha':<8} {'MRR@10':<10} {'R@10':<10} {'Hit':<10}")
+        print(f"  {'Alpha':<8} {'R@10':<10} {'MRR@10':<10} {'Hit':<10}")
         print(f"  {'-'*38}")
-        best_val_alpha, best_val_mrr = 0, 0
+        best_val_alpha, best_val_recall = 0, 0
         for alpha in np.arange(0.0, 1.05, 0.1):
             scores = alpha * gnn_val + (1 - alpha) * bm25_val_scores.cpu()
             mrr, recall, hit = self._compute_metrics(scores, val_gold_matrix)
-            marker = " ←" if mrr > best_val_mrr else ""
-            print(f"  {alpha:<8.1f} {mrr:<10.4f} {recall:<10.4f} {hit:<10.1%}{marker}")
-            if mrr > best_val_mrr:
-                best_val_mrr = mrr
+            marker = " ←" if recall > best_val_recall else ""
+            print(f"  {alpha:<8.1f} {recall:<10.4f} {mrr:<10.4f} {hit:<10.1%}{marker}")
+            if recall > best_val_recall:
+                best_val_recall = recall
                 best_val_alpha = alpha
 
         # Sweep alpha on VAL (debiased scores)
         print(f"\n  Alpha sweep on VAL (debiased):")
-        print(f"  {'Alpha':<8} {'MRR@10':<10} {'R@10':<10} {'Hit':<10}")
+        print(f"  {'Alpha':<8} {'R@10':<10} {'MRR@10':<10} {'Hit':<10}")
         print(f"  {'-'*38}")
-        best_val_alpha_d, best_val_mrr_d = 0, 0
+        best_val_alpha_d, best_val_recall_d = 0, 0
         for alpha in np.arange(0.0, 1.05, 0.1):
             scores = alpha * gnn_val_debiased + (1 - alpha) * bm25_val_scores.cpu()
             mrr, recall, hit = self._compute_metrics(scores, val_gold_matrix)
-            marker = " ←" if mrr > best_val_mrr_d else ""
-            print(f"  {alpha:<8.1f} {mrr:<10.4f} {recall:<10.4f} {hit:<10.1%}{marker}")
-            if mrr > best_val_mrr_d:
-                best_val_mrr_d = mrr
+            marker = " ←" if recall > best_val_recall_d else ""
+            print(f"  {alpha:<8.1f} {recall:<10.4f} {mrr:<10.4f} {hit:<10.1%}{marker}")
+            if recall > best_val_recall_d:
+                best_val_recall_d = recall
                 best_val_alpha_d = alpha
 
         # Decide: use original or debiased based on val performance
-        use_debiased = best_val_mrr_d > best_val_mrr
+        use_debiased = best_val_recall_d > best_val_recall
         chosen_alpha = best_val_alpha_d if use_debiased else best_val_alpha
-        chosen_val_mrr = max(best_val_mrr, best_val_mrr_d)
+        chosen_val_recall = max(best_val_recall, best_val_recall_d)
         variant = "debiased" if use_debiased else "original"
 
-        print(f"\n  Val-selected: alpha={chosen_alpha:.1f} ({variant}), val MRR={chosen_val_mrr:.4f}")
+        print(f"\n  Val-selected: alpha={chosen_alpha:.1f} ({variant}), val Recall@10={chosen_val_recall:.4f}")
 
         # Apply frozen alpha to TEST
         if use_debiased:
@@ -305,13 +305,13 @@ class ParaGNNTrainer:
             pred_scores[qid] = {test_corpus_ids[i]: float(test_scores[qi, i]) for i in idx}
 
         print(f"\n  TEST results (alpha={chosen_alpha:.1f} frozen from val):")
-        print(f"    MRR@10:    {test_mrr:.4f}")
         print(f"    Recall@10: {test_recall:.4f}")
+        print(f"    MRR@10:    {test_mrr:.4f}")
         print(f"    Hit Rate:  {test_hit:.1%}")
 
-        print(f"\nTraining complete. Test MRR@10: {test_mrr:.4f}")
+        print(f"\nTraining complete. Test Recall@10: {test_recall:.4f}")
         ground_truth = {qid: list(test_gold[qid].keys()) for qid in test_query_ids if qid in test_gold}
-        return test_mrr, rankings, ground_truth, pred_scores
+        return test_recall, rankings, ground_truth, pred_scores
 
     @torch.no_grad()
     def _get_gnn_scores(self, train_model, graph):
@@ -346,12 +346,12 @@ class ParaGNNTrainer:
         return gnn_scores.cpu(), alphas.mean().item()
 
     def _grid_search_alpha(self, gnn_scores, bm25_scores, gold_matrix):
-        """Find optimal alpha via grid search."""
+        """Find optimal alpha via grid search (optimizes Recall@10)."""
         best_alpha, best_mrr, best_recall, best_hit = 0, 0, 0, 0
         for alpha in np.arange(0.0, 1.05, 0.1):
             scores = alpha * gnn_scores + (1 - alpha) * bm25_scores
             mrr, recall, hit_rate = self._compute_metrics(scores, gold_matrix)
-            if mrr > best_mrr:
+            if recall > best_recall:
                 best_mrr = mrr
                 best_recall = recall
                 best_hit = hit_rate

@@ -200,7 +200,7 @@ def main():
         )
         method_name = {"none": "paragnn", "proximity": "proxgnn", "structural": "structgnn"}[args.structure_mode]
 
-        best_mrr, rankings, ground_truth, pred_scores = trainer.train(
+        best_recall, rankings, ground_truth, pred_scores = trainer.train(
             train_dataset=train_dataset,
             collator=collator,
             bm25_val_scores=bm25_val_scores,
@@ -214,7 +214,7 @@ def main():
         )
 
         save_predictions(rankings, ground_truth, method=method_name, dataset=name, scores=pred_scores)
-        print(f"\n  Final best MRR@10: {best_mrr:.4f}")
+        print(f"\n  Final best Recall@10: {best_recall:.4f}")
 
 
 if __name__ == "__main__":

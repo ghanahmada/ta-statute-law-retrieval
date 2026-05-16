@@ -57,8 +57,8 @@ def save_predictions(
                 "dataset": dataset,
                 "ranked_doc_ids": ranked,
                 "ground_truth": gt,
-                "rr@10": calculate_mrr(ranked, gt, 10),
                 "recall@10": calculate_recall_at_k(ranked, gt, 10),
+                "rr@10": calculate_mrr(ranked, gt, 10),
             }
             if scores and qid in scores:
                 qid_scores = scores[qid]
@@ -96,11 +96,11 @@ def evaluate_ranking(
         per_query_precision.append(calculate_precision_at_k(ranked, gt, top_k))
 
     return {
-        f"mrr@{top_k}": float(np.mean(per_query_mrr)),
         f"recall@{top_k}": float(np.mean(per_query_recall)),
+        f"mrr@{top_k}": float(np.mean(per_query_mrr)),
         f"precision@{top_k}": float(np.mean(per_query_precision)),
-        "per_query_mrr": per_query_mrr,
         "per_query_recall": per_query_recall,
+        "per_query_mrr": per_query_mrr,
         "per_query_precision": per_query_precision,
         "n_queries": len(per_query_mrr),
         "hit_rate": sum(1 for m in per_query_mrr if m > 0) / len(per_query_mrr) if per_query_mrr else 0
