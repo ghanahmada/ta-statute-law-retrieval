@@ -44,13 +44,16 @@ def sparse_coo_to_csr(tensor: torch.Tensor) -> sp.csr_matrix:
     return sp.csr_matrix((values, (indices[0], indices[1])), shape=shape)
 
 
-def encode_batched(texts: list[str], model, batch_size: int, method: str = "encode_text") -> sp.csr_matrix:
+def encode_batched(
+    texts: list[str], model, batch_size: int,
+    method: str = "encode_text", source_view: bool = False,
+) -> sp.csr_matrix:
     """Encode texts in batches and stack into a single CSR matrix."""
     encode_fn = getattr(model, method)
     parts = []
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
-        sparse_tensor = encode_fn(batch)
+        sparse_tensor = encode_fn(batch, source_view=source_view)
         parts.append(sparse_coo_to_csr(sparse_tensor))
     return sp.vstack(parts, format="csr")
 
@@ -117,9 +120,10 @@ def run_dataset(args, dataset_name: str, data_dir: str, model):
     print(f"Test queries: {len(test_query_ids)}")
 
     emb_dir = Path(args.embeddings_dir)
-    corpus_path_cache = emb_dir / f"milco_corpus_{dataset_name}.npz"
-    query_path_cache = emb_dir / f"milco_queries_{dataset_name}.npz"
-    query_ids_cache = emb_dir / f"milco_query_ids_{dataset_name}.json"
+    suffix = "_lexecho" if args.source_view else ""
+    corpus_path_cache = emb_dir / f"milco{suffix}_corpus_{dataset_name}.npz"
+    query_path_cache = emb_dir / f"milco{suffix}_queries_{dataset_name}.npz"
+    query_ids_cache = emb_dir / f"milco{suffix}_query_ids_{dataset_name}.json"
 
     cache_valid = False
     if corpus_path_cache.exists() and query_path_cache.exists() and query_ids_cache.exists():
@@ -134,15 +138,16 @@ def run_dataset(args, dataset_name: str, data_dir: str, model):
             print(f"  Queries: {query_csr.shape}, nnz={query_csr.nnz}")
 
     if not cache_valid:
-        print("Encoding corpus...")
+        sv = args.source_view
+        print(f"Encoding corpus (source_view={sv})...")
         t0 = time.time()
-        corpus_csr = encode_batched(doc_texts, model, args.batch_size, "encode_document")
+        corpus_csr = encode_batched(doc_texts, model, args.batch_size, "encode_document", source_view=sv)
         print(f"  {corpus_csr.shape}, nnz={corpus_csr.nnz} in {time.time() - t0:.1f}s")
         print(f"  Avg nnz/doc: {corpus_csr.nnz / corpus_csr.shape[0]:.0f}")
 
-        print("Encoding queries...")
+        print(f"Encoding queries (source_view={sv})...")
         t0 = time.time()
-        query_csr = encode_batched(test_query_texts, model, args.batch_size, "encode_query")
+        query_csr = encode_batched(test_query_texts, model, args.batch_size, "encode_query", source_view=sv)
         print(f"  {query_csr.shape}, nnz={query_csr.nnz} in {time.time() - t0:.1f}s")
 
         if args.save_embeddings:
@@ -174,9 +179,10 @@ def run_dataset(args, dataset_name: str, data_dir: str, model):
         pred_rankings[qid] = ranked
         pred_scores[qid] = {doc_ids[idx]: float(scores[i, idx]) for idx in top_save[i]}
 
+    method_name = "milco_lexecho" if args.source_view else "milco"
     save_predictions(
         pred_rankings, ground_truth,
-        method="milco", dataset=dataset_name, scores=pred_scores,
+        method=method_name, dataset=dataset_name, scores=pred_scores,
     )
 
 
@@ -189,6 +195,8 @@ def main():
     parser.add_argument("--save_embeddings", action="store_true")
     parser.add_argument("--embeddings_dir", default="outputs/embeddings")
     parser.add_argument("--max_relevant", type=int, default=0)
+    parser.add_argument("--source_view", action="store_true",
+                        help="Enable LexEcho: augment English projection with source-language tokens")
     args = parser.parse_args()
 
     from transformers import AutoModel

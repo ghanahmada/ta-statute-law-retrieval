@@ -108,7 +108,7 @@ def evaluate_sparse_retrieval(
     return results, scores, top_indices
 
 
-def run_dataset(args, dataset_name: str, data_dir: str):
+def run_dataset(args, dataset_name: str, data_dir: str, model=None):
     corpus_path = f"{data_dir}/corpus.jsonl"
     queries_path = f"{data_dir}/queries.jsonl"
     qrels_path = f"{data_dir}/qrels_{args.split}.tsv"
@@ -148,10 +148,10 @@ def run_dataset(args, dataset_name: str, data_dir: str):
             print(f"  Queries: {query_csr.shape}, nnz={query_csr.nnz}")
 
     if not cache_valid:
-        from sentence_transformers.sparse_encoder import SparseEncoder
-
-        print(f"\nLoading {MODEL_NAME}...")
-        model = SparseEncoder(MODEL_NAME)
+        if model is None:
+            from sentence_transformers.sparse_encoder import SparseEncoder
+            print(f"\nLoading {MODEL_NAME}...")
+            model = SparseEncoder(MODEL_NAME)
 
         print("Encoding corpus (MLM forward pass)...")
         t0 = time.time()
@@ -213,12 +213,16 @@ def main():
     parser.add_argument("--max_relevant", type=int, default=0)
     args = parser.parse_args()
 
+    from sentence_transformers.sparse_encoder import SparseEncoder
+    print(f"Loading {MODEL_NAME}...")
+    model = SparseEncoder(MODEL_NAME)
+
     if args.dataset == "all":
         for name, path in DATASETS.items():
-            run_dataset(args, name, path)
+            run_dataset(args, name, path, model)
             print()
     elif args.dataset:
-        run_dataset(args, args.dataset, DATASETS[args.dataset])
+        run_dataset(args, args.dataset, DATASETS[args.dataset], model)
     else:
         parser.error("--dataset is required")
 
