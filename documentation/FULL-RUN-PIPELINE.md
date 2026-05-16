@@ -86,7 +86,41 @@ python src/evaluate_dense_retrieval.py --dataset ilpcsr              --split tes
 
 ---
 
-## 5. JNLP Stage 1
+## 5. Learned Sparse: Neural Sparse (SPLADE)
+
+```bash
+python src/evaluate_splade.py --dataset kuhperdata-exp      --save_embeddings --max_relevant 0
+python src/evaluate_splade.py --dataset kuhperdata-summ-exp --save_embeddings --max_relevant 0
+python src/evaluate_splade.py --dataset bsard               --save_embeddings --max_relevant 0
+python src/evaluate_splade.py --dataset stard               --save_embeddings --max_relevant 0
+python src/evaluate_splade.py --dataset coliee              --save_embeddings --max_relevant 0
+```
+
+---
+
+## 6. Learned Sparse: MILCO
+
+```bash
+# Default (English-only projection)
+python src/evaluate_milco.py --dataset kuhperdata-exp      --save_embeddings --max_relevant 0
+python src/evaluate_milco.py --dataset kuhperdata-summ-exp --save_embeddings --max_relevant 0
+python src/evaluate_milco.py --dataset bsard               --save_embeddings --max_relevant 0
+python src/evaluate_milco.py --dataset stard               --save_embeddings --max_relevant 0
+python src/evaluate_milco.py --dataset coliee              --save_embeddings --max_relevant 0
+
+# LexEcho (preserves source-language tokens — Indonesian, Chinese, French)
+python src/evaluate_milco.py --dataset kuhperdata-exp      --save_embeddings --max_relevant 0 --source_view
+python src/evaluate_milco.py --dataset kuhperdata-summ-exp --save_embeddings --max_relevant 0 --source_view
+python src/evaluate_milco.py --dataset bsard               --save_embeddings --max_relevant 0 --source_view
+python src/evaluate_milco.py --dataset stard               --save_embeddings --max_relevant 0 --source_view
+python src/evaluate_milco.py --dataset coliee              --save_embeddings --max_relevant 0 --source_view
+```
+
+> Predictions saved to `outputs/predictions/milco_{dataset}.jsonl` and `milco_lexecho_{dataset}.jsonl`.
+
+---
+
+## 7. JNLP Stage 1
 
 > `bsard` and `kuhperdata-summ-exp` require `--batch_size 16` to avoid FlagEmbedding OOM crash (batch shrink bug).
 
@@ -101,7 +135,7 @@ python src/evaluate_jnlp.py --dataset ilpcsr              --stage 1 --feature_ty
 
 ---
 
-## 6. GAR / Rerank
+## 8. GAR / Rerank
 
 ```bash
 # GAR
@@ -123,7 +157,7 @@ python src/evaluate_rerank.py --dataset ilpcsr              --scorer bge --max_r
 
 ---
 
-## 7. Para-GNN + StructGNN
+## 9. Para-GNN + StructGNN
 
 > **Large-corpus datasets** (`bsard` ~22k docs, `stard` ~55k docs) require reduced batch size to avoid OOM.
 > Default params work for `kuhperdata-*` (~2k docs), `coliee` (~768 docs), and `ilpcsr`.
@@ -153,7 +187,7 @@ python src/evaluate_paragnn.py --dataset stard               --structure_mode st
 python src/evaluate_paragnn.py --dataset coliee              --structure_mode structural --max_relevant 0
 python src/evaluate_paragnn.py --dataset ilpcsr              --structure_mode structural --max_relevant 0
 
-# Export StructGNN corpus embeddings (required for Step 8 Agentic+StructGNN, kuhperdata only)
+# Export StructGNN corpus embeddings (required for Step 10 Agentic+StructGNN, kuhperdata only)
 python src/paragnn/inference.py --dataset kuhperdata-exp      --structure_mode structural --export_embeddings --max_relevant 0
 python src/paragnn/inference.py --dataset kuhperdata-summ-exp --structure_mode structural --export_embeddings --max_relevant 0
 python src/paragnn/inference.py --dataset coliee      --structure_mode structural --export_embeddings --max_relevant 0
@@ -164,7 +198,7 @@ python src/paragnn/inference.py --dataset coliee      --structure_mode structura
 
 ---
 
-## 8. Agentic Retrieval (kuhperdata only)
+## 10. Agentic Retrieval (kuhperdata only)
 
 > **Note:** `--served-model-name` in vLLM must match `--model` in client calls exactly.
 > vLLM at 0.85 utilization leaves room for BGE-M3 encoder on the same GPU.
@@ -223,7 +257,7 @@ python src/context_1/evaluate_context1.py \
 
 ---
 
-## 9. Ablation — Agentic Flat (all supported datasets)
+## 11. Ablation — Agentic Flat (all supported datasets)
 
 Disables hierarchy, coverage gate, and similarity guard. `ilpcsr` not supported by context_1.
 

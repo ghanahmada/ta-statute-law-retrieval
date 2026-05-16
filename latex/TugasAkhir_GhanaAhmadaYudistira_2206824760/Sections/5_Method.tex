@@ -56,6 +56,19 @@ We compare against four baselines using the same evaluation protocol.
 
 \noindent\textbf{JNLP Stage~1 \citep{jnlp}:} CatBoost classifier on element-wise product features of BGE-M3 query and document embeddings.
 
+\noindent\textbf{Neural Sparse \citep{opensearch_sparse}:} Multilingual learned sparse retrieval. Documents are encoded via an MLM forward pass with $\log(1 + \text{ReLU}(\cdot))$ activation and max-ratio pruning; queries use inference-free IDF-based term weights. Relevance is scored by sparse dot product over the shared vocabulary space.
+
+\noindent\textbf{MILCO \citep{milco}:} Multilingual learned sparse retrieval via language-agnostic projection into English lexical space. A multilingual connector maps hidden states to an English MLM head, and a LexEcho head augments the English representation with source-language token weights to preserve entities that lack English equivalents. Scored by sparse dot product.
+
+\subsection{Agentic Retrieval}
+\label{sec:agentic}
+
+We evaluate an LLM-orchestrated retrieval agent that replaces single-pass scoring with an iterative observe-reason-act loop. The agent receives a query and accesses the corpus through four tools: \texttt{search\_corpus} (hybrid BM25 + StructGNN retrieval), \texttt{grep\_corpus} (lexical pattern matching), \texttt{read\_document} (full article text), and \texttt{prune\_chunks} (remove low-relevance passages from context).
+
+The agent follows a structured reasoning protocol. In the first turn, it performs \emph{frame enumeration}: identifying the legal interests at stake and enumerating doctrinal frames (bodies of law) that could govern each interest. Subsequent turns issue targeted searches derived from (frame, doctrine) pairs rather than surface query terms. Before concluding, the agent produces a coverage table verifying that every enumerated frame has been either covered (provision found) or explicitly rejected.
+
+The agent operates with a maximum of 10 turns. A similarity guard (cosine threshold 0.92) prevents near-duplicate provisions from entering the selection set, and a coverage gate ensures all enumerated frames are addressed before the agent terminates.
+
 \subsection{Evaluation Protocol}
 
 We report MRR@10, Recall@10, and Hit Rate. Each method is evaluated on both KUHPerdata variants (shared relevance judgments) and on BSARD and STARD at their native query levels. All datasets use the same train and test split protocol.
