@@ -553,7 +553,9 @@ def main():
     parser.add_argument("--analysis", default="all",
                         choices=["similarity", "before_after", "neighborhood", "separation", "collapse", "all"])
     parser.add_argument("--model_type", default="adapted_struct",
-                        help="Subfolder under outputs/paragnn/<dataset>/ containing gnn_corpus_embeddings.npy")
+                        help="Subfolder under outputs/paragnn/<dataset>/ containing StructGNN embeddings")
+    parser.add_argument("--paragnn_type", default="adapted",
+                        help="Subfolder under outputs/paragnn/<dataset>/ containing Para-GNN embeddings")
     parser.add_argument("--output_dir", default=str(OUTPUT_DIR))
     parser.add_argument("--no_plots", action="store_true")
     args = parser.parse_args()
@@ -591,7 +593,7 @@ def main():
                                   if not isinstance(v, list)}
 
     if run_ba:
-        paragnn_emb = load_gnn_embeddings(dataset, "adapted")
+        paragnn_emb = load_gnn_embeddings(dataset, args.paragnn_type)
         if paragnn_emb is not None:
             results["before_after"] = analysis_before_after(dataset, doc_ids, gnn_emb, paragnn_emb, qrels)
         else:
