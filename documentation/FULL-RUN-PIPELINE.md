@@ -187,6 +187,24 @@ python src/evaluate_paragnn.py --dataset stard               --structure_mode st
 python src/evaluate_paragnn.py --dataset coliee              --structure_mode structural --max_relevant 0
 python src/evaluate_paragnn.py --dataset ilpcsr              --structure_mode structural --max_relevant 0
 
+# StructGNN + ContraNorm ablation (Guo et al., ICLR 2023)
+# Paper recommends scale in {0.2, 0.5, 0.8, 1.0} for GNNs, tau=1.0
+python src/evaluate_paragnn.py --dataset kuhperdata-exp      --structure_mode structural --max_relevant 0 --contranorm_scale 0.1
+python src/evaluate_paragnn.py --dataset kuhperdata-exp      --structure_mode structural --max_relevant 0 --contranorm_scale 0.2
+python src/evaluate_paragnn.py --dataset kuhperdata-exp      --structure_mode structural --max_relevant 0 --contranorm_scale 0.5
+python src/evaluate_paragnn.py --dataset kuhperdata-exp      --structure_mode structural --max_relevant 0 --contranorm_scale 1.0
+
+python src/evaluate_paragnn.py --dataset kuhperdata-summ-exp --structure_mode structural --max_relevant 0 --contranorm_scale 0.1
+python src/evaluate_paragnn.py --dataset kuhperdata-summ-exp --structure_mode structural --max_relevant 0 --contranorm_scale 0.2
+python src/evaluate_paragnn.py --dataset kuhperdata-summ-exp --structure_mode structural --max_relevant 0 --contranorm_scale 0.5
+python src/evaluate_paragnn.py --dataset kuhperdata-summ-exp --structure_mode structural --max_relevant 0 --contranorm_scale 1.0
+
+python src/evaluate_paragnn.py --dataset bsard               --structure_mode structural --max_relevant 0 --batch_size 64 --num_negatives 99 --contranorm_scale 0.2
+python src/evaluate_paragnn.py --dataset bsard               --structure_mode structural --max_relevant 0 --batch_size 64 --num_negatives 99 --contranorm_scale 0.5
+
+python src/evaluate_paragnn.py --dataset stard               --structure_mode structural --max_relevant 0 --batch_size 64 --num_negatives 99 --contranorm_scale 0.2
+python src/evaluate_paragnn.py --dataset stard               --structure_mode structural --max_relevant 0 --batch_size 64 --num_negatives 99 --contranorm_scale 0.5
+
 # Export StructGNN corpus embeddings (required for Step 10 Agentic+StructGNN, kuhperdata only)
 python src/paragnn/inference.py --dataset kuhperdata-exp      --structure_mode structural --export_embeddings --max_relevant 0
 python src/paragnn/inference.py --dataset kuhperdata-summ-exp --structure_mode structural --export_embeddings --max_relevant 0
