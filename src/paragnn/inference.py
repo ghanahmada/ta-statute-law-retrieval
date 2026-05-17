@@ -178,10 +178,10 @@ def main():
     elif mode == "structural":
         method_suffix = f"{method_suffix}_struct"
 
+    base_dir = f"{config.output_dir}/{args.dataset}"
     if args.model_dir:
         model_dir = args.model_dir
     else:
-        base_dir = f"{config.output_dir}/{args.dataset}"
         model_dir = f"{base_dir}/{method_suffix}"
     model_path = f"{model_dir}/best_model.pt"
 
