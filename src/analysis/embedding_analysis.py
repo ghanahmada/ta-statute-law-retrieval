@@ -118,7 +118,8 @@ def get_hard_negatives(qrels: dict, bm25_rankings: dict, doc_id_to_idx: dict, to
 
 
 def analysis_similarity(dataset: str, doc_ids: list[str], gnn_emb: np.ndarray,
-                         bge_emb: np.ndarray, qrels: dict, n_random: int = 1000):
+                         bge_emb: np.ndarray, qrels: dict, n_random: int = 1000,
+                         paragnn_emb: np.ndarray = None):
     """A. Compare cosine similarity of co-relevant vs hard-negative pairs."""
     print(f"\n{'=' * 80}")
     print(f"  ANALYSIS A: EMBEDDING SIMILARITY — {dataset}")
@@ -131,6 +132,7 @@ def analysis_similarity(dataset: str, doc_ids: list[str], gnn_emb: np.ndarray,
     # Co-relevant pairs
     corel_gnn_sims = []
     corel_bge_sims = []
+    corel_para_sims = []
     for qid, rel_docs in qrels.items():
         valid = [d for d in rel_docs if d in doc_id_to_idx]
         if len(valid) < 2:
@@ -139,10 +141,13 @@ def analysis_similarity(dataset: str, doc_ids: list[str], gnn_emb: np.ndarray,
             i, j = doc_id_to_idx[d_i], doc_id_to_idx[d_j]
             corel_gnn_sims.append(cosine_sim(gnn_emb[i], gnn_emb[j]))
             corel_bge_sims.append(cosine_sim(bge_emb[i], bge_emb[j]))
+            if paragnn_emb is not None:
+                corel_para_sims.append(cosine_sim(paragnn_emb[i], paragnn_emb[j]))
 
     # Hard-negative pairs (relevant doc vs BM25-retrieved non-relevant doc)
     hardneg_gnn_sims = []
     hardneg_bge_sims = []
+    hardneg_para_sims = []
     rng = np.random.default_rng(42)
     for qid, rel_docs in qrels.items():
         valid_rel = [d for d in rel_docs if d in doc_id_to_idx]
@@ -156,15 +161,20 @@ def analysis_similarity(dataset: str, doc_ids: list[str], gnn_emb: np.ndarray,
                 neg_idx = doc_id_to_idx[neg_doc]
                 hardneg_gnn_sims.append(cosine_sim(gnn_emb[rel_idx], gnn_emb[neg_idx]))
                 hardneg_bge_sims.append(cosine_sim(bge_emb[rel_idx], bge_emb[neg_idx]))
+                if paragnn_emb is not None:
+                    hardneg_para_sims.append(cosine_sim(paragnn_emb[rel_idx], paragnn_emb[neg_idx]))
 
     # Random pairs (for reference)
     random_gnn_sims = []
     random_bge_sims = []
+    random_para_sims = []
     n_docs = len(doc_ids)
     for _ in range(n_random):
         i, j = rng.choice(n_docs, size=2, replace=False)
         random_gnn_sims.append(cosine_sim(gnn_emb[i], gnn_emb[j]))
         random_bge_sims.append(cosine_sim(bge_emb[i], bge_emb[j]))
+        if paragnn_emb is not None:
+            random_para_sims.append(cosine_sim(paragnn_emb[i], paragnn_emb[j]))
 
     print(f"\n  Co-relevant pairs: {len(corel_gnn_sims)}")
     print(f"  Hard-negative pairs: {len(hardneg_gnn_sims)}")
@@ -172,15 +182,20 @@ def analysis_similarity(dataset: str, doc_ids: list[str], gnn_emb: np.ndarray,
     print(f"\n  {'':20} {'Co-relevant':>12} {'Hard-neg':>12} {'Random':>12}")
     print(f"  {'-'*60}")
     print(f"  {'GNN (StructGNN)':<20} {np.mean(corel_gnn_sims):>12.4f} {np.mean(hardneg_gnn_sims):>12.4f} {np.mean(random_gnn_sims):>12.4f}")
+    if paragnn_emb is not None:
+        print(f"  {'GNN (Para-GNN)':<20} {np.mean(corel_para_sims):>12.4f} {np.mean(hardneg_para_sims):>12.4f} {np.mean(random_para_sims):>12.4f}")
     print(f"  {'BGE-M3 (raw)':<20} {np.mean(corel_bge_sims):>12.4f} {np.mean(hardneg_bge_sims):>12.4f} {np.mean(random_bge_sims):>12.4f}")
     print(f"\n  Separation (co-relevant - hard-negative):")
     gnn_sep = np.mean(corel_gnn_sims) - np.mean(hardneg_gnn_sims)
     bge_sep = np.mean(corel_bge_sims) - np.mean(hardneg_bge_sims)
     print(f"    GNN:   {gnn_sep:+.4f}")
+    if paragnn_emb is not None:
+        para_sep = np.mean(corel_para_sims) - np.mean(hardneg_para_sims)
+        print(f"    Para:  {para_sep:+.4f}")
     print(f"    BGE:   {bge_sep:+.4f}")
     print(f"    Ratio: {gnn_sep / max(abs(bge_sep), 1e-6):.1f}x")
 
-    return {
+    result = {
         "corel_gnn_mean": float(np.mean(corel_gnn_sims)),
         "corel_bge_mean": float(np.mean(corel_bge_sims)),
         "hardneg_gnn_mean": float(np.mean(hardneg_gnn_sims)),
@@ -194,6 +209,12 @@ def analysis_similarity(dataset: str, doc_ids: list[str], gnn_emb: np.ndarray,
         "hardneg_gnn_sims": hardneg_gnn_sims,
         "hardneg_bge_sims": hardneg_bge_sims,
     }
+    if paragnn_emb is not None:
+        result.update({
+            "corel_para_sims": corel_para_sims,
+            "hardneg_para_sims": hardneg_para_sims,
+        })
+    return result
 
 
 def analysis_before_after(dataset: str, doc_ids: list[str], structgnn_emb: np.ndarray,
@@ -502,7 +523,9 @@ def generate_plots(dataset: str, doc_ids: list[str], gnn_emb: np.ndarray,
 
     # Plot 1: Similarity histogram (co-relevant vs hard-negative)
     if sim_results and "corel_gnn_sims" in sim_results:
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+        has_para = "corel_para_sims" in sim_results
+        n_panels = 3 if has_para else 2
+        fig, axes = plt.subplots(1, n_panels, figsize=(6 * n_panels, 5))
 
         axes[0].hist(sim_results["corel_bge_sims"], bins=30, alpha=0.7, label="Co-relevant", color="steelblue")
         axes[0].hist(sim_results["hardneg_bge_sims"], bins=30, alpha=0.5, label="Hard-negative", color="salmon")
@@ -510,11 +533,19 @@ def generate_plots(dataset: str, doc_ids: list[str], gnn_emb: np.ndarray,
         axes[0].set_xlabel("Cosine Similarity")
         axes[0].legend()
 
-        axes[1].hist(sim_results["corel_gnn_sims"], bins=30, alpha=0.7, label="Co-relevant", color="darkorange")
-        axes[1].hist(sim_results["hardneg_gnn_sims"], bins=30, alpha=0.5, label="Hard-negative", color="salmon")
-        axes[1].set_title("StructGNN")
-        axes[1].set_xlabel("Cosine Similarity")
-        axes[1].legend()
+        if has_para:
+            axes[1].hist(sim_results["corel_para_sims"], bins=30, alpha=0.7, label="Co-relevant", color="mediumpurple")
+            axes[1].hist(sim_results["hardneg_para_sims"], bins=30, alpha=0.5, label="Hard-negative", color="salmon")
+            axes[1].set_title("Para-GNN")
+            axes[1].set_xlabel("Cosine Similarity")
+            axes[1].legend()
+
+        gnn_ax = axes[2] if has_para else axes[1]
+        gnn_ax.hist(sim_results["corel_gnn_sims"], bins=30, alpha=0.7, label="Co-relevant", color="darkorange")
+        gnn_ax.hist(sim_results["hardneg_gnn_sims"], bins=30, alpha=0.5, label="Hard-negative", color="salmon")
+        gnn_ax.set_title("StructGNN")
+        gnn_ax.set_xlabel("Cosine Similarity")
+        gnn_ax.legend()
 
         plt.suptitle(f"Cosine Similarity: Co-relevant vs Hard-negative — {dataset}")
         plt.tight_layout()
@@ -586,18 +617,22 @@ def main():
         print(f"  Loading BGE-M3 embeddings ({len(doc_ids)} docs)...", flush=True)
         bge_emb = load_bge_embeddings(dataset, doc_ids)
 
+    # Load Para-GNN embeddings if needed for similarity plot or before_after
+    paragnn_emb = None
+    if run_sim or run_ba:
+        paragnn_emb = load_gnn_embeddings(dataset, args.paragnn_type)
+        if paragnn_emb is None and run_ba:
+            print(f"\n  SKIP before_after: no Para-GNN embeddings for {dataset}")
+
     sim_results_full = None
     if run_sim and bge_emb is not None:
-        sim_results_full = analysis_similarity(dataset, doc_ids, gnn_emb, bge_emb, qrels)
+        sim_results_full = analysis_similarity(dataset, doc_ids, gnn_emb, bge_emb, qrels,
+                                                paragnn_emb=paragnn_emb)
         results["similarity"] = {k: v for k, v in sim_results_full.items()
                                   if not isinstance(v, list)}
 
-    if run_ba:
-        paragnn_emb = load_gnn_embeddings(dataset, args.paragnn_type)
-        if paragnn_emb is not None:
-            results["before_after"] = analysis_before_after(dataset, doc_ids, gnn_emb, paragnn_emb, qrels)
-        else:
-            print(f"\n  SKIP before_after: no Para-GNN embeddings for {dataset}")
+    if run_ba and paragnn_emb is not None:
+        results["before_after"] = analysis_before_after(dataset, doc_ids, gnn_emb, paragnn_emb, qrels)
 
     if run_nn and bge_emb is not None:
         results["neighborhood"] = analysis_neighborhood(dataset, doc_ids, gnn_emb, bge_emb, qrels)
