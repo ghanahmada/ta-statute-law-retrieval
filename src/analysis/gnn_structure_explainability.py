@@ -82,6 +82,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+import matplotlib
+matplotlib.rcParams["font.family"] = ["DejaVu Sans", "Noto Sans CJK SC", "sans-serif"]
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -537,24 +539,29 @@ def plot_article_neighborhood_heatmap(
         print(f"  [skip] rq1b heatmap — found only {len(found)} articles")
         return
 
-    titles = {did: corpus.get(did, {}).get("title", did) for did in found.values()}
-    labels = [titles[found[num]] for num in found]
+    labels = [f"{label} {num}" for num in found]
     indices = [idx_map[found[num]] for num in found]
 
     para_sim = compute_pairwise_cosine(paragnn_emb, indices)
     struct_sim = compute_pairwise_cosine(structgnn_emb, indices)
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    n = len(labels)
+    cell_size = max(0.8, 6.0 / n)
+    fig_w = 2 * (n * cell_size + 2.5)
+    fig_h = n * cell_size + 1.5
+    fig, axes = plt.subplots(1, 2, figsize=(fig_w, fig_h))
+    annot_size = max(7, min(12, int(72 / n)))
     for ax, sim, title in zip(axes, [para_sim, struct_sim], ["Para-GNN", "StructGNN"]):
         sns.heatmap(
             pd.DataFrame(sim, index=labels, columns=labels),
             ax=ax, annot=True, fmt=".2f", cmap="YlOrRd",
             vmin=0.0, vmax=1.0, square=True,
             linewidths=0.5, cbar_kws={"shrink": 0.7},
+            annot_kws={"size": annot_size},
         )
-        ax.set_title(f"{title}", fontweight="bold")
-        ax.tick_params(axis="x", rotation=45)
-        ax.tick_params(axis="y", rotation=0)
+        ax.set_title(f"{title}", fontweight="bold", fontsize=13)
+        ax.tick_params(axis="x", rotation=45, labelsize=10)
+        ax.tick_params(axis="y", rotation=0, labelsize=10)
 
     fig.suptitle(
         "RQ1b — Embedding Neighbourhood: Pairwise Cosine Similarity\n"
