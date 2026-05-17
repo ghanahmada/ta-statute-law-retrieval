@@ -157,6 +157,8 @@ def main():
                         help="Export GNN corpus embeddings as .npy for hybrid search")
     parser.add_argument("--model_dir", type=str, default=None,
                         help="Override model directory (default: auto-derived from dataset/structure_mode)")
+    parser.add_argument("--alpha", type=float, default=None,
+                        help="Override alpha (skip val grid search, use this value directly)")
     args = parser.parse_args()
 
     cfg = DATASETS[args.dataset]
@@ -295,31 +297,42 @@ def main():
     bm25_val_cpu = bm25_val_scores.cpu()
     bm25_test_cpu = bm25_test_scores.cpu()
 
-    # Sweep alpha on VAL (not test — no leakage)
-    print("\nAlpha grid search on VAL (original):")
-    best_alpha, best_recall = grid_search_alpha(gnn_val, bm25_val_cpu, val_gold_matrix)
-    print(f"  Best: alpha={best_alpha:.1f}, Recall@10={best_recall:.4f}")
-
-    print("Alpha grid search on VAL (debiased):")
-    best_alpha_d, best_recall_d = grid_search_alpha(gnn_val_debiased, bm25_val_cpu, val_gold_matrix)
-    print(f"  Best: alpha={best_alpha_d:.1f}, Recall@10={best_recall_d:.4f}")
-
-    # Pick best variant based on val
-    use_debiased = best_recall_d > best_recall
-    if use_debiased:
-        final_gnn = gnn_test_debiased
-        final_alpha = best_alpha_d
-        final_val_recall = best_recall_d
-    else:
+    if args.alpha is not None:
+        final_alpha = args.alpha
         final_gnn = gnn_test
-        final_alpha = best_alpha
-        final_val_recall = best_recall
+        use_debiased = False
+        final_scores = final_alpha * final_gnn + (1 - final_alpha) * bm25_test_cpu
+        final_recall = compute_recall(final_scores, test_gold_matrix)
+        print(f"\nUser-specified alpha={final_alpha:.1f}")
+        print(f"Test Recall@10: {final_recall:.4f}")
+        best_alpha = final_alpha
+        best_alpha_d = final_alpha
+    else:
+        # Sweep alpha on VAL (not test — no leakage)
+        print("\nAlpha grid search on VAL (original):")
+        best_alpha, best_recall = grid_search_alpha(gnn_val, bm25_val_cpu, val_gold_matrix)
+        print(f"  Best: alpha={best_alpha:.1f}, Recall@10={best_recall:.4f}")
 
-    final_scores = final_alpha * final_gnn + (1 - final_alpha) * bm25_test_cpu
-    final_recall = compute_recall(final_scores, test_gold_matrix)
+        print("Alpha grid search on VAL (debiased):")
+        best_alpha_d, best_recall_d = grid_search_alpha(gnn_val_debiased, bm25_val_cpu, val_gold_matrix)
+        print(f"  Best: alpha={best_alpha_d:.1f}, Recall@10={best_recall_d:.4f}")
 
-    print(f"\nVal-selected: alpha={final_alpha:.1f} ({'debiased' if use_debiased else 'original'}), val Recall@10={final_val_recall:.4f}")
-    print(f"Test Recall@10 (val-frozen alpha): {final_recall:.4f}")
+        # Pick best variant based on val
+        use_debiased = best_recall_d > best_recall
+        if use_debiased:
+            final_gnn = gnn_test_debiased
+            final_alpha = best_alpha_d
+            final_val_recall = best_recall_d
+        else:
+            final_gnn = gnn_test
+            final_alpha = best_alpha
+            final_val_recall = best_recall
+
+        final_scores = final_alpha * final_gnn + (1 - final_alpha) * bm25_test_cpu
+        final_recall = compute_recall(final_scores, test_gold_matrix)
+
+        print(f"\nVal-selected: alpha={final_alpha:.1f} ({'debiased' if use_debiased else 'original'}), val Recall@10={final_val_recall:.4f}")
+        print(f"Test Recall@10 (val-frozen alpha): {final_recall:.4f}")
 
     # Export rankings
     out_path = f"{model_dir}/rankings_top{args.top_k}.jsonl"
