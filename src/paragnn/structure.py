@@ -23,6 +23,14 @@ def parse_act_name(title: str, dataset: str) -> str:
     this statute belongs to.
     """
     if dataset.startswith("kuhperdata"):
+        # New format: "Buku Kesatu Orang, Bab I ..., Pasal X"
+        # Group by bab for meaningful structural clusters
+        m = re.search(r"(Bab\s+\S+)", title)
+        if m:
+            buku_m = re.match(r"(Buku\s+\S+)", title)
+            buku = buku_m.group(1) if buku_m else ""
+            return f"{buku} {m.group(1)}".strip()
+        # Fallback for old format "Pasal X"
         return "KUHPerdata"
 
     if dataset == "bsard":
