@@ -156,7 +156,7 @@ def run_dataset(args, dataset_name: str, data_dir: str, model=None):
         print("Encoding corpus (MLM forward pass)...")
         t0 = time.time()
         doc_emb = model.encode_document(doc_texts, batch_size=args.batch_size)
-        vocab_size = model.get_vocab_size()
+        vocab_size = model.tokenizer.vocab_size
         corpus_csr = sparse_output_to_csr(doc_emb, vocab_size)
         print(f"  {corpus_csr.shape}, nnz={corpus_csr.nnz} in {time.time() - t0:.1f}s")
         print(f"  Avg nnz/doc: {corpus_csr.nnz / corpus_csr.shape[0]:.0f}")
