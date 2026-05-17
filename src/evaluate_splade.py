@@ -39,7 +39,7 @@ def sparse_output_to_csr(embeddings, vocab_size: int) -> sp.csr_matrix:
 
     if isinstance(embeddings, torch.Tensor):
         if embeddings.is_sparse:
-            embeddings = embeddings.coalesce()
+            embeddings = embeddings.coalesce().cpu()
             indices = embeddings.indices().numpy()
             values = embeddings.values().numpy()
             shape = (embeddings.shape[0], vocab_size)
@@ -47,7 +47,7 @@ def sparse_output_to_csr(embeddings, vocab_size: int) -> sp.csr_matrix:
                 (values, (indices[0], indices[1])), shape=shape,
             )
         else:
-            return sp.csr_matrix(embeddings.numpy())
+            return sp.csr_matrix(embeddings.cpu().numpy())
 
     if isinstance(embeddings, np.ndarray):
         return sp.csr_matrix(embeddings)
