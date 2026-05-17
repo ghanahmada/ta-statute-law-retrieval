@@ -552,6 +552,8 @@ def main():
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--analysis", default="all",
                         choices=["similarity", "before_after", "neighborhood", "separation", "collapse", "all"])
+    parser.add_argument("--model_type", default="adapted_struct",
+                        help="Subfolder under outputs/paragnn/<dataset>/ containing gnn_corpus_embeddings.npy")
     parser.add_argument("--output_dir", default=str(OUTPUT_DIR))
     parser.add_argument("--no_plots", action="store_true")
     args = parser.parse_args()
@@ -564,7 +566,7 @@ def main():
     doc_ids = load_doc_ids(dataset)
     qrels = load_qrels_test(dataset)
 
-    gnn_emb = load_gnn_embeddings(dataset, "adapted_struct")
+    gnn_emb = load_gnn_embeddings(dataset, args.model_type)
     if gnn_emb is None:
         sys.exit(f"  ERROR: No StructGNN embeddings for {dataset}")
 
