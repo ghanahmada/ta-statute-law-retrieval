@@ -56,6 +56,8 @@ def main():
                         help="ContraNorm scale (0=off, paper recommends 0.2-1.0 for GNNs)")
     parser.add_argument("--contranorm_tau", type=float, default=1.0,
                         help="ContraNorm temperature")
+    parser.add_argument("--tag", type=str, default="",
+                        help="Tag appended to output dir and prediction filename (e.g. 'enriched')")
     args = parser.parse_args()
 
     datasets = DATASETS if args.dataset == "all" else {args.dataset: DATASETS[args.dataset]}
@@ -89,6 +91,7 @@ def main():
             patience=args.patience,
             contranorm_scale=args.contranorm_scale,
             contranorm_tau=args.contranorm_tau,
+            tag=args.tag,
         )
         output_dir = f"{config.output_dir}/{name}"
 
@@ -205,6 +208,8 @@ def main():
             use_fact_types=args.use_fact_types,
         )
         method_name = {"none": "paragnn", "proximity": "proxgnn", "structural": "structgnn"}[args.structure_mode]
+        if args.tag:
+            method_name = f"{method_name}_{args.tag}"
 
         best_recall, rankings, ground_truth, pred_scores = trainer.train(
             train_dataset=train_dataset,

@@ -80,6 +80,8 @@ class ParaGNNTrainer:
             method_suffix = f"{method_suffix}_facts"
         if self.config.contranorm_scale > 0:
             method_suffix = f"{method_suffix}_cn{self.config.contranorm_scale}"
+        if self.config.tag:
+            method_suffix = f"{method_suffix}_{self.config.tag}"
         output_dir = f"{self.config.output_dir}/{self.config.dataset}/{method_suffix}"
         os.makedirs(output_dir, exist_ok=True)
 

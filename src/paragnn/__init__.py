@@ -72,6 +72,7 @@ class ParaGNNConfig:
     dropout: float = 0.1
     contranorm_scale: float = 0.0  # ContraNorm scale (0=off; GNN paper: {0.2,0.5,0.8,1.0}; Transformer paper: {0.005,0.01,0.05,0.1,0.2})
     contranorm_tau: float = 1.0  # ContraNorm temperature (paper default: 1.0)
+    tag: str = ""  # Optional tag for output dir and prediction filename
 
     # Training
     epochs: int = 100
