@@ -85,7 +85,9 @@ class ParaGNNTrainer:
         struct_input_dim = dim + self.config.act_dim + self.config.pos_dim
         model = CaseGnn(in_dim=dim, h_dim=dim, out_dim=dim,
                         dropout=self.config.dropout, num_head=self.config.num_heads,
-                        structure_mode=mode, struct_input_dim=struct_input_dim)
+                        structure_mode=mode, struct_input_dim=struct_input_dim,
+                        contranorm_scale=self.config.contranorm_scale,
+                        contranorm_tau=self.config.contranorm_tau)
 
         start_epoch = 0
         best_metric = 0
@@ -321,7 +323,9 @@ class ParaGNNTrainer:
         struct_input_dim = dim + self.config.act_dim + self.config.pos_dim
         test_model = TestCaseGnn(in_dim=dim, h_dim=dim, out_dim=dim,
                                   dropout=self.config.dropout, num_head=self.config.num_heads,
-                                  structure_mode=mode, struct_input_dim=struct_input_dim)
+                                  structure_mode=mode, struct_input_dim=struct_input_dim,
+                                  contranorm_scale=self.config.contranorm_scale,
+                                  contranorm_tau=self.config.contranorm_tau)
         test_model.load_state_dict(train_model.state_dict(), strict=False)
         test_model = test_model.to(self.device)
         test_model.eval()

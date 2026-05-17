@@ -52,6 +52,10 @@ def main():
                         help="Early stopping patience (epochs without val improvement)")
     parser.add_argument("--use_fact_types", action="store_true",
                         help="Use fact-type edge features for query paragraphs (requires precompute --encode_fact_types)")
+    parser.add_argument("--contranorm_scale", type=float, default=0.0,
+                        help="ContraNorm scale (0=off, paper recommends 0.2-1.0 for GNNs)")
+    parser.add_argument("--contranorm_tau", type=float, default=1.0,
+                        help="ContraNorm temperature")
     args = parser.parse_args()
 
     datasets = DATASETS if args.dataset == "all" else {args.dataset: DATASETS[args.dataset]}
@@ -83,6 +87,8 @@ def main():
             num_negatives=args.num_negatives,
             learning_rate=args.lr,
             patience=args.patience,
+            contranorm_scale=args.contranorm_scale,
+            contranorm_tau=args.contranorm_tau,
         )
         output_dir = f"{config.output_dir}/{name}"
 

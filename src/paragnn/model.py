@@ -46,14 +46,17 @@ class CaseGnn(nn.Module):
     """Training model: computes loss from query-candidate pairs + BM25 scores."""
 
     def __init__(self, in_dim=1024, h_dim=1024, out_dim=1024, dropout=0.1,
-                 num_head=1, structure_mode="none", struct_input_dim=1120):
+                 num_head=1, structure_mode="none", struct_input_dim=1120,
+                 contranorm_scale=0.0, contranorm_tau=1.0):
         super().__init__()
         self.structure_mode = structure_mode
 
         if structure_mode == "structural":
             self.struct_proj = StructureProjection(struct_input_dim, in_dim)
 
-        self.eugat_gnn = EUGATGNN(in_dim, h_dim, out_dim, dropout, num_head)
+        self.eugat_gnn = EUGATGNN(in_dim, h_dim, out_dim, dropout, num_head,
+                                   contranorm_scale=contranorm_scale,
+                                   contranorm_tau=contranorm_tau)
         self.ffnn = SimpleFFNN(input_dim=in_dim)
         self.loss = nn.CrossEntropyLoss(reduction="none")
 
@@ -98,14 +101,17 @@ class TestCaseGnn(nn.Module):
     """Inference model: scores all candidates for all queries."""
 
     def __init__(self, in_dim=1024, h_dim=1024, out_dim=1024, dropout=0.1,
-                 num_head=1, structure_mode="none", struct_input_dim=1120):
+                 num_head=1, structure_mode="none", struct_input_dim=1120,
+                 contranorm_scale=0.0, contranorm_tau=1.0):
         super().__init__()
         self.structure_mode = structure_mode
 
         if structure_mode == "structural":
             self.struct_proj = StructureProjection(struct_input_dim, in_dim)
 
-        self.eugat_gnn = EUGATGNN(in_dim, h_dim, out_dim, dropout, num_head)
+        self.eugat_gnn = EUGATGNN(in_dim, h_dim, out_dim, dropout, num_head,
+                                   contranorm_scale=contranorm_scale,
+                                   contranorm_tau=contranorm_tau)
         self.ffnn = SimpleFFNN(input_dim=in_dim)
 
     def forward(self, bm25_scores, graph):

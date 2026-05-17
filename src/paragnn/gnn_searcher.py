@@ -46,6 +46,8 @@ class StructGNNSearcher:
         structure_mode: str = "structural",
         act_dim: int = 64,
         pos_dim: int = 32,
+        contranorm_scale: float = 0.0,
+        contranorm_tau: float = 1.0,
         device: str = "cpu",
         reranker=None,
     ):
@@ -67,6 +69,8 @@ class StructGNNSearcher:
             dropout=0.1, num_head=1,
             structure_mode=structure_mode,
             struct_input_dim=struct_input_dim,
+            contranorm_scale=contranorm_scale,
+            contranorm_tau=contranorm_tau,
         )
         state_dict = torch.load(model_path, map_location="cpu")
         self.model.load_state_dict(state_dict, strict=False)

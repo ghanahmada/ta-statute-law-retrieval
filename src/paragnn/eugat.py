@@ -168,10 +168,34 @@ class EUGATConv(nn.Module):
             return rst, f_out
 
 
+class ContraNorm(nn.Module):
+    """ContraNorm layer (Guo et al., ICLR 2023) to prevent dimensional collapse.
+
+    Pushes apart representations that are too similar by subtracting a weighted
+    average of similar nodes, spreading embeddings more uniformly in the space.
+    """
+
+    def __init__(self, dim, scale=0.5, tau=1.0):
+        super().__init__()
+        self.scale = scale
+        self.tau = tau
+        self.layer_norm = nn.LayerNorm(dim)
+
+    def forward(self, x):
+        norm_x = F.normalize(x, dim=-1)
+        sim = th.mm(norm_x, norm_x.t()) / self.tau
+        sim = F.softmax(sim, dim=-1)
+        x_neg = th.mm(sim, x)
+        x = (1 + self.scale) * x - self.scale * x_neg
+        x = self.layer_norm(x)
+        return x
+
+
 class EUGATGNN(nn.Module):
     """2-layer Edge-Updated Graph Attention Network with residual connections."""
 
-    def __init__(self, in_dim, h_dim, out_dim, dropout, num_head):
+    def __init__(self, in_dim, h_dim, out_dim, dropout, num_head,
+                 contranorm_scale=0.0, contranorm_tau=1.0):
         super(EUGATGNN, self).__init__()
         self.hidden_size = h_dim
         self.in_dim = in_dim
@@ -185,6 +209,11 @@ class EUGATGNN(nn.Module):
         )
         self.embedding_dropout1 = nn.Dropout(dropout)
         self.embedding_dropout2 = nn.Dropout(dropout)
+
+        self.use_contranorm = contranorm_scale > 0
+        if self.use_contranorm:
+            self.contranorm = ContraNorm(out_dim, scale=contranorm_scale, tau=contranorm_tau)
+
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -201,6 +230,9 @@ class EUGATGNN(nn.Module):
         h_1 = self.embedding_dropout2(h_1)
         h_0 = F.relu(h_0) + node_feats  # residual
         h_1 = F.relu(h_1) + edge_feats  # residual
+
+        if self.use_contranorm:
+            h_0 = self.contranorm(h_0)
 
         # Layer 2
         h = self.EUGATConv2(g, h_0, h_1)

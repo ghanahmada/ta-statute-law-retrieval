@@ -146,6 +146,10 @@ def main():
                         choices=["none", "proximity", "structural"])
     parser.add_argument("--act_dim", type=int, default=64)
     parser.add_argument("--pos_dim", type=int, default=32)
+    parser.add_argument("--contranorm_scale", type=float, default=0.0,
+                        help="ContraNorm scale (0=off, paper uses 0.2-1.0 for GNNs)")
+    parser.add_argument("--contranorm_tau", type=float, default=1.0,
+                        help="ContraNorm temperature")
     parser.add_argument("--max_relevant", type=int, default=0)
     parser.add_argument("--top_k", type=int, default=100)
     parser.add_argument("--proximity_radius", type=int, default=50)
@@ -262,6 +266,8 @@ def main():
         in_dim=dim, h_dim=dim, out_dim=dim,
         dropout=config.dropout, num_head=config.num_heads,
         structure_mode=mode, struct_input_dim=struct_input_dim,
+        contranorm_scale=args.contranorm_scale,
+        contranorm_tau=args.contranorm_tau,
     )
     state_dict = torch.load(model_path, map_location="cpu")
     model.load_state_dict(state_dict, strict=False)
