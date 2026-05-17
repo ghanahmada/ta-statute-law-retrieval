@@ -519,17 +519,26 @@ def plot_article_neighborhood_heatmap(
     corpus: dict,
     article_numbers: list[str],
     out_path: Path,
-    label: str = "KUHPerdata Pasal",
+    label: str = "Article",
 ):
     idx_map = {d: i for i, d in enumerate(corpus_ids)}
-    num_to_docid = find_article_by_number(corpus, article_numbers)
 
-    found = {num: num_to_docid[num] for num in article_numbers if num in num_to_docid}
+    # Try matching as doc_ids first, then fall back to title search
+    found = {}
+    for num in article_numbers:
+        if num in idx_map:
+            found[num] = num
+        else:
+            match = find_article_by_number(corpus, [num])
+            if num in match:
+                found[num] = match[num]
+
     if len(found) < 2:
         print(f"  [skip] rq1b heatmap — found only {len(found)} articles")
         return
 
-    labels = [f"{label} {num}" for num in found]
+    titles = {did: corpus.get(did, {}).get("title", did) for did in found.values()}
+    labels = [titles[found[num]] for num in found]
     indices = [idx_map[found[num]] for num in found]
 
     para_sim = compute_pairwise_cosine(paragnn_emb, indices)
@@ -687,9 +696,8 @@ def main():
                         help="Where to save figures (default: outputs/analysis/gnn_explainability/<dataset>)")
     parser.add_argument("--hub_threshold", type=int, default=HUB_THRESHOLD_DEFAULT,
                         help="Min query count to classify a doc as hub")
-    parser.add_argument("--article_numbers", nargs="+",
-                        default=["1362", "1363", "1364", "1365", "1366", "1367", "1368", "1369", "1370"],
-                        help="Article numbers for case study heatmap")
+    parser.add_argument("--article_numbers", nargs="+", default=None,
+                        help="Article numbers for case study heatmap (auto-selected if omitted)")
     parser.add_argument("--split", default="test", choices=["train", "val", "test"])
     args = parser.parse_args()
 
@@ -819,12 +827,20 @@ def main():
             print(f"    StructGNN: r={struct_corr:.4f} (expected <0 if proximity learned)")
             plot_proximity_learning(prox_df, out_path)
 
-        # RQ1b: Article neighbourhood heatmap (e.g. Pasal 1362–1370)
-        print(f"Running RQ1b: Article neighbourhood heatmap {args.article_numbers}...")
+        # RQ1b: Article neighbourhood heatmap
+        article_numbers = args.article_numbers
+        if article_numbers is None:
+            # Auto-select: pick a consecutive range from the most-relevant hub article's neighborhood
+            top_doc = doc_freq.most_common(1)[0][0] if doc_freq else corpus_ids[len(corpus_ids) // 2]
+            top_idx = corpus_ids.index(top_doc)
+            start = max(0, top_idx - 4)
+            end = min(len(corpus_ids), start + 9)
+            article_numbers = corpus_ids[start:end]
+        print(f"Running RQ1b: Article neighbourhood heatmap {article_numbers}...")
         plot_article_neighborhood_heatmap(
             para_emb, struct_emb, corpus_ids, corpus,
-            args.article_numbers, out_path,
-            label="Pasal",
+            article_numbers, out_path,
+            label="Article",
         )
     else:
         print("\n  [info] Skipping embedding analyses — provide --paragnn_emb and --structgnn_emb")
