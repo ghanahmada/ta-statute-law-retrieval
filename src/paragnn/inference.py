@@ -155,6 +155,8 @@ def main():
     parser.add_argument("--proximity_radius", type=int, default=50)
     parser.add_argument("--export_embeddings", action="store_true",
                         help="Export GNN corpus embeddings as .npy for hybrid search")
+    parser.add_argument("--model_dir", type=str, default=None,
+                        help="Override model directory (default: auto-derived from dataset/structure_mode)")
     args = parser.parse_args()
 
     cfg = DATASETS[args.dataset]
@@ -176,8 +178,11 @@ def main():
     elif mode == "structural":
         method_suffix = f"{method_suffix}_struct"
 
-    base_dir = f"{config.output_dir}/{args.dataset}"
-    model_dir = f"{base_dir}/{method_suffix}"
+    if args.model_dir:
+        model_dir = args.model_dir
+    else:
+        base_dir = f"{config.output_dir}/{args.dataset}"
+        model_dir = f"{base_dir}/{method_suffix}"
     model_path = f"{model_dir}/best_model.pt"
 
     if not Path(model_path).exists():
@@ -334,6 +339,8 @@ def main():
 
     # Save to outputs/predictions/ in standard format
     method_name = {"none": "paragnn", "proximity": "proxgnn", "structural": "structgnn"}[mode]
+    if args.contranorm_scale > 0:
+        method_name = f"{method_name}_cn{args.contranorm_scale}"
     top_k = min(args.top_k, final_scores.shape[1])
     std_rankings: dict = {}
     std_scores: dict = {}
