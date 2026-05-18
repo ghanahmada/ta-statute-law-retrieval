@@ -226,7 +226,7 @@ class AgenticRetriever:
             state.messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
-                "content": result.content,
+                "content": result.content + "\n\n[State what you learned, what's missing, then act.]",
             })
             state.budget.add(result.content)
             state.seen_doc_ids.update(result.doc_ids_seen)
