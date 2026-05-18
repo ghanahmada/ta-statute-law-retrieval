@@ -191,7 +191,7 @@ class StructGNNSearcher:
         top_n: int = 10,
         exclude_ids: set[str] | None = None,
         rerank: bool = True,
-        rerank_top_k: int = 100,
+        rerank_top_k: int = 50,
     ) -> list[tuple[str, str, float]]:
         """Search using StructGNN scoring: alpha*gnn + (1-alpha)*bm25."""
         exclude_ids = exclude_ids or set()

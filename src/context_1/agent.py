@@ -292,7 +292,7 @@ class AgenticRetriever:
                 if new_emb is not None:
                     state.query_embeddings.append(new_emb)
 
-            exclude = set(state.seen_doc_ids)
+            exclude = set(state.selected_doc_ids.keys())
             return self.tool_executor.search_corpus(
                 args.get("query", ""),
                 exclude_ids=exclude,
