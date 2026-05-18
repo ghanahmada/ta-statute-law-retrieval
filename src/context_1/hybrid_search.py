@@ -61,7 +61,7 @@ class HybridSearcher:
         top_n: int = 10,
         exclude_ids: set[str] | None = None,
         rerank: bool = True,
-        rerank_top_k: int = 50,
+        rerank_top_k: int = 100,
     ) -> list[tuple[str, str, float]]:
         """Hybrid search returning (doc_id, doc_text, score) tuples."""
         exclude_ids = exclude_ids or set()
