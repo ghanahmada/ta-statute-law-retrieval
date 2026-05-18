@@ -108,7 +108,11 @@ or layperson terms into the precise legal vocabulary used in the statute \
 corpus before issuing any search or grep call. Each search must target a \
 DIFFERENT legal concept. Read promising results to verify relevance.
 
-STEP 4 — REPEAT or CONCLUDE: If gaps remain, repeat steps 2-3. Otherwise, \
+STEP 4 — PRUNE: After reading documents, remove irrelevant ones from context \
+using prune_chunks. This frees token budget and keeps your working set clean \
+for the final selection.
+
+STEP 5 — REPEAT or CONCLUDE: If gaps remain, repeat steps 2-4. Otherwise, \
 provide your final answer.
 
 ## Final Answer Format
